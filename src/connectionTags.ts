@@ -110,6 +110,15 @@ export function formatTagsDescription(tags: ConnectionTag[] | undefined): string
   return normalized.map((t) => t.name).join("  ");
 }
 
+/** Plain description: tag names + dialect/host (always shown together). */
+export function formatConnectionExplorerDescriptionText(
+  tags: ConnectionTag[] | undefined,
+  dialectDesc: string
+): string {
+  const tagDesc = formatTagsDescription(tags);
+  return tagDesc ? `${tagDesc}  ${dialectDesc}` : dialectDesc;
+}
+
 export function formatTagPillHtml(tag: ConnectionTag): string {
   const bg = tagColorHex(tag.color);
   const fg = contrastingTextColor(bg);

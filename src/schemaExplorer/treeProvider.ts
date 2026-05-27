@@ -2,7 +2,7 @@ import * as vscode from "vscode";
 import { ConnectionManager } from "../connectionManager";
 import {
   connectionIcon,
-  formatTagsDescription,
+  formatConnectionExplorerDescriptionText,
   formatTagsTooltip,
   normalizeTags,
 } from "../connectionTags";
@@ -37,11 +37,15 @@ export class ExplorerTreeItem extends vscode.TreeItem {
     } else if (itemType === "connection") {
       this.iconPath = connectionIcon();
       const tags = normalizeTags(connectionProfile?.tags);
-      const tagDesc = formatTagsDescription(tags);
       const dialectDesc = connectionProfile
         ? `${connectionProfile.dialect} — ${connectionProfile.host}:${connectionProfile.port}`
         : undefined;
-      this.description = tagDesc ?? dialectDesc;
+
+      if (connectionProfile && dialectDesc) {
+        this.id = `connection:${connectionProfile.id}`;
+        this.label = connectionProfile.name;
+        this.description = formatConnectionExplorerDescriptionText(tags, dialectDesc);
+      }
 
       if (connectionProfile) {
         if (tags.length > 0) {
