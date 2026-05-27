@@ -10,6 +10,7 @@ from clickhouse_connect.driver.client import Client
 
 from sql_studio.dialect import sqlglot_service
 from sql_studio.drivers.clickhouse_query import build_query_result
+from sql_studio.drivers.clickhouse_session import apply_use_database, set_client_database
 from sql_studio.execution_status import clickhouse_status, is_result_set_query
 from sql_studio.models import ConnectionConfig, QueryResult, SchemaNode
 
@@ -40,8 +41,25 @@ class ClickHouseHttpDriver:
             self._client = None
         self._config = None
 
+    def cancel_query(self) -> None:
+        if self._client is not None:
+            try:
+                self._client.close()
+            except Exception:
+                pass
+            self._client = None
+
     def is_connected_with(self, config: ConnectionConfig) -> bool:
         return self._config == config and self._client is not None
+
+    def set_active_database(self, database: str) -> None:
+        if self._client is None:
+            return
+        set_client_database(self._client, database)
+        try:
+            self._client.command(f"USE `{database}`", use_database=False)
+        except Exception:
+            pass
 
     def test_connection(self) -> None:
         if self._client is None:
@@ -53,7 +71,11 @@ class ClickHouseHttpDriver:
             raise RuntimeError("Not connected")
         started = time.perf_counter()
         if sqlglot_service.is_session_statement(sql) or not is_result_set_query(sql):
-            response = self._client.command(sql)
+            if sqlglot_service.is_session_statement(sql):
+                response = self._client.command(sql, use_database=False)
+            else:
+                response = self._client.command(sql)
+            apply_use_database(self._client, sql)
             duration_ms = (time.perf_counter() - started) * 1000
             summary = getattr(response, "summary", None) or response
             return QueryResult(

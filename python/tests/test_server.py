@@ -59,6 +59,20 @@ def test_connection_disconnect(mock_disconnect: MagicMock, server: JsonRpcServer
     mock_disconnect.assert_called_once_with("c1")
 
 
+@patch("sql_studio.server.cancel_query")
+def test_query_cancel(mock_cancel: MagicMock, server: JsonRpcServer) -> None:
+    mock_cancel.return_value = True
+    response = server._handle(
+        {
+            "id": 13,
+            "method": "query/cancel",
+            "params": {"connectionId": "c1"},
+        }
+    )
+    assert response["result"] == {"ok": True}
+    mock_cancel.assert_called_once_with("c1")
+
+
 @patch("sql_studio.server.get_driver")
 def test_query_execute_returns_batch(mock_get_driver: MagicMock, server: JsonRpcServer) -> None:
     mock_driver = MagicMock()

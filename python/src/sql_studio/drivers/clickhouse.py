@@ -55,12 +55,24 @@ class ClickHouseDriver:
             self._impl = None
         self._config = None
 
+    def cancel_query(self) -> None:
+        if self._impl is not None:
+            cancel = getattr(self._impl, "cancel_query", None)
+            if callable(cancel):
+                cancel()
+
     def is_connected_with(self, config: ConnectionConfig) -> bool:
         return (
             self._config == config
             and self._impl is not None
             and self._impl.is_connected_with(config)
         )
+
+    def set_active_database(self, database: str) -> None:
+        if self._impl is not None:
+            setter = getattr(self._impl, "set_active_database", None)
+            if callable(setter):
+                setter(database)
 
     def test_connection(self) -> None:
         if self._impl is None:

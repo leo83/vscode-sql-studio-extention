@@ -67,89 +67,120 @@
     "commands": [
       {
         "command": "sqlStudio.createSqlQuery",
-        "title": "SQL Studio: Create SQL Query",
+        "title": "Create SQL Query",
+        "category": "SQL Studio",
         "icon": "$(new-file)"
       },
       {
         "command": "sqlStudio.runQuery",
-        "title": "SQL Studio: Run Query at Cursor",
+        "title": "Run Query at Cursor",
+        "category": "SQL Studio",
         "icon": "$(play)"
       },
       {
         "command": "sqlStudio.runSelection",
-        "title": "SQL Studio: Run Selection"
+        "title": "Run Selection",
+        "category": "SQL Studio"
       },
       {
         "command": "sqlStudio.runAllInFile",
-        "title": "SQL Studio: Run All in File",
+        "title": "Run All in File",
+        "category": "SQL Studio",
         "icon": "$(debug-continue)"
       },
       {
+        "command": "sqlStudio.cancelQuery",
+        "title": "Cancel Query",
+        "category": "SQL Studio",
+        "icon": "$(debug-stop)"
+      },
+      {
         "command": "sqlStudio.formatSql",
-        "title": "SQL Studio: Format SQL"
+        "title": "Format SQL",
+        "category": "SQL Studio"
       },
       {
         "command": "sqlStudio.addConnection",
-        "title": "SQL Studio: Add Connection",
+        "title": "Add Connection",
+        "category": "SQL Studio",
         "icon": "$(add)"
       },
       {
         "command": "sqlStudio.editConnection",
-        "title": "SQL Studio: Edit Connection"
+        "title": "Edit Connection",
+        "category": "SQL Studio"
       },
       {
         "command": "sqlStudio.manageConnectionTags",
-        "title": "SQL Studio: Manage Tags"
+        "title": "Manage Tags",
+        "category": "SQL Studio"
       },
       {
         "command": "sqlStudio.deleteConnection",
-        "title": "SQL Studio: Delete Connection"
+        "title": "Delete Connection",
+        "category": "SQL Studio"
+      },
+      {
+        "command": "sqlStudio.disconnectConnection",
+        "title": "Disconnect",
+        "category": "SQL Studio"
       },
       {
         "command": "sqlStudio.testConnection",
-        "title": "SQL Studio: Test Connection"
+        "title": "Test Connection",
+        "category": "SQL Studio"
       },
       {
         "command": "sqlStudio.setActiveConnection",
-        "title": "SQL Studio: Set Active Connection"
+        "title": "Set Active Connection",
+        "category": "SQL Studio"
       },
       {
         "command": "sqlStudio.selectConnection",
-        "title": "SQL Studio: Select Connection for File",
+        "title": "Select Connection for File",
+        "category": "SQL Studio",
         "icon": "$(database)"
       },
       {
         "command": "sqlStudio.previewData",
-        "title": "SQL Studio: Preview Data"
+        "title": "Preview Data",
+        "category": "SQL Studio"
       },
       {
         "command": "sqlStudio.copyObjectName",
-        "title": "SQL Studio: Copy Name"
+        "title": "Copy Name",
+        "category": "SQL Studio"
       },
       {
         "command": "sqlStudio.generateSelect",
-        "title": "SQL Studio: Generate SELECT"
+        "title": "Generate SELECT",
+        "category": "SQL Studio"
       },
       {
         "command": "sqlStudio.refreshExplorer",
-        "title": "SQL Studio: Refresh",
+        "title": "Refresh",
+        "category": "SQL Studio",
         "icon": "$(refresh)"
       },
       {
         "command": "sqlStudio.exportCsv",
-        "title": "SQL Studio: Export Results to CSV"
+        "title": "Export Results to CSV",
+        "category": "SQL Studio"
       },
       {
         "command": "sqlStudio.exportExcel",
-        "title": "SQL Studio: Export Results to Excel"
+        "title": "Export Results to Excel",
+        "category": "SQL Studio"
       },
       {
         "command": "sqlStudio.askAgentExplain",
-        "title": "SQL Studio: Ask Agent to Explain Query"
+        "title": "Ask Agent to Explain Query",
+        "category": "SQL Studio"
       },
       {
         "command": "sqlStudio.askAgentFix",
-        "title": "SQL Studio: Ask Agent to Fix/Optimize Query"
+        "title": "Ask Agent to Fix/Optimize Query",
+        "category": "SQL Studio"
       }
     ],
     "menus": {
@@ -210,6 +241,11 @@
           "command": "sqlStudio.testConnection",
           "when": "view == sqlStudio.explorer && viewItem == connection",
           "group": "1_actions@5"
+        },
+        {
+          "command": "sqlStudio.disconnectConnection",
+          "when": "view == sqlStudio.explorer && viewItem == connection",
+          "group": "1_actions@6"
         }
       ],
       "editor/title": [
@@ -227,33 +263,43 @@
           "command": "sqlStudio.runAllInFile",
           "when": "editorLangId =~ /sql-studio/",
           "group": "navigation@2"
+        },
+        {
+          "command": "sqlStudio.cancelQuery",
+          "when": "editorLangId =~ /sql-studio/ && sqlStudio.queryRunning",
+          "group": "navigation@3"
         }
       ],
       "editor/context": [
         {
-          "command": "sqlStudio.selectConnection",
-          "when": "editorLangId =~ /sql-studio/",
+          "command": "sqlStudio.cancelQuery",
+          "when": "editorLangId =~ /sql-studio/ && sqlStudio.queryRunning",
           "group": "sqlStudio@0"
         },
         {
-          "command": "sqlStudio.runQuery",
+          "command": "sqlStudio.selectConnection",
           "when": "editorLangId =~ /sql-studio/",
           "group": "sqlStudio@1"
         },
         {
-          "command": "sqlStudio.runAllInFile",
+          "command": "sqlStudio.runQuery",
           "when": "editorLangId =~ /sql-studio/",
           "group": "sqlStudio@2"
         },
         {
-          "command": "sqlStudio.runSelection",
+          "command": "sqlStudio.runAllInFile",
           "when": "editorLangId =~ /sql-studio/",
           "group": "sqlStudio@3"
         },
         {
-          "command": "sqlStudio.askAgentExplain",
+          "command": "sqlStudio.runSelection",
           "when": "editorLangId =~ /sql-studio/",
           "group": "sqlStudio@4"
+        },
+        {
+          "command": "sqlStudio.askAgentExplain",
+          "when": "editorLangId =~ /sql-studio/",
+          "group": "sqlStudio@5"
         }
       ]
     },

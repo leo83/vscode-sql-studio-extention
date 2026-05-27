@@ -4,15 +4,18 @@ from __future__ import annotations
 
 import json
 import sys
+import threading
 import traceback
 from typing import Any, Callable
 
 from pydantic import ValidationError
 
 from sql_studio.dialect import sqlglot_service
-from sql_studio.drivers.registry import disconnect, get_driver, test_connection
+from sql_studio.drivers.registry import cancel_query, disconnect, get_driver, set_session_database, test_connection
+from sql_studio.drivers.clickhouse_session import parse_use_database
 from sql_studio.export.csv_export import export_csv
 from sql_studio.export.excel_export import export_xlsx
+from sql_studio.query_cancel import QueryCancelledError, is_query_cancelled_error
 from sql_studio.models import (
     ConnectionConfig,
     ExportResult,
@@ -28,11 +31,13 @@ Handler = Callable[[dict[str, Any]], Any]
 
 class JsonRpcServer:
     def __init__(self) -> None:
+        self._stdout_lock = threading.Lock()
         self._handlers: dict[str, Handler] = {
             "health": self._health,
             "connection/test": self._connection_test,
             "connection/disconnect": self._connection_disconnect,
             "query/execute": self._query_execute,
+            "query/cancel": self._query_cancel,
             "schema/listChildren": self._schema_list_children,
             "schema/getTableDDL": self._schema_get_table_ddl,
             "sql/format": self._sql_format,
@@ -48,9 +53,29 @@ class JsonRpcServer:
                 continue
             try:
                 request = json.loads(line)
-                response = self._handle(request)
             except json.JSONDecodeError as exc:
-                response = self._error(None, -32700, f"Parse error: {exc}")
+                self._write(self._error(None, -32700, f"Parse error: {exc}"))
+                continue
+
+            if request.get("method") == "query/execute":
+                threading.Thread(
+                    target=self._respond,
+                    args=(request,),
+                    daemon=True,
+                ).start()
+                continue
+
+            self._respond(request)
+
+    def _respond(self, request: dict[str, Any]) -> None:
+        try:
+            response = self._handle(request)
+        except json.JSONDecodeError as exc:
+            response = self._error(None, -32700, f"Parse error: {exc}")
+        self._write(response)
+
+    def _write(self, response: dict[str, Any]) -> None:
+        with self._stdout_lock:
             sys.stdout.write(json.dumps(response, default=str) + "\n")
             sys.stdout.flush()
 
@@ -65,7 +90,11 @@ class JsonRpcServer:
             return {"jsonrpc": "2.0", "id": req_id, "result": result}
         except ValidationError as exc:
             return self._error(req_id, -32602, str(exc))
+        except QueryCancelledError:
+            return self._error(req_id, -32001, "Query cancelled")
         except Exception as exc:
+            if is_query_cancelled_error(exc):
+                return self._error(req_id, -32001, "Query cancelled")
             traceback.print_exc(file=sys.stderr)
             return self._error(req_id, -32000, str(exc))
 
@@ -90,6 +119,10 @@ class JsonRpcServer:
         disconnect(params["connectionId"])
         return {"ok": True}
 
+    def _query_cancel(self, params: dict[str, Any]) -> dict[str, bool]:
+        connection_id = params["connectionId"]
+        return {"ok": cancel_query(connection_id)}
+
     def _query_execute(self, params: dict[str, Any]) -> dict[str, Any]:
         config = ConnectionConfig.model_validate(params["connection"])
         sql = params["sql"]
@@ -106,6 +139,9 @@ class JsonRpcServer:
         for index, statement in enumerate(statements, start=1):
             result = driver.execute(statement, limit=limit)
             total_duration_ms += result.duration_ms
+            database = parse_use_database(statement)
+            if database and not result.error:
+                set_session_database(config.id, database)
             batch.append(
                 StatementResult(
                     index=index,

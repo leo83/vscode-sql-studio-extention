@@ -2,7 +2,15 @@
 
 from unittest.mock import MagicMock, patch
 
-from sql_studio.drivers.registry import _DRIVERS, disconnect, get_driver
+from sql_studio.drivers.registry import (
+    _DRIVERS,
+    _SESSION_DATABASES,
+    cancel_query,
+    disconnect,
+    get_driver,
+    get_session_database,
+    set_session_database,
+)
 from sql_studio.models import ConnectionConfig
 
 
@@ -35,6 +43,7 @@ def setup_function() -> None:
     for driver in list(_DRIVERS.values()):
         driver.disconnect()
     _DRIVERS.clear()
+    _SESSION_DATABASES.clear()
 
 
 def test_disconnect_removes_driver_from_pool() -> None:
@@ -47,6 +56,41 @@ def test_disconnect_removes_driver_from_pool() -> None:
 
 def test_disconnect_missing_id_is_noop() -> None:
     disconnect("missing")
+
+
+def test_cancel_query_calls_driver_cancel() -> None:
+    mock_driver = MagicMock()
+    _DRIVERS["x"] = mock_driver
+    assert cancel_query("x") is True
+    mock_driver.cancel_query.assert_called_once()
+
+
+def test_cancel_query_missing_id_returns_false() -> None:
+    assert cancel_query("missing") is False
+
+
+def test_session_database_persists_until_disconnect() -> None:
+    set_session_database("c1", "robotisation")
+    assert get_session_database("c1") == "robotisation"
+    disconnect("c1")
+    assert get_session_database("c1") is None
+
+
+def test_get_driver_restores_session_database() -> None:
+    from sql_studio.drivers.clickhouse import ClickHouseDriver
+
+    set_session_database("ch-1", "robotisation")
+    driver = ClickHouseDriver()
+    mock_impl = MagicMock()
+    mock_impl.is_connected_with.return_value = True
+    driver._impl = mock_impl
+    driver._config = _clickhouse_config("ch-1")
+    _DRIVERS["ch-1"] = driver
+
+    result = get_driver(_clickhouse_config("ch-1"))
+
+    assert result is driver
+    mock_impl.set_active_database.assert_called_once_with("robotisation")
 
 
 @patch("sql_studio.drivers.registry.ClickHouseDriver")

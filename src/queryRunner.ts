@@ -6,11 +6,13 @@ import {
   buildPreviewSql,
   getPreviewRowLimit,
   getQueryRowLimit,
+  getSessionStatementsBeforeOffset,
   getSessionStatementsBeforePosition,
   getStatementAtPosition,
+  isSessionStatement,
+  normalizeStatementSql,
 } from "./sqlUtils";
 import {
-  batchHasError,
   ConnectionWithSecret,
   QueryExecutePayload,
   toRpcConnection,
@@ -19,6 +21,7 @@ import {
 export class QueryRunner {
   private lastPreviewKey = "";
   private lastPreviewAt = 0;
+  private runningConnectionId: string | undefined;
 
   constructor(
     private readonly python: PythonClient,
@@ -35,22 +38,17 @@ export class QueryRunner {
 
   async runAtCursor(editor: vscode.TextEditor): Promise<void> {
     if (!editor.selection.isEmpty) {
-      await this.runSelection(editor);
+      const sql = editor.document.getText(editor.selection);
+      if (!sql.trim()) {
+        vscode.window.showWarningMessage("No SQL selected.");
+        return;
+      }
+      await this.runSqlWithSessionContext(editor, sql, editor.selection.start);
       return;
     }
 
     const position = editor.selection.active;
     const context = getSessionStatementsBeforePosition(editor.document, position);
-    for (const stmt of context) {
-      const result = await this.runSql(stmt, editor.document.fileName, {
-        showResults: false,
-        document: editor.document,
-      });
-      if (result && batchHasError(result)) {
-        return;
-      }
-    }
-
     const sql = getStatementAtPosition(editor.document, position);
     if (!sql) {
       vscode.window.showWarningMessage(
@@ -58,6 +56,12 @@ export class QueryRunner {
       );
       return;
     }
+
+    if (context.length > 0) {
+      await this.runSqlWithSessionContext(editor, sql, position, context);
+      return;
+    }
+
     await this.runSql(sql, editor.document.fileName, {
       document: editor.document,
     });
@@ -70,7 +74,33 @@ export class QueryRunner {
       vscode.window.showWarningMessage("No SQL selected.");
       return;
     }
-    await this.runSql(sql, editor.document.fileName, {
+    await this.runSqlWithSessionContext(editor, sql, selection.start);
+  }
+
+  private async runSqlWithSessionContext(
+    editor: vscode.TextEditor,
+    sql: string,
+    anchor: vscode.Position,
+    presetContext?: string[]
+  ): Promise<void> {
+    const trimmed = normalizeStatementSql(sql);
+    if (!trimmed) {
+      vscode.window.showWarningMessage("No SQL to run.");
+      return;
+    }
+    const context =
+      presetContext ?? getSessionStatementsBeforeOffset(editor.document, anchor);
+
+    if (context.length > 0 && !isSessionStatement(trimmed)) {
+      const batchSql = [...context, trimmed].join(";\n");
+      await this.runSql(batchSql, editor.document.fileName, {
+        document: editor.document,
+        leadingSessionCount: context.length,
+      });
+      return;
+    }
+
+    await this.runSql(trimmed, editor.document.fileName, {
       document: editor.document,
     });
   }
@@ -82,6 +112,7 @@ export class QueryRunner {
       showResults?: boolean;
       document?: vscode.TextDocument;
       connectionId?: string;
+      leadingSessionCount?: number;
     }
   ): Promise<QueryExecutePayload | undefined> {
     let conn: ConnectionWithSecret | undefined;
@@ -119,7 +150,8 @@ export class QueryRunner {
       sql,
       title ?? conn.name,
       getQueryRowLimit(),
-      options?.showResults !== false
+      options?.showResults !== false,
+      options?.leadingSessionCount
     );
   }
 
@@ -148,59 +180,120 @@ export class QueryRunner {
     );
   }
 
+  async cancelRunningQuery(): Promise<void> {
+    const connectionId = this.runningConnectionId;
+    if (!connectionId) {
+      vscode.window.showInformationMessage("No query is running.");
+      return;
+    }
+    try {
+      await this.python.request("query/cancel", { connectionId });
+    } catch {
+      // Best-effort cancel; the in-flight request may already have finished.
+    }
+  }
+
+  isQueryRunning(): boolean {
+    return this.runningConnectionId !== undefined;
+  }
+
+  private trimLeadingSessionResults(
+    result: QueryExecutePayload,
+    leadingSessionCount: number
+  ): QueryExecutePayload {
+    if (result.statements.length <= leadingSessionCount) {
+      return result;
+    }
+    const last = result.statements[result.statements.length - 1];
+    return {
+      statements: [last],
+      total_duration_ms: last.duration_ms,
+    };
+  }
+
   private async executeWithConnection(
     conn: ConnectionWithSecret,
     sql: string,
     title: string,
     limit: number,
-    showResults = true
+    showResults = true,
+    leadingSessionCount = 0
   ): Promise<QueryExecutePayload | undefined> {
     let result: QueryExecutePayload | undefined;
-    await vscode.window.withProgress(
-      {
-        location: vscode.ProgressLocation.Notification,
-        title: `Running on ${conn.name}...`,
-        cancellable: false,
-      },
-      async () => {
-        try {
-          result = await this.python.request<QueryExecutePayload>("query/execute", {
+    let cancelled = false;
+    this.runningConnectionId = conn.id;
+    await vscode.commands.executeCommand("setContext", "sqlStudio.queryRunning", true);
+    try {
+      await vscode.window.withProgress(
+        {
+          location: vscode.ProgressLocation.Notification,
+          title: `Running on ${conn.name}...`,
+          cancellable: true,
+        },
+        async (_progress, token) => {
+          const executePromise = this.python.request<QueryExecutePayload>("query/execute", {
             connection: toRpcConnection(conn),
             sql,
             limit,
           });
-          if (showResults) {
-            await this.results.show(result, title);
+
+          token.onCancellationRequested(() => {
+            cancelled = true;
+            void this.python
+              .request("query/cancel", { connectionId: conn.id })
+              .catch(() => undefined);
+          });
+
+          try {
+            result = await executePromise;
+            if (leadingSessionCount > 0) {
+              result = this.trimLeadingSessionResults(result, leadingSessionCount);
+            }
+            if (showResults) {
+              await this.results.show(result, title);
+            }
+            const truncated = result.statements.some((s) => s.truncated);
+            if (truncated) {
+              vscode.window.showInformationMessage(
+                `Results truncated to ${limit} rows.`
+              );
+            }
+          } catch (err) {
+            if (cancelled || token.isCancellationRequested || this.isCancelledError(err)) {
+              cancelled = true;
+              return;
+            }
+            const message = err instanceof Error ? err.message : String(err);
+            const errorResult: QueryExecutePayload = {
+              statements: [
+                {
+                  index: 1,
+                  sql,
+                  columns: [],
+                  rows: [],
+                  row_count: 0,
+                  duration_ms: 0,
+                  error: message,
+                },
+              ],
+              total_duration_ms: 0,
+            };
+            if (showResults) {
+              await this.results.show(errorResult, `${title} (error)`);
+            }
+            vscode.window.showErrorMessage(`Query failed: ${message}`);
           }
-          const truncated = result.statements.some((s) => s.truncated);
-          if (truncated) {
-            vscode.window.showInformationMessage(
-              `Results truncated to ${limit} rows.`
-            );
-          }
-        } catch (err) {
-          const message = err instanceof Error ? err.message : String(err);
-          const errorResult: QueryExecutePayload = {
-            statements: [
-              {
-                index: 1,
-                sql,
-                columns: [],
-                rows: [],
-                row_count: 0,
-                duration_ms: 0,
-                error: message,
-              },
-            ],
-            total_duration_ms: 0,
-          };
-          if (showResults) {
-            await this.results.show(errorResult, `${title} (error)`);
-          }
-          vscode.window.showErrorMessage(`Query failed: ${message}`);
         }
-      }
-    );
+      );
+    } finally {
+      this.runningConnectionId = undefined;
+      await vscode.commands.executeCommand("setContext", "sqlStudio.queryRunning", false);
+    }
     return result;
+  }
+
+  private isCancelledError(err: unknown): boolean {
+    const message = err instanceof Error ? err.message : String(err);
+    return /cancel/i.test(message);
   }
 }

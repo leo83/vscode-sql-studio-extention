@@ -355,4 +355,11 @@ export class ConnectionManager {
   private async persist(): Promise<void> {
     await this.context.globalState.update(STORAGE_KEY, this.profiles);
   }
+
+  async disconnectFromDatabase(connectionId: string): Promise<void> {
+    if (!this.python) {
+      return;
+    }
+    await this.python.request("connection/disconnect", { connectionId });
+  }
 }

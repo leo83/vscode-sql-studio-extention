@@ -32,6 +32,23 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   pythonClient = new PythonClient(context);
   connectionManager = new ConnectionManager(context, pythonClient);
   await connectionManager.initialize();
+
+  explorerProvider = new SchemaExplorerProvider(
+    connectionManager,
+    pythonClient,
+    context.extensionUri
+  );
+  const explorerView = vscode.window.createTreeView("sqlStudio.explorer", {
+    treeDataProvider: explorerProvider,
+    showCollapseAll: true,
+  });
+  explorerView.onDidChangeVisibility((event) => {
+    if (event.visible) {
+      explorerProvider.refresh();
+    }
+  });
+  explorerProvider.refresh();
+
   for (const doc of vscode.workspace.textDocuments) {
     if (isSqlFileDocument(doc)) {
       await ensureSqlStudioLanguage(doc);
@@ -44,11 +61,6 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     })
   );
   queryRunner = new QueryRunner(pythonClient, connectionManager, resultsPanel);
-  explorerProvider = new SchemaExplorerProvider(
-    connectionManager,
-    pythonClient,
-    context.extensionUri
-  );
   connectionStatusBar = new ConnectionStatusBar(connectionManager);
 
   const onSqlEditorActive = async (document: vscode.TextDocument): Promise<void> => {
@@ -61,11 +73,6 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   if (activeOnStartup && isSqlFileDocument(activeOnStartup.document)) {
     void onSqlEditorActive(activeOnStartup.document);
   }
-
-  const explorerView = vscode.window.createTreeView("sqlStudio.explorer", {
-    treeDataProvider: explorerProvider,
-    showCollapseAll: true,
-  });
 
   explorerView.onDidChangeSelection((event) => {
     const item = event.selection[0];
@@ -298,6 +305,28 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     vscode.commands.registerCommand("sqlStudio.refreshExplorer", () =>
       explorerProvider.refresh()
     ),
+    vscode.commands.registerCommand("sqlStudio.cancelQuery", () =>
+      queryRunner.cancelRunningQuery()
+    ),
+    vscode.commands.registerCommand(
+      "sqlStudio.disconnectConnection",
+      async (item: ExplorerTreeItem) => {
+        const id = item.connectionId;
+        if (!id) {
+          return;
+        }
+        const profile = connectionManager.getProfile(id);
+        const name = profile?.name ?? item.label;
+        try {
+          await connectionManager.disconnectFromDatabase(id);
+          explorerProvider.refresh();
+          vscode.window.showInformationMessage(`Disconnected from ${name}.`);
+        } catch (err) {
+          const msg = err instanceof Error ? err.message : String(err);
+          vscode.window.showErrorMessage(`Disconnect failed: ${msg}`);
+        }
+      }
+    ),
     vscode.commands.registerCommand("sqlStudio.exportCsv", () =>
       resultsPanel.getLastResult()
         ? vscode.commands.executeCommand("sqlStudio._exportCsv")
@@ -316,6 +345,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
 
   try {
     await pythonClient.start();
+    explorerProvider.refresh();
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     vscode.window.showWarningMessage(

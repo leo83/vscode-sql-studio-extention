@@ -40,6 +40,10 @@ class PostgresDriver:
             self._conn = None
         self._config = None
 
+    def cancel_query(self) -> None:
+        if self._conn is not None and not self._conn.closed:
+            self._conn.cancel()
+
     def is_connected_with(self, config: ConnectionConfig) -> bool:
         return (
             self._config == config
