@@ -5,6 +5,12 @@
   font-size: var(--vscode-font-size, 13px);
 }
 
+html,
+body,
+#root {
+  height: 100%;
+}
+
 body {
   margin: 0;
   padding: 0;
@@ -13,7 +19,7 @@ body {
 .results {
   display: flex;
   flex-direction: column;
-  height: 100vh;
+  height: 100%;
 }
 
 .toolbar {
@@ -83,6 +89,29 @@ th.sorted {
   background: var(--vscode-list-activeSelectionBackground, #094771);
 }
 
+th.row-num,
+td.row-num {
+  width: 1%;
+  min-width: 2.5em;
+  text-align: right;
+  color: var(--vscode-descriptionForeground, #888);
+  user-select: none;
+  position: sticky;
+  left: 0;
+  z-index: 1;
+  background: var(--vscode-editor-background, #1e1e1e);
+  border-right: 1px solid var(--vscode-panel-border, #444);
+}
+
+thead th.row-num {
+  z-index: 2;
+  background: var(--vscode-editor-inactiveSelectionBackground, #264f78);
+}
+
+tr:nth-child(even) td.row-num {
+  background: color-mix(in srgb, var(--vscode-editor-background, #1e1e1e) 97%, white);
+}
+
 tr:nth-child(even) {
   background: rgba(255, 255, 255, 0.03);
 }
@@ -109,7 +138,7 @@ tr:nth-child(even) {
   flex-direction: column;
   gap: 12px;
   padding: 16px;
-  height: 100vh;
+  height: 100%;
   box-sizing: border-box;
   overflow: auto;
 }
@@ -184,7 +213,7 @@ tr:nth-child(even) {
   flex-direction: column;
   gap: 12px;
   padding: 16px;
-  height: 100vh;
+  height: 100%;
   box-sizing: border-box;
 }
 
@@ -239,7 +268,7 @@ tr:nth-child(even) {
   flex-direction: column;
   gap: 16px;
   padding: 12px;
-  min-height: 100vh;
+  min-height: 100%;
   box-sizing: border-box;
 }
 

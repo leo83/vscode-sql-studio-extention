@@ -38,6 +38,11 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     }
   }
   resultsPanel = new ResultsPanel(context, pythonClient);
+  context.subscriptions.push(
+    vscode.window.registerWebviewViewProvider("sqlStudio.results", resultsPanel, {
+      webviewOptions: { retainContextWhenHidden: true },
+    })
+  );
   queryRunner = new QueryRunner(pythonClient, connectionManager, resultsPanel);
   explorerProvider = new SchemaExplorerProvider(
     connectionManager,

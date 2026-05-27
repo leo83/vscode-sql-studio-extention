@@ -3,42 +3,55 @@ import * as path from "path";
 import { PythonClient } from "../pythonClient";
 import { lastExportableStatement, QueryExecutePayload } from "../types";
 
-export class ResultsPanel {
-  private panel: vscode.WebviewPanel | undefined;
+export class ResultsPanel implements vscode.WebviewViewProvider {
+  private view: vscode.WebviewView | undefined;
   private lastResult: QueryExecutePayload | undefined;
+  private pendingTitle: string | undefined;
 
   constructor(
     private readonly context: vscode.ExtensionContext,
     private readonly python: PythonClient
   ) {}
 
+  resolveWebviewView(
+    webviewView: vscode.WebviewView,
+    _context: vscode.WebviewViewResolveContext,
+    _token: vscode.CancellationToken
+  ): void {
+    this.view = webviewView;
+    webviewView.webview.options = {
+      enableScripts: true,
+      localResourceRoots: [
+        vscode.Uri.file(path.join(this.context.extensionPath, "dist")),
+        vscode.Uri.file(path.join(this.context.extensionPath, "webview-ui", "dist")),
+      ],
+    };
+    webviewView.webview.onDidReceiveMessage(async (msg) => {
+      if (msg.type === "exportCsv" || msg.type === "exportXlsx") {
+        await this.handleExport(msg.type === "exportCsv" ? "csv" : "xlsx");
+      }
+    });
+    webviewView.onDidDispose(() => {
+      this.view = undefined;
+    });
+
+    if (this.lastResult) {
+      webviewView.title = this.pendingTitle ?? "Query Results";
+      webviewView.webview.html = this.getHtml(webviewView.webview, this.lastResult);
+    }
+  }
+
   async show(result: QueryExecutePayload, title: string): Promise<void> {
     this.lastResult = result;
-    if (!this.panel) {
-      this.panel = vscode.window.createWebviewPanel(
-        "sqlStudioResults",
-        "SQL Results",
-        vscode.ViewColumn.Beside,
-        {
-          enableScripts: true,
-          retainContextWhenHidden: true,
-          localResourceRoots: [
-            vscode.Uri.file(path.join(this.context.extensionPath, "dist")),
-            vscode.Uri.file(path.join(this.context.extensionPath, "webview-ui", "dist")),
-          ],
-        }
-      );
-      this.panel.onDidDispose(() => {
-        this.panel = undefined;
-      });
-      this.panel.webview.onDidReceiveMessage(async (msg) => {
-        if (msg.type === "exportCsv" || msg.type === "exportXlsx") {
-          await this.handleExport(msg.type === "exportCsv" ? "csv" : "xlsx");
-        }
-      });
+    this.pendingTitle = `Results: ${title}`;
+
+    await vscode.commands.executeCommand("sqlStudio.results.focus");
+
+    if (this.view) {
+      this.view.title = this.pendingTitle;
+      this.view.show?.(true);
+      this.view.webview.html = this.getHtml(this.view.webview, result);
     }
-    this.panel.title = `Results: ${title}`;
-    this.panel.webview.html = this.getHtml(this.panel.webview, result);
   }
 
   getLastResult(): QueryExecutePayload | undefined {

@@ -70,6 +70,8 @@ export function ResultsTable({ result, embedded = false }: Props) {
     initialState: { pagination: { pageSize: 100 } },
   });
 
+  const { pageIndex, pageSize } = table.getState().pagination;
+
   return (
     <div className={`results${embedded ? " results-embedded" : ""}`}>
       <div className="toolbar">
@@ -95,6 +97,9 @@ export function ResultsTable({ result, embedded = false }: Props) {
           <thead>
             {table.getHeaderGroups().map((hg) => (
               <tr key={hg.id}>
+                <th className="row-num" scope="col">
+                  #
+                </th>
                 {hg.headers.map((header) => (
                   <th
                     key={header.id}
@@ -111,6 +116,7 @@ export function ResultsTable({ result, embedded = false }: Props) {
           <tbody>
             {table.getRowModel().rows.map((row) => (
               <tr key={row.id}>
+                <td className="row-num">{pageIndex * pageSize + row.index + 1}</td>
                 {row.getVisibleCells().map((cell) => (
                   <td key={cell.id}>{flexRender(cell.column.columnDef.cell, cell.getContext())}</td>
                 ))}

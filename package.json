@@ -17,6 +17,7 @@
     "onLanguage:sql-studio-clickhouse",
     "workspaceContains:**/*.sql",
     "onView:sqlStudio.explorer",
+    "onView:sqlStudio.results",
     "onCommand:sqlStudio.addConnection"
   ],
   "main": "./dist/extension.js",
@@ -281,6 +282,13 @@
           "title": "SQL Studio",
           "icon": "resources/icons/database.svg"
         }
+      ],
+      "panel": [
+        {
+          "id": "sql-studio-results",
+          "title": "SQL Results",
+          "icon": "resources/icons/database.svg"
+        }
       ]
     },
     "views": {
@@ -288,6 +296,13 @@
         {
           "id": "sqlStudio.explorer",
           "name": "Database Explorer"
+        }
+      ],
+      "sql-studio-results": [
+        {
+          "id": "sqlStudio.results",
+          "name": "Query Results",
+          "type": "webview"
         }
       ]
     },
