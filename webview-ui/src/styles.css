@@ -22,6 +22,126 @@ body {
   height: 100%;
 }
 
+.results-body-only {
+  flex: 1;
+  min-height: 0;
+  height: auto;
+}
+
+.view-mode-toggle {
+  display: inline-flex;
+  border: 1px solid var(--vscode-panel-border, #444);
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.view-mode-toggle button {
+  background: var(--vscode-button-secondaryBackground, #3a3d41);
+  color: var(--vscode-button-secondaryForeground, #ccc);
+  border-radius: 0;
+  padding: 4px 12px;
+}
+
+.view-mode-toggle button.active {
+  background: var(--vscode-button-background, #0e639c);
+  color: var(--vscode-button-foreground, #fff);
+}
+
+.view-mode-toggle button:not(:last-child) {
+  border-right: 1px solid var(--vscode-panel-border, #444);
+}
+
+.table-toolbar {
+  padding: 8px;
+  border-bottom: 1px solid var(--vscode-panel-border, #444);
+}
+
+.table-toolbar .filter {
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.chart-panel {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.chart-config {
+  width: 220px;
+  min-width: 220px;
+  padding: 12px;
+  border-right: 1px solid var(--vscode-panel-border, #444);
+  overflow: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  background: color-mix(in srgb, var(--vscode-editor-background, #1e1e1e) 92%, white);
+}
+
+.chart-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.chart-field-label {
+  font-size: 0.85em;
+  opacity: 0.85;
+}
+
+.chart-field select {
+  width: 100%;
+  box-sizing: border-box;
+  background: var(--vscode-dropdown-background, #3c3c3c);
+  color: var(--vscode-dropdown-foreground, #ccc);
+  border: 1px solid var(--vscode-dropdown-border, #555);
+  padding: 4px 8px;
+}
+
+.chart-canvas-wrap {
+  flex: 1;
+  min-width: 0;
+  min-height: 240px;
+  display: flex;
+  flex-direction: column;
+  padding: 8px;
+}
+
+.chart-canvas {
+  flex: 1;
+  min-height: 0;
+}
+
+.chart-warning {
+  padding: 6px 10px;
+  margin-bottom: 8px;
+  border: 1px solid var(--vscode-inputValidation-warningBorder, #b89500);
+  background: var(--vscode-inputValidation-warningBackground, rgba(184, 149, 0, 0.15));
+  color: var(--vscode-foreground, #ccc);
+  font-size: 0.9em;
+}
+
+.chart-empty {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0.7;
+  padding: 24px;
+  text-align: center;
+}
+
+.results-embedded .chart-config {
+  width: 200px;
+  min-width: 200px;
+}
+
+.results-embedded .chart-canvas-wrap {
+  min-height: 200px;
+}
+
 .toolbar {
   display: flex;
   gap: 8px;

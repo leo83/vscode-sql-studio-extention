@@ -2,7 +2,7 @@ import { BatchResults } from "./BatchResults";
 import { ConnectionDialog } from "./ConnectionDialog";
 import { QueryError } from "./QueryError";
 import { QueryStatus } from "./QueryStatus";
-import { ResultsTable } from "./ResultsTable";
+import { ResultsView } from "./ResultsView";
 import type { ConnectionDialogInit, QueryExecuteResult } from "./types";
 
 export function App() {
@@ -32,5 +32,5 @@ export function App() {
   if (result.rows.length === 0 && !result.columns.length) {
     return <QueryStatus result={result} />;
   }
-  return <ResultsTable result={result} />;
+  return <ResultsView result={result} />;
 }

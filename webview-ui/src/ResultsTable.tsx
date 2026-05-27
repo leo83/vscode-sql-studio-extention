@@ -16,13 +16,14 @@ import { getVsCodeApi } from "./vscodeApi";
 interface Props {
   result: QueryResult;
   embedded?: boolean;
+  showToolbar?: boolean;
 }
 
 function rowToJson(row: Record<string, unknown>): string {
   return JSON.stringify(row, null, 2);
 }
 
-export function ResultsTable({ result, embedded = false }: Props) {
+export function ResultsTable({ result, embedded = false, showToolbar = true }: Props) {
   const [globalFilter, setGlobalFilter] = useState("");
   const [sorting, setSorting] = useState<SortingState>([]);
   const [selectedRowId, setSelectedRowId] = useState<string | null>(null);
@@ -151,25 +152,36 @@ export function ResultsTable({ result, embedded = false }: Props) {
   };
 
   return (
-    <div className={`results${embedded ? " results-embedded" : ""}`}>
-      <div className="toolbar">
-        <input
-          className="filter"
-          placeholder="Filter all columns..."
-          value={globalFilter}
-          onChange={(e) => setGlobalFilter(e.target.value)}
-        />
-        <span className="meta">
-          {result.row_count} rows · {result.duration_ms.toFixed(1)} ms
-          {result.truncated ? " · truncated" : ""}
-        </span>
-        <button type="button" onClick={() => getVsCodeApi()?.postMessage({ type: "exportCsv" })}>
-          Export CSV
-        </button>
-        <button type="button" onClick={() => getVsCodeApi()?.postMessage({ type: "exportXlsx" })}>
-          Export Excel
-        </button>
-      </div>
+    <div className={`results${embedded ? " results-embedded" : ""}${showToolbar ? "" : " results-body-only"}`}>
+      {showToolbar ? (
+        <div className="toolbar">
+          <input
+            className="filter"
+            placeholder="Filter all columns..."
+            value={globalFilter}
+            onChange={(e) => setGlobalFilter(e.target.value)}
+          />
+          <span className="meta">
+            {result.row_count} rows · {result.duration_ms.toFixed(1)} ms
+            {result.truncated ? " · truncated" : ""}
+          </span>
+          <button type="button" onClick={() => getVsCodeApi()?.postMessage({ type: "exportCsv" })}>
+            Export CSV
+          </button>
+          <button type="button" onClick={() => getVsCodeApi()?.postMessage({ type: "exportXlsx" })}>
+            Export Excel
+          </button>
+        </div>
+      ) : (
+        <div className="table-toolbar">
+          <input
+            className="filter"
+            placeholder="Filter all columns..."
+            value={globalFilter}
+            onChange={(e) => setGlobalFilter(e.target.value)}
+          />
+        </div>
+      )}
       <div
         ref={tableWrapRef}
         className="table-wrap"

@@ -1,6 +1,6 @@
 import { QueryError } from "./QueryError";
 import { QueryStatus } from "./QueryStatus";
-import { ResultsTable } from "./ResultsTable";
+import { ResultsView } from "./ResultsView";
 import type { QueryExecuteResult, StatementResult } from "./types";
 
 interface Props {
@@ -41,7 +41,7 @@ function StatementBlock({ statement }: { statement: StatementResult }) {
       </header>
       <pre className="batch-statement-sql">{sqlPreview(statement.sql, 500)}</pre>
       {hasTable ? (
-        <ResultsTable result={statement} embedded />
+        <ResultsView result={statement} embedded />
       ) : (
         <QueryStatus result={statement} compact />
       )}
