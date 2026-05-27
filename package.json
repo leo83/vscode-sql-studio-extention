@@ -157,6 +157,27 @@
         "category": "SQL Studio"
       },
       {
+        "command": "sqlStudio.showObjectDescription",
+        "title": "Object Description",
+        "category": "SQL Studio"
+      },
+      {
+        "command": "sqlStudio.sampleData",
+        "title": "Sample Data",
+        "category": "SQL Studio"
+      },
+      {
+        "command": "sqlStudio.exportObjectData",
+        "title": "Export Data…",
+        "category": "SQL Studio"
+      },
+      {
+        "command": "sqlStudio.createSqlQueryForObject",
+        "title": "Create SQL Query",
+        "category": "SQL Studio",
+        "icon": "$(new-file)"
+      },
+      {
         "command": "sqlStudio.refreshExplorer",
         "title": "Refresh",
         "category": "SQL Studio",
@@ -199,18 +220,38 @@
       "view/item/context": [
         {
           "command": "sqlStudio.previewData",
-          "when": "view == sqlStudio.explorer && viewItem == table",
+          "when": "view == sqlStudio.explorer && viewItem =~ /^(table|view)$/",
           "group": "inline@1"
         },
         {
+          "command": "sqlStudio.showObjectDescription",
+          "when": "view == sqlStudio.explorer && viewItem =~ /^(table|view|function|procedure|column)$/",
+          "group": "0_object@1"
+        },
+        {
+          "command": "sqlStudio.sampleData",
+          "when": "view == sqlStudio.explorer && viewItem =~ /^(table|view)$/",
+          "group": "1_data@1"
+        },
+        {
+          "command": "sqlStudio.exportObjectData",
+          "when": "view == sqlStudio.explorer && viewItem =~ /^(table|view)$/",
+          "group": "1_data@2"
+        },
+        {
+          "command": "sqlStudio.createSqlQueryForObject",
+          "when": "view == sqlStudio.explorer && viewItem =~ /^(table|view|function|procedure)$/",
+          "group": "1_query@1"
+        },
+        {
           "command": "sqlStudio.generateSelect",
-          "when": "view == sqlStudio.explorer && viewItem == table",
-          "group": "1_actions@1"
+          "when": "view == sqlStudio.explorer && viewItem =~ /^(table|view)$/",
+          "group": "1_query@2"
         },
         {
           "command": "sqlStudio.copyObjectName",
-          "when": "view == sqlStudio.explorer",
-          "group": "1_actions@2"
+          "when": "view == sqlStudio.explorer && viewItem =~ /^(table|view|function|procedure|column|schema|database)$/",
+          "group": "1_actions@1"
         },
         {
           "command": "sqlStudio.createSqlQuery",

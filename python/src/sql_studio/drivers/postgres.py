@@ -9,7 +9,15 @@ import psycopg
 from psycopg.rows import dict_row
 
 from sql_studio.execution_status import postgres_status
-from sql_studio.models import ConnectionConfig, QueryColumn, QueryResult, SchemaNode
+from sql_studio.models import (
+    ColumnInfo,
+    ConnectionConfig,
+    ObjectDescription,
+    ObjectDescriptionSection,
+    QueryColumn,
+    QueryResult,
+    SchemaNode,
+)
 
 
 class PostgresDriver:
@@ -156,6 +164,37 @@ class PostgresDriver:
                             metadata={"table_type": ttype},
                         )
                     )
+                cur.execute(
+                    """
+                    SELECT routine_name, routine_type, data_type
+                    FROM information_schema.routines
+                    WHERE routine_schema = %s
+                    ORDER BY routine_type, routine_name
+                    """,
+                    (schema,),
+                )
+                for row in cur.fetchall():
+                    routine = row["routine_name"]
+                    routine_type = row["routine_type"]
+                    node_type = (
+                        "procedure"
+                        if routine_type == "PROCEDURE"
+                        else "function"
+                    )
+                    nodes.append(
+                        SchemaNode(
+                            id=f"{node_type}:{schema}.{routine}",
+                            label=routine,
+                            node_type=node_type,
+                            path=["schemas", schema, routine],
+                            has_children=False,
+                            icon=node_type,
+                            metadata={
+                                "routine_type": routine_type,
+                                "return_type": row["data_type"],
+                            },
+                        )
+                    )
                 return nodes
         if len(path) == 3 and path[0] == "schemas":
             schema, table = path[1], path[2]
@@ -227,3 +266,289 @@ class PostgresDriver:
         lines[-1] = lines[-1].rstrip(",")
         lines.append(");")
         return "\n".join(lines)
+
+    def get_object_description(self, path: list[str]) -> ObjectDescription:
+        if self._conn is None:
+            raise RuntimeError("Not connected")
+        if len(path) < 3 or path[0] != "schemas":
+            return ObjectDescription(
+                object_type="unknown",
+                qualified_name=".".join(path),
+            )
+
+        schema, name = path[1], path[2]
+
+        if len(path) == 4:
+            return self._describe_column(schema, name, path[3])
+
+        with self._conn.cursor() as cur:
+            cur.execute(
+                """
+                SELECT table_name, table_type
+                FROM information_schema.tables
+                WHERE table_schema = %s AND table_name = %s
+                """,
+                (schema, name),
+            )
+            table_row = cur.fetchone()
+            if table_row:
+                object_type = (
+                    "view" if "VIEW" in table_row["table_type"] else "table"
+                )
+                return self._describe_table(schema, name, object_type)
+
+            cur.execute(
+                """
+                SELECT routine_name, routine_type, data_type, external_language,
+                       routine_definition
+                FROM information_schema.routines
+                WHERE routine_schema = %s AND routine_name = %s
+                LIMIT 1
+                """,
+                (schema, name),
+            )
+            routine_row = cur.fetchone()
+            if routine_row:
+                return self._describe_routine(schema, name, routine_row)
+
+        return ObjectDescription(
+            object_type="unknown",
+            qualified_name=f"{schema}.{name}",
+        )
+
+    def _describe_column(
+        self, schema: str, table: str, column: str
+    ) -> ObjectDescription:
+        assert self._conn is not None
+        with self._conn.cursor() as cur:
+            cur.execute(
+                """
+                SELECT column_name, data_type, is_nullable, column_default,
+                       character_maximum_length, numeric_precision, numeric_scale,
+                       col_description(
+                           (quote_ident(%s) || '.' || quote_ident(%s))::regclass::oid,
+                           ordinal_position
+                       ) AS comment
+                FROM information_schema.columns
+                WHERE table_schema = %s AND table_name = %s AND column_name = %s
+                """,
+                (schema, table, schema, table, column),
+            )
+            row = cur.fetchone()
+        if not row:
+            return ObjectDescription(
+                object_type="column",
+                qualified_name=f"{schema}.{table}.{column}",
+            )
+        return ObjectDescription(
+            object_type="column",
+            qualified_name=f"{schema}.{table}.{column}",
+            columns=[
+                ColumnInfo(
+                    name=row["column_name"],
+                    data_type=row["data_type"],
+                    nullable=row["is_nullable"] == "YES",
+                    default=row["column_default"],
+                    comment=row["comment"],
+                )
+            ],
+            sections=[
+                ObjectDescriptionSection(
+                    title="Properties",
+                    rows=[
+                        {"Property": "Schema", "Value": schema},
+                        {"Property": "Table", "Value": table},
+                        {"Property": "Column", "Value": column},
+                        {"Property": "Type", "Value": row["data_type"]},
+                        {
+                            "Property": "Nullable",
+                            "Value": "YES" if row["is_nullable"] == "YES" else "NO",
+                        },
+                        {
+                            "Property": "Default",
+                            "Value": row["column_default"] or "",
+                        },
+                        {
+                            "Property": "Max length",
+                            "Value": row["character_maximum_length"] or "",
+                        },
+                        {
+                            "Property": "Precision",
+                            "Value": row["numeric_precision"] or "",
+                        },
+                        {"Property": "Scale", "Value": row["numeric_scale"] or ""},
+                        {"Property": "Comment", "Value": row["comment"] or ""},
+                    ],
+                )
+            ],
+        )
+
+    def _describe_table(
+        self, schema: str, table: str, object_type: str
+    ) -> ObjectDescription:
+        assert self._conn is not None
+        ddl = self.get_table_ddl(["schemas", schema, table])
+        with self._conn.cursor() as cur:
+            cur.execute(
+                """
+                SELECT column_name, data_type, is_nullable, column_default,
+                       COALESCE(
+                           (SELECT true FROM information_schema.table_constraints tc
+                            JOIN information_schema.key_column_usage kcu
+                              ON tc.constraint_name = kcu.constraint_name
+                             AND tc.table_schema = kcu.table_schema
+                            WHERE tc.constraint_type = 'PRIMARY KEY'
+                              AND tc.table_schema = %s AND tc.table_name = %s
+                              AND kcu.column_name = c.column_name
+                            LIMIT 1), false
+                       ) AS is_pk,
+                       col_description(
+                           (quote_ident(%s) || '.' || quote_ident(%s))::regclass::oid,
+                           ordinal_position
+                       ) AS comment
+                FROM information_schema.columns c
+                WHERE table_schema = %s AND table_name = %s
+                ORDER BY ordinal_position
+                """,
+                (schema, table, schema, table, schema, table),
+            )
+            columns = [
+                ColumnInfo(
+                    name=row["column_name"],
+                    data_type=row["data_type"],
+                    nullable=row["is_nullable"] == "YES",
+                    is_primary_key=bool(row["is_pk"]),
+                    default=row["column_default"],
+                    comment=row["comment"],
+                )
+                for row in cur.fetchall()
+            ]
+            cur.execute(
+                """
+                SELECT obj_description(
+                    (quote_ident(%s) || '.' || quote_ident(%s))::regclass::oid,
+                    'pg_class'
+                ) AS comment
+                """,
+                (schema, table),
+            )
+            table_comment = (cur.fetchone() or {}).get("comment")
+            cur.execute(
+                """
+                SELECT c.reltuples::bigint AS row_estimate,
+                       pg_size_pretty(pg_total_relation_size(c.oid)) AS total_size
+                FROM pg_class c
+                JOIN pg_namespace n ON n.oid = c.relnamespace
+                WHERE n.nspname = %s AND c.relname = %s
+                """,
+                (schema, table),
+            )
+            stats = cur.fetchone() or {}
+            cur.execute(
+                """
+                SELECT indexname, indexdef
+                FROM pg_indexes
+                WHERE schemaname = %s AND tablename = %s
+                ORDER BY indexname
+                """,
+                (schema, table),
+            )
+            indexes = cur.fetchall()
+        sections: list[ObjectDescriptionSection] = [
+            ObjectDescriptionSection(
+                title="General",
+                rows=[
+                    {"Property": "Schema", "Value": schema},
+                    {"Property": "Name", "Value": table},
+                    {"Property": "Type", "Value": object_type},
+                    {
+                        "Property": "Estimated rows",
+                        "Value": stats.get("row_estimate", ""),
+                    },
+                    {"Property": "Total size", "Value": stats.get("total_size", "")},
+                    {"Property": "Comment", "Value": table_comment or ""},
+                ],
+            )
+        ]
+        if indexes:
+            sections.append(
+                ObjectDescriptionSection(
+                    title="Indexes",
+                    rows=[
+                        {"Index": row["indexname"], "Definition": row["indexdef"]}
+                        for row in indexes
+                    ],
+                )
+            )
+        return ObjectDescription(
+            object_type=object_type,
+            qualified_name=f"{schema}.{table}",
+            ddl=ddl,
+            columns=columns,
+            sections=sections,
+        )
+
+    def _describe_routine(
+        self, schema: str, name: str, row: dict[str, Any]
+    ) -> ObjectDescription:
+        assert self._conn is not None
+        routine_type = row["routine_type"]
+        object_type = "procedure" if routine_type == "PROCEDURE" else "function"
+        ddl = ""
+        with self._conn.cursor() as cur:
+            cur.execute(
+                """
+                SELECT pg_get_functiondef(p.oid) AS definition
+                FROM pg_proc p
+                JOIN pg_namespace n ON n.oid = p.pronamespace
+                WHERE n.nspname = %s AND p.proname = %s
+                LIMIT 1
+                """,
+                (schema, name),
+            )
+            def_row = cur.fetchone()
+            if def_row and def_row.get("definition"):
+                ddl = str(def_row["definition"])
+            cur.execute(
+                """
+                SELECT parameter_name, data_type, parameter_mode
+                FROM information_schema.parameters
+                WHERE specific_schema = %s AND specific_name LIKE %s
+                ORDER BY ordinal_position
+                """,
+                (schema, f"{name}%"),
+            )
+            params = cur.fetchall()
+        param_rows = [
+            {
+                "Parameter": p["parameter_name"] or "",
+                "Type": p["data_type"] or "",
+                "Mode": p["parameter_mode"] or "",
+            }
+            for p in params
+        ]
+        sections: list[ObjectDescriptionSection] = [
+            ObjectDescriptionSection(
+                title="General",
+                rows=[
+                    {"Property": "Schema", "Value": schema},
+                    {"Property": "Name", "Value": name},
+                    {"Property": "Type", "Value": routine_type},
+                    {"Property": "Language", "Value": row["external_language"] or ""},
+                    {
+                        "Property": "Return type",
+                        "Value": row["data_type"] or "",
+                    },
+                ],
+            )
+        ]
+        if param_rows:
+            sections.append(
+                ObjectDescriptionSection(title="Parameters", rows=param_rows)
+            )
+        return ObjectDescription(
+            object_type=object_type,
+            qualified_name=f"{schema}.{name}",
+            ddl=ddl or row.get("routine_definition"),
+            sections=sections,
+        )

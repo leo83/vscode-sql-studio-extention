@@ -12,7 +12,8 @@ from sql_studio.dialect import sqlglot_service
 from sql_studio.drivers.clickhouse_query import build_query_result
 from sql_studio.drivers.clickhouse_session import apply_use_database, set_client_database
 from sql_studio.execution_status import clickhouse_status, is_result_set_query
-from sql_studio.models import ConnectionConfig, QueryResult, SchemaNode
+from sql_studio.drivers.clickhouse_object import get_clickhouse_object_description
+from sql_studio.models import ConnectionConfig, ObjectDescription, QueryResult, SchemaNode
 
 
 class ClickHouseHttpDriver:
@@ -141,7 +142,11 @@ class ClickHouseHttpDriver:
                 SchemaNode(
                     id=f"table:{database}.{row[0]}",
                     label=str(row[0]),
-                    node_type="table",
+                    node_type=(
+                        "view"
+                        if len(row) > 1 and "View" in str(row[1])
+                        else "table"
+                    ),
                     path=["databases", database, str(row[0])],
                     has_children=True,
                     icon="table",
@@ -182,3 +187,8 @@ class ClickHouseHttpDriver:
         database, table = path[1], path[2]
         ddl = self._client.command(f"SHOW CREATE TABLE `{database}`.`{table}`")
         return str(ddl) if ddl else f"-- Table {database}.{table} not found"
+
+    def get_object_description(self, path: list[str]) -> ObjectDescription:
+        if self._client is None:
+            raise RuntimeError("Not connected")
+        return get_clickhouse_object_description(self._client, path)

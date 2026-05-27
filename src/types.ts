@@ -75,6 +75,28 @@ export interface SchemaNodePayload {
   metadata?: Record<string, unknown>;
 }
 
+export interface ObjectDescriptionSection {
+  title: string;
+  rows: Record<string, unknown>[];
+}
+
+export interface ObjectDescriptionColumn {
+  name: string;
+  data_type: string;
+  nullable: boolean;
+  is_primary_key: boolean;
+  default?: string | null;
+  comment?: string | null;
+}
+
+export interface ObjectDescriptionPayload {
+  object_type: string;
+  qualified_name: string;
+  ddl?: string | null;
+  columns: ObjectDescriptionColumn[];
+  sections: ObjectDescriptionSection[];
+}
+
 export function secretKeyForConnection(connectionId: string): string {
   return `sql-studio.connection.${connectionId}.password`;
 }

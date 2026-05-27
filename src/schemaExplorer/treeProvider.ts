@@ -17,6 +17,8 @@ export type ExplorerItemType =
   | "database"
   | "table"
   | "view"
+  | "function"
+  | "procedure"
   | "column";
 
 export class ExplorerTreeItem extends vscode.TreeItem {
@@ -32,7 +34,7 @@ export class ExplorerTreeItem extends vscode.TreeItem {
       node?.label ?? (connectionId ? connectionId : "Connections"),
       collapsible
     );
-    this.contextValue = itemType === "view" ? "table" : itemType;
+    this.contextValue = itemType;
     if (itemType === "connections-root") {
       this.iconPath = new vscode.ThemeIcon("server-environment");
     } else if (itemType === "connection") {
@@ -62,8 +64,12 @@ export class ExplorerTreeItem extends vscode.TreeItem {
         }
       }
     } else if (itemType === "table" || itemType === "view") {
-      this.iconPath = new vscode.ThemeIcon("table");
+      this.iconPath = new vscode.ThemeIcon(itemType === "view" ? "eye" : "table");
       this.tooltip = "Click to preview data";
+    } else if (itemType === "function") {
+      this.iconPath = new vscode.ThemeIcon("symbol-method");
+    } else if (itemType === "procedure") {
+      this.iconPath = new vscode.ThemeIcon("symbol-event");
     } else if (itemType === "column") {
       this.iconPath = new vscode.ThemeIcon("symbol-field");
     } else {
@@ -79,8 +85,14 @@ export class ExplorerTreeItem extends vscode.TreeItem {
     if (path[0] === "schemas" && path.length >= 3) {
       return `${path[1]}.${path[2]}`;
     }
+    if (path[0] === "schemas" && path.length >= 4) {
+      return `${path[1]}.${path[2]}.${path[3]}`;
+    }
     if (path[0] === "databases" && path.length >= 3) {
       return `${path[1]}.${path[2]}`;
+    }
+    if (path[0] === "databases" && path.length >= 4) {
+      return `${path[1]}.${path[2]}.${path[3]}`;
     }
     return this.node.label.split(":")[0];
   }

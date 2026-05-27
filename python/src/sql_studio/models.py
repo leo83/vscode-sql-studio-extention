@@ -29,6 +29,21 @@ class ColumnInfo(BaseModel):
     data_type: str
     nullable: bool = True
     is_primary_key: bool = False
+    default: str | None = None
+    comment: str | None = None
+
+
+class ObjectDescriptionSection(BaseModel):
+    title: str
+    rows: list[dict[str, Any]] = Field(default_factory=list)
+
+
+class ObjectDescription(BaseModel):
+    object_type: str
+    qualified_name: str
+    ddl: str | None = None
+    columns: list[ColumnInfo] = Field(default_factory=list)
+    sections: list[ObjectDescriptionSection] = Field(default_factory=list)
 
 
 class SchemaNode(BaseModel):

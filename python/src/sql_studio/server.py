@@ -28,6 +28,7 @@ from sql_studio.models import (
     ExportResult,
     QueryExecuteResult,
     QueryResult,
+    ObjectDescription,
     SchemaNode,
     StatementResult,
 )
@@ -47,6 +48,7 @@ class JsonRpcServer:
             "query/cancel": self._query_cancel,
             "schema/listChildren": self._schema_list_children,
             "schema/getTableDDL": self._schema_get_table_ddl,
+            "schema/getObjectDescription": self._schema_get_object_description,
             "sql/format": self._sql_format,
             "sql/split": self._sql_split,
             "export/csv": self._export_csv,
@@ -180,6 +182,13 @@ class JsonRpcServer:
         path = params.get("path") or []
         driver = get_driver(config)
         return {"ddl": driver.get_table_ddl(path)}
+
+    def _schema_get_object_description(self, params: dict[str, Any]) -> dict[str, Any]:
+        config = ConnectionConfig.model_validate(params["connection"])
+        path = params.get("path") or []
+        driver = get_driver(config)
+        description: ObjectDescription = driver.get_object_description(path)
+        return description.model_dump()
 
     def _sql_format(self, params: dict[str, Any]) -> dict[str, str]:
         sql = params["sql"]

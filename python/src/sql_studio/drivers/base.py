@@ -4,7 +4,13 @@ from __future__ import annotations
 
 from typing import Protocol
 
-from sql_studio.models import ColumnInfo, ConnectionConfig, QueryResult, SchemaNode
+from sql_studio.models import (
+    ColumnInfo,
+    ConnectionConfig,
+    ObjectDescription,
+    QueryResult,
+    SchemaNode,
+)
 
 
 class DatabaseDriver(Protocol):
@@ -19,3 +25,5 @@ class DatabaseDriver(Protocol):
     def list_schema_children(self, path: list[str]) -> list[SchemaNode]: ...
 
     def get_table_ddl(self, path: list[str]) -> str: ...
+
+    def get_object_description(self, path: list[str]) -> ObjectDescription: ...

@@ -13,6 +13,12 @@ import {
   formatActiveDocument,
 } from "./commands/agentCommands";
 import { createSqlQuery } from "./commands/createSqlQuery";
+import {
+  createSqlQueryForObject,
+  exportObjectData,
+  sampleObjectData,
+  showObjectDescription,
+} from "./commands/objectCommands";
 import { ConnectionStatusBar } from "./connectionStatusBar";
 import { maybePromptConnectionForDocument } from "./sqlConnectionPrompt";
 import {
@@ -295,11 +301,44 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
         if (!qn) {
           return;
         }
+        const profile = item.connectionId
+          ? connectionManager.getProfile(item.connectionId)
+          : undefined;
         const doc = await vscode.workspace.openTextDocument({
           content: `SELECT *\nFROM ${qn}\nLIMIT 100;\n`,
-          language: item.node?.path[0] === "databases" ? "sql-studio-clickhouse" : "sql-studio-postgres",
+          language:
+            profile?.dialect === "clickhouse"
+              ? "sql-studio-clickhouse"
+              : "sql-studio-postgres",
         });
+        if (item.connectionId) {
+          await connectionManager.assignConnectionToDocument(doc, item.connectionId);
+        }
         await vscode.window.showTextDocument(doc);
+      }
+    ),
+    vscode.commands.registerCommand(
+      "sqlStudio.showObjectDescription",
+      async (item: ExplorerTreeItem) => {
+        await showObjectDescription(connectionManager, pythonClient, item);
+      }
+    ),
+    vscode.commands.registerCommand(
+      "sqlStudio.sampleData",
+      async (item: ExplorerTreeItem) => {
+        await sampleObjectData(queryRunner, item);
+      }
+    ),
+    vscode.commands.registerCommand(
+      "sqlStudio.exportObjectData",
+      async (item: ExplorerTreeItem) => {
+        await exportObjectData(connectionManager, pythonClient, item);
+      }
+    ),
+    vscode.commands.registerCommand(
+      "sqlStudio.createSqlQueryForObject",
+      async (item: ExplorerTreeItem) => {
+        await createSqlQueryForObject(connectionManager, item);
       }
     ),
     vscode.commands.registerCommand("sqlStudio.refreshExplorer", () =>

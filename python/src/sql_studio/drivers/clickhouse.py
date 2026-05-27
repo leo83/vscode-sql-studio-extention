@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Protocol
 
-from sql_studio.models import ClickHouseInterface, ConnectionConfig, QueryResult, SchemaNode
+from sql_studio.models import ClickHouseInterface, ConnectionConfig, ObjectDescription, QueryResult, SchemaNode
 
 from sql_studio.drivers.clickhouse_http import ClickHouseHttpDriver
 from sql_studio.drivers.clickhouse_native import ClickHouseNativeDriver
@@ -20,6 +20,7 @@ class _ClickHouseBackend(Protocol):
     def execute(self, sql: str, limit: int | None = 10_000) -> QueryResult: ...
     def list_schema_children(self, path: list[str]) -> list[SchemaNode]: ...
     def get_table_ddl(self, path: list[str]) -> str: ...
+    def get_object_description(self, path: list[str]) -> ObjectDescription: ...
 
 
 def resolve_clickhouse_interface(config: ConnectionConfig) -> ClickHouseInterface:
@@ -93,3 +94,8 @@ class ClickHouseDriver:
         if self._impl is None:
             raise RuntimeError("Not connected")
         return self._impl.get_table_ddl(path)
+
+    def get_object_description(self, path: list[str]) -> ObjectDescription:
+        if self._impl is None:
+            raise RuntimeError("Not connected")
+        return self._impl.get_object_description(path)

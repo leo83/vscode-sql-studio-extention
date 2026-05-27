@@ -167,6 +167,35 @@ def test_schema_list_children(mock_get_driver: MagicMock, server: JsonRpcServer)
 
 
 @patch("sql_studio.server.get_driver")
+def test_schema_get_object_description(
+    mock_get_driver: MagicMock, server: JsonRpcServer
+) -> None:
+    from sql_studio.models import ObjectDescription
+
+    mock_driver = MagicMock()
+    mock_driver.get_object_description.return_value = ObjectDescription(
+        object_type="table",
+        qualified_name="public.users",
+        ddl="CREATE TABLE public.users (id int)",
+    )
+    mock_get_driver.return_value = mock_driver
+
+    response = server._handle(
+        {
+            "id": 14,
+            "method": "schema/getObjectDescription",
+            "params": {
+                "connection": _connection(),
+                "path": ["schemas", "public", "users"],
+            },
+        }
+    )
+
+    assert response["result"]["qualified_name"] == "public.users"
+    assert response["result"]["ddl"].startswith("CREATE TABLE")
+
+
+@patch("sql_studio.server.get_driver")
 def test_schema_get_table_ddl(mock_get_driver: MagicMock, server: JsonRpcServer) -> None:
     mock_driver = MagicMock()
     mock_driver.get_table_ddl.return_value = "CREATE TABLE t (x Int32)"
