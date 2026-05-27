@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   NAME_FIELD,
   defaultPort,
+  defaultUsername,
   getConnectionFields,
   type ClickHouseInterface,
   type Dialect,
@@ -51,7 +52,7 @@ function buildInitialValues(init: ConnectionDialogInit): FormValues {
     host: profile?.host ?? "localhost",
     port: String(profile?.port ?? defaultPort(dialect, chIface)),
     database: profile?.database ?? defaultDatabase(dialect),
-    username: profile?.username ?? "default",
+    username: profile?.username ?? defaultUsername(dialect),
     password: "",
     ssl: profile?.ssl ?? false,
     readOnly: profile?.readOnly ?? false,
@@ -117,6 +118,11 @@ export function ConnectionDialog({ init }: { init: ConnectionDialogInit }) {
         next.port = String(defaultPort(d, d === "clickhouse" ? "native" : undefined));
         if (!isEdit) {
           next.database = defaultDatabase(d);
+          next.username = defaultUsername(d);
+          if (d === "sqlite") {
+            next.host = "localhost";
+            next.password = "";
+          }
         }
       }
       if (key === "clickhouseInterface") {
@@ -176,11 +182,11 @@ export function ConnectionDialog({ init }: { init: ConnectionDialogInit }) {
     return {
       name: String(values.name).trim(),
       dialect: d,
-      host: String(values.host).trim(),
-      port: Number(values.port),
+      host: d === "sqlite" ? "localhost" : String(values.host).trim(),
+      port: d === "sqlite" ? 0 : Number(values.port),
       database,
-      username: String(values.username).trim(),
-      password: String(values.password ?? ""),
+      username: d === "sqlite" ? "" : String(values.username).trim(),
+      password: d === "sqlite" ? "" : String(values.password ?? ""),
       ssl: Boolean(values.ssl),
       readOnly: Boolean(values.readOnly),
       clickhouseInterface:

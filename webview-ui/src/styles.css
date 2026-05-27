@@ -62,6 +62,12 @@ button:disabled {
 .table-wrap {
   overflow: auto;
   flex: 1;
+  outline: none;
+}
+
+.table-wrap:focus-visible {
+  outline: 1px solid var(--vscode-focusBorder, #007fd4);
+  outline-offset: -1px;
 }
 
 table {
@@ -114,6 +120,32 @@ tr:nth-child(even) td.row-num {
 
 tr:nth-child(even) {
   background: rgba(255, 255, 255, 0.03);
+}
+
+tbody tr {
+  cursor: pointer;
+}
+
+tbody tr.row-selected td {
+  background: var(--vscode-list-activeSelectionBackground, #094771);
+  color: var(--vscode-list-activeSelectionForeground, #fff);
+}
+
+tbody tr.row-selected td.row-num {
+  background: var(--vscode-list-activeSelectionBackground, #094771);
+  color: var(--vscode-list-activeSelectionForeground, #fff);
+}
+
+tbody tr:hover:not(.row-selected) td {
+  background: var(--vscode-list-hoverBackground, rgba(255, 255, 255, 0.06));
+}
+
+tbody tr:hover:not(.row-selected) td.row-num {
+  background: color-mix(
+    in srgb,
+    var(--vscode-list-hoverBackground, rgba(255, 255, 255, 0.06)) 100%,
+    var(--vscode-editor-background, #1e1e1e)
+  );
 }
 
 .null-val {

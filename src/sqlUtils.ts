@@ -18,6 +18,15 @@ export function buildPreviewSql(
   if (dialect === "mssql") {
     return `SELECT TOP ${limit} * FROM [${schema}].[${table}]`;
   }
+  if (dialect === "mysql" || dialect === "clickhouse") {
+    return `SELECT * FROM \`${schema}\`.\`${table}\` LIMIT ${limit}`;
+  }
+  if (dialect === "sqlite") {
+    if (schema === "main") {
+      return `SELECT * FROM "${table}" LIMIT ${limit}`;
+    }
+    return `SELECT * FROM "${schema}"."${table}" LIMIT ${limit}`;
+  }
   return `SELECT * FROM \`${schema}\`.\`${table}\` LIMIT ${limit}`;
 }
 

@@ -6,9 +6,10 @@ import {
   getSortedRowModel,
   useReactTable,
   type ColumnDef,
+  type Row,
   type SortingState,
 } from "@tanstack/react-table";
-import { useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { QueryResult } from "./types";
 import { getVsCodeApi } from "./vscodeApi";
 
@@ -17,9 +18,15 @@ interface Props {
   embedded?: boolean;
 }
 
+function rowToJson(row: Record<string, unknown>): string {
+  return JSON.stringify(row, null, 2);
+}
+
 export function ResultsTable({ result, embedded = false }: Props) {
   const [globalFilter, setGlobalFilter] = useState("");
   const [sorting, setSorting] = useState<SortingState>([]);
+  const [selectedRowId, setSelectedRowId] = useState<string | null>(null);
+  const tableWrapRef = useRef<HTMLDivElement>(null);
 
   const columnNames = useMemo(() => {
     if (result.columns.length > 0) {
@@ -71,6 +78,77 @@ export function ResultsTable({ result, embedded = false }: Props) {
   });
 
   const { pageIndex, pageSize } = table.getState().pagination;
+  const rows = table.getRowModel().rows;
+
+  useEffect(() => {
+    setSelectedRowId(null);
+  }, [result]);
+
+  useEffect(() => {
+    if (selectedRowId && !rows.some((row) => row.id === selectedRowId)) {
+      setSelectedRowId(null);
+    }
+  }, [rows, selectedRowId]);
+
+  const scrollRowIntoView = useCallback((rowId: string) => {
+    const el = tableWrapRef.current?.querySelector(`tr[data-row-id="${rowId}"]`);
+    el?.scrollIntoView({ block: "nearest" });
+  }, []);
+
+  const copySelectedRow = useCallback(async () => {
+    const row = rows.find((item) => item.id === selectedRowId);
+    if (!row) {
+      return;
+    }
+    await navigator.clipboard.writeText(rowToJson(row.original));
+  }, [rows, selectedRowId]);
+
+  const selectRow = useCallback(
+    (row: Row<Record<string, unknown>>) => {
+      setSelectedRowId(row.id);
+      tableWrapRef.current?.focus({ preventScroll: true });
+      scrollRowIntoView(row.id);
+    },
+    [scrollRowIntoView]
+  );
+
+  const moveSelection = useCallback(
+    (direction: 1 | -1) => {
+      if (rows.length === 0) {
+        return;
+      }
+      const currentIndex = selectedRowId
+        ? rows.findIndex((row) => row.id === selectedRowId)
+        : -1;
+      let nextIndex = currentIndex + direction;
+      if (currentIndex === -1) {
+        nextIndex = direction === 1 ? 0 : rows.length - 1;
+      } else {
+        nextIndex = Math.max(0, Math.min(rows.length - 1, nextIndex));
+      }
+      const nextRow = rows[nextIndex];
+      setSelectedRowId(nextRow.id);
+      scrollRowIntoView(nextRow.id);
+    },
+    [rows, selectedRowId, scrollRowIntoView]
+  );
+
+  const handleTableKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
+    if (event.key === "ArrowDown") {
+      event.preventDefault();
+      moveSelection(1);
+      return;
+    }
+    if (event.key === "ArrowUp") {
+      event.preventDefault();
+      moveSelection(-1);
+      return;
+    }
+    if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "c" && selectedRowId) {
+      event.preventDefault();
+      void copySelectedRow();
+    }
+  };
 
   return (
     <div className={`results${embedded ? " results-embedded" : ""}`}>
@@ -92,7 +170,12 @@ export function ResultsTable({ result, embedded = false }: Props) {
           Export Excel
         </button>
       </div>
-      <div className="table-wrap">
+      <div
+        ref={tableWrapRef}
+        className="table-wrap"
+        tabIndex={0}
+        onKeyDown={handleTableKeyDown}
+      >
         <table>
           <thead>
             {table.getHeaderGroups().map((hg) => (
@@ -114,8 +197,13 @@ export function ResultsTable({ result, embedded = false }: Props) {
             ))}
           </thead>
           <tbody>
-            {table.getRowModel().rows.map((row) => (
-              <tr key={row.id}>
+            {rows.map((row) => (
+              <tr
+                key={row.id}
+                data-row-id={row.id}
+                className={row.id === selectedRowId ? "row-selected" : undefined}
+                onClick={() => selectRow(row)}
+              >
                 <td className="row-num">{pageIndex * pageSize + row.index + 1}</td>
                 {row.getVisibleCells().map((cell) => (
                   <td key={cell.id}>{flexRender(cell.column.columnDef.cell, cell.getContext())}</td>

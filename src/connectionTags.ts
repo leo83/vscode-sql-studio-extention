@@ -194,6 +194,8 @@ export function connectionDialectIcon(
     postgres: "postgres.svg",
     clickhouse: "clickhouse.svg",
     mssql: "mssql.svg",
+    mysql: "mysql.svg",
+    sqlite: "sqlite.webp",
   };
   return vscode.Uri.joinPath(extensionUri, "resources", "icons", files[dialect]);
 }

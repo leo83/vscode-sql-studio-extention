@@ -2,12 +2,24 @@
 
 from __future__ import annotations
 
+from typing import Union
+
 from sql_studio.drivers.clickhouse import ClickHouseDriver
 from sql_studio.drivers.mssql import MssqlDriver
+from sql_studio.drivers.mysql import MySQLDriver
 from sql_studio.drivers.postgres import PostgresDriver
+from sql_studio.drivers.sqlite import SqliteDriver
 from sql_studio.models import ConnectionConfig
 
-_DRIVERS: dict[str, PostgresDriver | ClickHouseDriver | MssqlDriver] = {}
+Driver = Union[
+    PostgresDriver,
+    ClickHouseDriver,
+    MssqlDriver,
+    MySQLDriver,
+    SqliteDriver,
+]
+
+_DRIVERS: dict[str, Driver] = {}
 _SESSION_DATABASES: dict[str, str] = {}
 
 
@@ -23,7 +35,7 @@ def clear_session_database(connection_id: str) -> None:
     _SESSION_DATABASES.pop(connection_id, None)
 
 
-def get_driver(config: ConnectionConfig) -> PostgresDriver | ClickHouseDriver | MssqlDriver:
+def get_driver(config: ConnectionConfig) -> Driver:
     existing = _DRIVERS.get(config.id)
     if existing is not None and isinstance(existing, _driver_class(config)):
         if existing.is_connected_with(config):
@@ -43,9 +55,7 @@ def get_driver(config: ConnectionConfig) -> PostgresDriver | ClickHouseDriver | 
     return driver
 
 
-def _restore_session_database(
-    driver: PostgresDriver | ClickHouseDriver | MssqlDriver, connection_id: str
-) -> None:
+def _restore_session_database(driver: Driver, connection_id: str) -> None:
     database = get_session_database(connection_id)
     if not database:
         return
@@ -77,16 +87,22 @@ def _driver_class(config: ConnectionConfig) -> type:
         return PostgresDriver
     if config.dialect == "mssql":
         return MssqlDriver
+    if config.dialect == "mysql":
+        return MySQLDriver
+    if config.dialect == "sqlite":
+        return SqliteDriver
     return ClickHouseDriver
 
 
-def _create_driver(
-    config: ConnectionConfig,
-) -> PostgresDriver | ClickHouseDriver | MssqlDriver:
+def _create_driver(config: ConnectionConfig) -> Driver:
     if config.dialect == "postgres":
         return PostgresDriver()
     if config.dialect == "mssql":
         return MssqlDriver()
+    if config.dialect == "mysql":
+        return MySQLDriver()
+    if config.dialect == "sqlite":
+        return SqliteDriver()
     return ClickHouseDriver()
 
 

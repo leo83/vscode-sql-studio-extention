@@ -241,6 +241,8 @@ export class ConnectionDialog {
       postgres: "postgres.svg",
       clickhouse: "clickhouse.svg",
       mssql: "mssql.svg",
+      mysql: "mysql.svg",
+      sqlite: "sqlite.webp",
     };
     return Object.fromEntries(
       Object.entries(files).map(([dialect, file]) => [

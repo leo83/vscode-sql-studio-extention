@@ -80,3 +80,13 @@ def test_split_mssql_statements() -> None:
 def test_format_mssql() -> None:
     formatted = format_sql("select top 1 1", "mssql")
     assert "SELECT" in formatted.upper()
+
+
+def test_split_mysql_statements() -> None:
+    parts = split_statements("SELECT 1; SELECT 2;", "mysql")
+    assert len(parts) == 2
+
+
+def test_format_sqlite() -> None:
+    formatted = format_sql("select 1", "sqlite")
+    assert "SELECT" in formatted.upper()

@@ -1,6 +1,6 @@
 import type { ConnectionTag } from "./connectionTags";
 
-export type Dialect = "postgres" | "clickhouse" | "mssql";
+export type Dialect = "postgres" | "clickhouse" | "mssql" | "mysql" | "sqlite";
 export type ClickHouseInterface = "http" | "native";
 
 export interface ConnectionProfile {
@@ -107,6 +107,10 @@ export function languageForDialect(dialect: Dialect): string {
       return "sql-studio-clickhouse";
     case "mssql":
       return "sql-studio-mssql";
+    case "mysql":
+      return "sql-studio-mysql";
+    case "sqlite":
+      return "sql-studio-sqlite";
     default:
       return "sql-studio-postgres";
   }
@@ -121,6 +125,12 @@ export function defaultPort(
   }
   if (dialect === "mssql") {
     return 1433;
+  }
+  if (dialect === "mysql") {
+    return 3306;
+  }
+  if (dialect === "sqlite") {
+    return 0;
   }
   return clickhouseInterface === "http" ? 8123 : 9000;
 }

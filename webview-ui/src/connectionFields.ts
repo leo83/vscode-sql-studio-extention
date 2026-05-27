@@ -1,4 +1,4 @@
-export type Dialect = "postgres" | "clickhouse" | "mssql";
+export type Dialect = "postgres" | "clickhouse" | "mssql" | "mysql" | "sqlite";
 export type ClickHouseInterface = "http" | "native";
 
 export const CLICKHOUSE_INTERFACE_OPTIONS: FieldOption[] = [
@@ -27,6 +27,8 @@ export const DIALECT_OPTIONS: FieldOption[] = [
   { label: "PostgreSQL", value: "postgres" },
   { label: "ClickHouse", value: "clickhouse" },
   { label: "Microsoft SQL Server", value: "mssql" },
+  { label: "MySQL", value: "mysql" },
+  { label: "SQLite", value: "sqlite" },
 ];
 
 const baseConnectionFields: ConnectionFieldDef[] = [
@@ -78,6 +80,23 @@ const sqlExtras: ConnectionFieldDef[] = [
   },
 ];
 
+const sqliteFields: ConnectionFieldDef[] = [
+  {
+    key: "database",
+    label: "Database file",
+    type: "text",
+    required: true,
+    placeholder: "/path/to/database.sqlite",
+    hint: "Absolute or workspace-relative path to a .sqlite / .db file",
+  },
+  {
+    key: "readOnly",
+    label: "Read-only connection",
+    type: "checkbox",
+    hint: "Opens the file with SQLite mode=ro",
+  },
+];
+
 const clickhouseInterfaceField: ConnectionFieldDef = {
   key: "clickhouseInterface",
   label: "Driver",
@@ -110,6 +129,12 @@ export function defaultPort(
   if (dialect === "mssql") {
     return 1433;
   }
+  if (dialect === "mysql") {
+    return 3306;
+  }
+  if (dialect === "sqlite") {
+    return 0;
+  }
   return clickhouseInterface === "http" ? 8123 : 9000;
 }
 
@@ -117,6 +142,10 @@ export function getConnectionFields(
   dialect: Dialect,
   clickhouseInterface: ClickHouseInterface = "native"
 ): ConnectionFieldDef[] {
+  if (dialect === "sqlite") {
+    return sqliteFields;
+  }
+
   const extras = dialect === "clickhouse" ? clickhouseExtras : sqlExtras;
   const chPort = clickhouseInterface === "http" ? "8123" : "9000";
   return [
@@ -135,6 +164,9 @@ export function getConnectionFields(
       if (field.key === "port" && dialect === "mssql") {
         return { ...field, placeholder: "1433" };
       }
+      if (field.key === "port" && dialect === "mysql") {
+        return { ...field, placeholder: "3306" };
+      }
       if (field.key === "database" && dialect === "clickhouse") {
         return {
           ...field,
@@ -149,6 +181,12 @@ export function getConnectionFields(
       if (field.key === "database" && dialect === "mssql") {
         return { ...field, placeholder: "master" };
       }
+      if (field.key === "database" && dialect === "mysql") {
+        return { ...field, placeholder: "myapp" };
+      }
+      if (field.key === "username" && dialect === "mysql") {
+        return { ...field, placeholder: "root" };
+      }
       return field;
     }),
     ...extras,
@@ -162,3 +200,13 @@ export const NAME_FIELD: ConnectionFieldDef = {
   required: true,
   placeholder: "My database",
 };
+
+export function defaultUsername(dialect: Dialect): string {
+  if (dialect === "mysql") {
+    return "root";
+  }
+  if (dialect === "sqlite") {
+    return "";
+  }
+  return "default";
+}

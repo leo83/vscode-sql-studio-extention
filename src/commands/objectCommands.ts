@@ -69,6 +69,14 @@ function defaultQueryForObject(
         "",
       ].join("\n");
     }
+    if (profile.dialect === "mysql") {
+      return [
+        `-- function: ${qn}`,
+        "",
+        `SELECT ${schema}.${name}();`,
+        "",
+      ].join("\n");
+    }
     return [`-- function: ${qn}`, "", `SELECT ${qn}()`, ""].join("\n");
   }
 
@@ -91,6 +99,14 @@ function defaultQueryForObject(
         `-- procedure: ${qn}`,
         "",
         `EXEC ${schema}.${name};`,
+        "",
+      ].join("\n");
+    }
+    if (profile.dialect === "mysql") {
+      return [
+        `-- procedure: ${qn}`,
+        "",
+        `CALL ${schema}.${name}();`,
         "",
       ].join("\n");
     }

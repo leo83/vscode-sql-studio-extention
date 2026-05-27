@@ -49,7 +49,11 @@ export async function askAgentExplain(
             ? ["schemas", "public", ""]
             : conn.dialect === "mssql"
               ? ["schemas", "dbo", ""]
-              : ["databases", conn.database, ""],
+              : conn.dialect === "mysql"
+                ? ["schemas", conn.database || "mysql", ""]
+                : conn.dialect === "sqlite"
+                  ? ["schemas", "main", ""]
+                  : ["databases", conn.database, ""],
       });
       if (ddl.ddl && !ddl.ddl.startsWith("--")) {
         schemaHint = `\n\nSchema context:\n${ddl.ddl}`;

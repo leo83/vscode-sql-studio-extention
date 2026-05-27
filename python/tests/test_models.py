@@ -53,11 +53,35 @@ def test_connection_config_mssql() -> None:
     assert cfg.dialect == "mssql"
 
 
+def test_connection_config_mysql() -> None:
+    cfg = ConnectionConfig(
+        id="5",
+        dialect="mysql",
+        host="mysql.local",
+        port=3306,
+        database="app",
+        username="root",
+    )
+    assert cfg.dialect == "mysql"
+
+
+def test_connection_config_sqlite() -> None:
+    cfg = ConnectionConfig(
+        id="6",
+        dialect="sqlite",
+        host="localhost",
+        port=0,
+        database="/tmp/app.sqlite",
+        username="",
+    )
+    assert cfg.dialect == "sqlite"
+
+
 def test_connection_config_invalid_dialect() -> None:
     with pytest.raises(ValidationError):
         ConnectionConfig(
             id="3",
-            dialect="mysql",  # type: ignore[arg-type]
+            dialect="oracle",  # type: ignore[arg-type]
             host="localhost",
             port=3306,
             database="app",

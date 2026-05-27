@@ -3,7 +3,7 @@ import * as vscode from "vscode";
 const SQL_STUDIO_LANGUAGE_RE = /^sql-studio/;
 
 /** File extensions handled by SQL Studio. */
-const SQL_FILE_EXTENSIONS = new Set([".sql", ".pgsql", ".psql", ".chsql", ".tsql"]);
+const SQL_FILE_EXTENSIONS = new Set([".sql", ".pgsql", ".psql", ".chsql", ".tsql", ".mysql", ".sqlite", ".db"]);
 
 export function isSqlStudioLanguage(languageId: string): boolean {
   return SQL_STUDIO_LANGUAGE_RE.test(languageId);
@@ -47,6 +47,10 @@ export async function ensureSqlStudioLanguage(
     languageId = "sql-studio-clickhouse";
   } else if (path.endsWith(".tsql")) {
     languageId = "sql-studio-mssql";
+  } else if (path.endsWith(".mysql")) {
+    languageId = "sql-studio-mysql";
+  } else if (path.endsWith(".sqlite") || path.endsWith(".db")) {
+    languageId = "sql-studio-sqlite";
   } else if (path.endsWith(".pgsql") || path.endsWith(".psql")) {
     languageId = "sql-studio-postgres";
   }

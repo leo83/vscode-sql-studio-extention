@@ -160,3 +160,69 @@ def test_get_driver_creates_mssql(
     mock_mssql.connect.assert_called_once()
     mock_pg_cls.assert_not_called()
     mock_ch_cls.assert_not_called()
+
+
+def _mysql_config(connection_id: str = "mysql-1") -> ConnectionConfig:
+    return ConnectionConfig(
+        id=connection_id,
+        dialect="mysql",
+        host="localhost",
+        port=3306,
+        database="app",
+        username="root",
+        password="secret",
+    )
+
+
+def _sqlite_config(connection_id: str = "sqlite-1") -> ConnectionConfig:
+    return ConnectionConfig(
+        id=connection_id,
+        dialect="sqlite",
+        host="localhost",
+        port=0,
+        database="/tmp/test.sqlite",
+        username="",
+        password="",
+    )
+
+
+@patch("sql_studio.drivers.registry.SqliteDriver")
+@patch("sql_studio.drivers.registry.MySQLDriver")
+@patch("sql_studio.drivers.registry.ClickHouseDriver")
+@patch("sql_studio.drivers.registry.MssqlDriver")
+@patch("sql_studio.drivers.registry.PostgresDriver")
+def test_get_driver_creates_mysql(
+    mock_pg_cls: MagicMock,
+    mock_mssql_cls: MagicMock,
+    mock_ch_cls: MagicMock,
+    mock_mysql_cls: MagicMock,
+    mock_sqlite_cls: MagicMock,
+) -> None:
+    mock_mysql = MagicMock()
+    mock_mysql.is_connected_with.return_value = True
+    mock_mysql_cls.return_value = mock_mysql
+
+    driver = get_driver(_mysql_config())
+    assert driver is mock_mysql
+    mock_mysql.connect.assert_called_once()
+
+
+@patch("sql_studio.drivers.registry.SqliteDriver")
+@patch("sql_studio.drivers.registry.MySQLDriver")
+@patch("sql_studio.drivers.registry.ClickHouseDriver")
+@patch("sql_studio.drivers.registry.MssqlDriver")
+@patch("sql_studio.drivers.registry.PostgresDriver")
+def test_get_driver_creates_sqlite(
+    mock_pg_cls: MagicMock,
+    mock_mssql_cls: MagicMock,
+    mock_ch_cls: MagicMock,
+    mock_mysql_cls: MagicMock,
+    mock_sqlite_cls: MagicMock,
+) -> None:
+    mock_sqlite = MagicMock()
+    mock_sqlite.is_connected_with.return_value = True
+    mock_sqlite_cls.return_value = mock_sqlite
+
+    driver = get_driver(_sqlite_config())
+    assert driver is mock_sqlite
+    mock_sqlite.connect.assert_called_once()

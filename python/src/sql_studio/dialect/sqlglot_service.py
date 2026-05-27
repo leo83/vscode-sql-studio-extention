@@ -11,6 +11,10 @@ def dialect_read(dialect: str) -> str:
         return "postgres"
     if dialect == "mssql":
         return "tsql"
+    if dialect == "mysql":
+        return "mysql"
+    if dialect == "sqlite":
+        return "sqlite"
     return "clickhouse"
 
 

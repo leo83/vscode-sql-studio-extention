@@ -35,7 +35,7 @@ export interface ConnectionTagPayload {
 export interface ConnectionProfilePayload {
   id?: string;
   name: string;
-  dialect: "postgres" | "clickhouse" | "mssql";
+  dialect: "postgres" | "clickhouse" | "mssql" | "mysql" | "sqlite";
   host: string;
   port: number;
   database: string;
@@ -50,13 +50,15 @@ export interface ConnectionDialogInit {
   mode: "create" | "edit";
   profile?: ConnectionProfilePayload;
   hasStoredPassword?: boolean;
-  dialectIcons?: Partial<Record<"postgres" | "clickhouse" | "mssql", string>>;
+  dialectIcons?: Partial<
+    Record<"postgres" | "clickhouse" | "mssql" | "mysql" | "sqlite", string>
+  >;
 }
 
 export interface ConnectionFormPayload {
   id?: string;
   name: string;
-  dialect: "postgres" | "clickhouse" | "mssql";
+  dialect: "postgres" | "clickhouse" | "mssql" | "mysql" | "sqlite";
   host: string;
   port: number;
   database: string;

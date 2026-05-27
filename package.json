@@ -17,6 +17,8 @@
     "onLanguage:sql-studio-postgres",
     "onLanguage:sql-studio-clickhouse",
     "onLanguage:sql-studio-mssql",
+    "onLanguage:sql-studio-mysql",
+    "onLanguage:sql-studio-sqlite",
     "workspaceContains:**/*.sql",
     "onView:sqlStudio.explorer",
     "onView:sqlStudio.results",
@@ -61,6 +63,26 @@
         }
       },
       {
+        "id": "sql-studio-mysql",
+        "aliases": ["SQL (MySQL)", "MySQL SQL"],
+        "extensions": [".mysql"],
+        "configuration": "./language-configuration.json",
+        "icon": {
+          "light": "resources/icons/sql-studio-file-light.png",
+          "dark": "resources/icons/sql-studio-file-dark.png"
+        }
+      },
+      {
+        "id": "sql-studio-sqlite",
+        "aliases": ["SQL (SQLite)", "SQLite SQL"],
+        "extensions": [".sqlite", ".db"],
+        "configuration": "./language-configuration.json",
+        "icon": {
+          "light": "resources/icons/sql-studio-file-light.png",
+          "dark": "resources/icons/sql-studio-file-dark.png"
+        }
+      },
+      {
         "id": "sql-studio-sql",
         "aliases": ["SQL Studio"],
         "extensions": [".sql"],
@@ -84,6 +106,16 @@
       },
       {
         "language": "sql-studio-mssql",
+        "scopeName": "source.sql",
+        "path": "./grammars/sql-base.tmLanguage.json"
+      },
+      {
+        "language": "sql-studio-mysql",
+        "scopeName": "source.sql",
+        "path": "./grammars/sql-base.tmLanguage.json"
+      },
+      {
+        "language": "sql-studio-sqlite",
         "scopeName": "source.sql",
         "path": "./grammars/sql-base.tmLanguage.json"
       },
@@ -448,7 +480,7 @@
         },
         "sqlStudio.defaultDialect": {
           "type": "string",
-          "enum": ["postgres", "clickhouse", "mssql"],
+          "enum": ["postgres", "clickhouse", "mssql", "mysql", "sqlite"],
           "default": "postgres"
         },
         "sqlStudio.autoAssociateSqlFiles": {
