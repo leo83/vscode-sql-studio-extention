@@ -11,13 +11,21 @@
   },
   "categories": ["Programming Languages", "Other"],
   "activationEvents": [
+    "onStartupFinished",
+    "onLanguage:sql-studio-sql",
     "onLanguage:sql-studio-postgres",
     "onLanguage:sql-studio-clickhouse",
+    "workspaceContains:**/*.sql",
     "onView:sqlStudio.explorer",
     "onCommand:sqlStudio.addConnection"
   ],
   "main": "./dist/extension.js",
   "contributes": {
+    "configurationDefaults": {
+      "files.associations": {
+        "*.sql": "sql-studio-sql"
+      }
+    },
     "languages": [
       {
         "id": "sql-studio-postgres",
@@ -99,6 +107,11 @@
       {
         "command": "sqlStudio.setActiveConnection",
         "title": "SQL Studio: Set Active Connection"
+      },
+      {
+        "command": "sqlStudio.selectConnection",
+        "title": "SQL Studio: Select Connection for File",
+        "icon": "$(database)"
       },
       {
         "command": "sqlStudio.previewData",
@@ -191,6 +204,11 @@
       ],
       "editor/title": [
         {
+          "command": "sqlStudio.selectConnection",
+          "when": "editorLangId =~ /sql-studio/",
+          "group": "navigation@0"
+        },
+        {
           "command": "sqlStudio.runQuery",
           "when": "editorLangId =~ /sql-studio/",
           "group": "navigation@1"
@@ -202,6 +220,11 @@
         }
       ],
       "editor/context": [
+        {
+          "command": "sqlStudio.selectConnection",
+          "when": "editorLangId =~ /sql-studio/",
+          "group": "sqlStudio@0"
+        },
         {
           "command": "sqlStudio.runQuery",
           "when": "editorLangId =~ /sql-studio/",
@@ -281,6 +304,21 @@
           "type": "string",
           "enum": ["postgres", "clickhouse"],
           "default": "postgres"
+        },
+        "sqlStudio.autoAssociateSqlFiles": {
+          "type": "boolean",
+          "default": true,
+          "description": "When opening .sql files, switch the editor to SQL Studio so Run (Cmd+Enter) works without changing the language mode manually."
+        },
+        "sqlStudio.promptForConnectionOnRun": {
+          "type": "boolean",
+          "default": false,
+          "description": "Show a connection picker before every query run. When false, use the per-file connection (status bar) or workspace active connection."
+        },
+        "sqlStudio.promptForConnectionOnOpen": {
+          "type": "boolean",
+          "default": true,
+          "description": "When you open or focus a .sql file that has no per-file connection yet, show the connection picker."
         }
       }
     }

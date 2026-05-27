@@ -1,18 +1,18 @@
 import * as vscode from "vscode";
 import * as path from "path";
 import { PythonClient } from "../pythonClient";
-import { QueryResultPayload } from "../types";
+import { lastExportableStatement, QueryExecutePayload } from "../types";
 
 export class ResultsPanel {
   private panel: vscode.WebviewPanel | undefined;
-  private lastResult: QueryResultPayload | undefined;
+  private lastResult: QueryExecutePayload | undefined;
 
   constructor(
     private readonly context: vscode.ExtensionContext,
     private readonly python: PythonClient
   ) {}
 
-  async show(result: QueryResultPayload, title: string): Promise<void> {
+  async show(result: QueryExecutePayload, title: string): Promise<void> {
     this.lastResult = result;
     if (!this.panel) {
       this.panel = vscode.window.createWebviewPanel(
@@ -41,7 +41,7 @@ export class ResultsPanel {
     this.panel.webview.html = this.getHtml(this.panel.webview, result);
   }
 
-  getLastResult(): QueryResultPayload | undefined {
+  getLastResult(): QueryExecutePayload | undefined {
     return this.lastResult;
   }
 
@@ -56,18 +56,23 @@ export class ResultsPanel {
     if (!uri) {
       return;
     }
-    const columns = this.lastResult.columns.map((c) => c.name);
+    const exportable = lastExportableStatement(this.lastResult);
+    if (!exportable) {
+      vscode.window.showWarningMessage("No tabular results to export.");
+      return;
+    }
+    const columns = exportable.columns.map((c) => c.name);
     const method = kind === "csv" ? "export/csv" : "export/xlsx";
     await this.python.request(method, {
       path: uri.fsPath,
       columns,
-      rows: this.lastResult.rows,
+      rows: exportable.rows,
       bom: true,
     });
     vscode.window.showInformationMessage(`Exported to ${uri.fsPath}`);
   }
 
-  private getHtml(webview: vscode.Webview, result: QueryResultPayload): string {
+  private getHtml(webview: vscode.Webview, result: QueryExecutePayload): string {
     const scriptUri = webview.asWebviewUri(
       vscode.Uri.file(
         path.join(this.context.extensionPath, "webview-ui", "dist", "assets", "index.js")

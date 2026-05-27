@@ -9,8 +9,9 @@ import clickhouse_connect
 from clickhouse_connect.driver.client import Client
 
 from sql_studio.dialect import sqlglot_service
+from sql_studio.drivers.clickhouse_query import build_query_result
 from sql_studio.execution_status import clickhouse_status, is_result_set_query
-from sql_studio.models import ConnectionConfig, QueryColumn, QueryResult, SchemaNode
+from sql_studio.models import ConnectionConfig, QueryResult, SchemaNode
 
 
 class ClickHouseHttpDriver:
@@ -65,29 +66,19 @@ class ClickHouseHttpDriver:
         effective_limit = limit if limit is not None else 10_000
         result = self._client.query(sql)
         duration_ms = (time.perf_counter() - started) * 1000
-        if not result.column_names:
-            summary = getattr(result, "summary", None)
-            return QueryResult(
-                columns=[],
-                rows=[],
-                row_count=0,
-                duration_ms=duration_ms,
-                status_message=clickhouse_status(sql, summary),
-            )
-        columns = [
-            QueryColumn(name=name, data_type=str(result.column_types[i]))
-            for i, name in enumerate(result.column_names)
-        ]
-        all_rows = result.result_rows or []
-        truncated = len(all_rows) > effective_limit
-        rows_slice = all_rows[:effective_limit]
-        rows = [list(row) for row in rows_slice]
-        return QueryResult(
-            columns=columns,
-            rows=rows,
-            row_count=len(rows),
+        summary = getattr(result, "summary", None)
+
+        def status_for_empty(query: str) -> str:
+            return clickhouse_status(query, summary)
+
+        return build_query_result(
+            sql=sql,
+            column_names=list(result.column_names or []),
+            column_types=list(result.column_types or []) if result.column_types else None,
+            rows=list(result.result_rows or []),
             duration_ms=duration_ms,
-            truncated=truncated,
+            limit=effective_limit,
+            status_for_empty=status_for_empty,
         )
 
     def list_schema_children(self, path: list[str]) -> list[SchemaNode]:

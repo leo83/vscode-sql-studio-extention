@@ -13,6 +13,16 @@ export interface QueryResult {
   status_message?: string | null;
 }
 
+export interface StatementResult extends QueryResult {
+  index: number;
+  sql: string;
+}
+
+export interface QueryExecuteResult {
+  statements: StatementResult[];
+  total_duration_ms: number;
+}
+
 export type WebviewMode = "results" | "connection";
 
 export type ClickHouseInterface = "http" | "native";

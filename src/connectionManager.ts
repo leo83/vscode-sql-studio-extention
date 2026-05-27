@@ -9,6 +9,7 @@ import { ConnectionDialog } from "./webview/connectionDialog";
 
 const STORAGE_KEY = "sqlStudio.connections";
 const ACTIVE_KEY = "sqlStudio.activeConnectionId";
+const DOCUMENT_CONNECTIONS_KEY = "sqlStudio.documentConnections";
 
 export class ConnectionManager {
   private profiles: ConnectionProfile[] = [];
@@ -46,6 +47,121 @@ export class ConnectionManager {
       return undefined;
     }
     return this.getConnectionWithSecret(id);
+  }
+
+  getDocumentConnectionId(uri: vscode.Uri): string | undefined {
+    const map =
+      this.context.workspaceState.get<Record<string, string>>(
+        DOCUMENT_CONNECTIONS_KEY
+      ) ?? {};
+    return map[uri.toString()];
+  }
+
+  async setDocumentConnectionId(
+    uri: vscode.Uri,
+    connectionId: string | undefined
+  ): Promise<void> {
+    const map = {
+      ...(this.context.workspaceState.get<Record<string, string>>(
+        DOCUMENT_CONNECTIONS_KEY
+      ) ?? {}),
+    };
+    const key = uri.toString();
+    if (connectionId) {
+      map[key] = connectionId;
+    } else {
+      delete map[key];
+    }
+    await this.context.workspaceState.update(DOCUMENT_CONNECTIONS_KEY, map);
+  }
+
+  async promptSelectConnection(options?: {
+    title?: string;
+    placeHolder?: string;
+    forDocumentUri?: vscode.Uri;
+  }): Promise<ConnectionProfile | undefined> {
+    const profiles = this.listProfiles();
+    if (profiles.length === 0) {
+      const picked = await vscode.window.showWarningMessage(
+        "No connections. Add a connection first.",
+        "Add Connection"
+      );
+      if (picked === "Add Connection") {
+        await vscode.commands.executeCommand("sqlStudio.addConnection");
+      }
+      return undefined;
+    }
+
+    const currentId = options?.forDocumentUri
+      ? this.getDocumentConnectionId(options.forDocumentUri)
+      : this.getActiveConnectionId();
+
+    const items = profiles.map((p) => ({
+      label: p.name,
+      description: `${p.dialect} — ${p.host}:${p.port}`,
+      detail: p.id === currentId ? "Current for this editor" : undefined,
+      profile: p,
+    }));
+
+    const picked = await vscode.window.showQuickPick(items, {
+      title: options?.title ?? "SQL Studio: Select Connection",
+      placeHolder:
+        options?.placeHolder ?? "Connection used to run queries in this file",
+    });
+    return picked?.profile;
+  }
+
+  /** Per-file binding, then workspace active connection, then quick pick. */
+  async resolveConnectionForDocument(
+    document?: vscode.TextDocument,
+    options?: { promptIfMissing?: boolean }
+  ): Promise<ConnectionWithSecret | undefined> {
+    const promptIfMissing = options?.promptIfMissing ?? true;
+
+    if (document) {
+      const docConnId = this.getDocumentConnectionId(document.uri);
+      if (docConnId) {
+        const conn = await this.getConnectionWithSecret(docConnId);
+        if (conn) {
+          return conn;
+        }
+      }
+    }
+
+    const active = await this.getActiveConnectionWithSecret();
+    if (active) {
+      return active;
+    }
+
+    if (!promptIfMissing) {
+      return undefined;
+    }
+
+    const profile = await this.promptSelectConnection({
+      forDocumentUri: document?.uri,
+    });
+    if (!profile) {
+      return undefined;
+    }
+
+    if (document) {
+      await this.setDocumentConnectionId(document.uri, profile.id);
+    }
+    await this.setActiveConnectionId(profile.id);
+    return this.getConnectionWithSecret(profile.id);
+  }
+
+  async assignConnectionToDocument(
+    document: vscode.TextDocument,
+    connectionId: string
+  ): Promise<ConnectionWithSecret | undefined> {
+    const conn = await this.getConnectionWithSecret(connectionId);
+    if (!conn) {
+      return undefined;
+    }
+    await this.setDocumentConnectionId(document.uri, connectionId);
+    await this.setActiveConnectionId(connectionId);
+    return conn;
   }
 
   async getConnectionWithSecret(id: string): Promise<ConnectionWithSecret | undefined> {

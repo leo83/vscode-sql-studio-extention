@@ -67,11 +67,10 @@ export async function createSqlQuery(
     return;
   }
 
-  await connections.setActiveConnectionId(profile.id);
-
   const doc = await vscode.workspace.openTextDocument({
     content: defaultQueryContent(profile),
     language: languageForDialect(profile.dialect),
   });
+  await connections.assignConnectionToDocument(doc, profile.id);
   await vscode.window.showTextDocument(doc, { preview: false });
 }

@@ -56,6 +56,18 @@ class QueryResult(BaseModel):
     status_message: str | None = None
 
 
+class StatementResult(QueryResult):
+    """Single statement outcome within a multi-statement batch."""
+
+    index: int
+    sql: str
+
+
+class QueryExecuteResult(BaseModel):
+    statements: list[StatementResult]
+    total_duration_ms: float
+
+
 class ExportResult(BaseModel):
     path: str
     row_count: int

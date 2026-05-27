@@ -6,7 +6,7 @@ import "./styles.css";
 declare global {
   interface Window {
     __SQL_STUDIO_MODE__?: import("./types").WebviewMode;
-    __SQL_STUDIO_RESULT__?: import("./types").QueryResult;
+    __SQL_STUDIO_RESULT__?: import("./types").QueryExecuteResult;
     __SQL_STUDIO_CONNECTION__?: import("./types").ConnectionDialogInit;
     acquireVsCodeApi?: () => { postMessage: (msg: unknown) => void };
   }

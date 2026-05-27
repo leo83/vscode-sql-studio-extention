@@ -11,7 +11,10 @@ export async function formatActiveDocument(
   if (!editor) {
     return;
   }
-  const conn = await connections.getActiveConnectionWithSecret();
+  const conn = await connections.resolveConnectionForDocument(
+    editor.document,
+    { promptIfMissing: false }
+  );
   const dialect = conn?.dialect ?? "postgres";
   const sql = editor.document.getText();
   const result = await python.request<{ sql: string }>("sql/format", { sql, dialect });
@@ -31,7 +34,10 @@ export async function askAgentExplain(
     return;
   }
   const sql = editor.document.getText(editor.selection.isEmpty ? undefined : editor.selection);
-  const conn = await connections.getActiveConnectionWithSecret();
+  const conn = await connections.resolveConnectionForDocument(
+    editor.document,
+    { promptIfMissing: false }
+  );
   const dialect = conn?.dialect ?? "postgres";
   let schemaHint = "";
   if (conn) {

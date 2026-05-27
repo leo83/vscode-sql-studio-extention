@@ -226,7 +226,8 @@ just package
 |----------|-----|
 | Preview таблицы | Клик по таблице в Explorer |
 | Новый SQL-запрос | Command Palette → **`SQL Studio: Create SQL Query`** или ПКМ на connection → **Create SQL Query** |
-| SQL-запрос | Открыть `.sql` / `.pgsql` / `.chsql`, **Cmd+Enter** |
+| SQL-запрос | Открыть любой `.sql` (по умолчанию в SQL Studio), выбрать connection в status bar, **Cmd+Enter** |
+| Connection для файла | Status bar `$(database) …` или **SQL Studio: Select Connection for File** |
 | Формат SQL | Command Palette → `SQL Studio: Format SQL` |
 | Экспорт | Кнопки в панели результатов |
 | Ошибка запроса | Панель **SQL Results**: краткий текст, Code/тип, stack trace по клику, **Copy error** |
@@ -240,6 +241,9 @@ just package
 | `sqlStudio.previewRowLimit` | `1000` | Строк при preview таблицы |
 | `sqlStudio.defaultRowLimit` | `10000` | Лимит для SQL-запросов |
 | `sqlStudio.defaultDialect` | `postgres` | Dialect по умолчанию |
+| `sqlStudio.autoAssociateSqlFiles` | `true` | Открывать `.sql` в режиме SQL Studio |
+| `sqlStudio.promptForConnectionOnRun` | `false` | Спрашивать connection перед каждым запуском |
+| `sqlStudio.promptForConnectionOnOpen` | `true` | Спрашивать connection при открытии `.sql` без привязки к файлу |
 
 ---
 

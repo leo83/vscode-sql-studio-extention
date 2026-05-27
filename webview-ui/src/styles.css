@@ -222,6 +222,104 @@ tr:nth-child(even) {
   opacity: 0.85;
 }
 
+.query-status-compact {
+  height: auto;
+  padding: 0;
+  gap: 8px;
+}
+
+.query-error-compact {
+  height: auto;
+  padding: 0;
+  gap: 8px;
+}
+
+.batch-results {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 12px;
+  min-height: 100vh;
+  box-sizing: border-box;
+}
+
+.batch-results-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--vscode-panel-border, #444);
+}
+
+.batch-results-title {
+  font-size: 1.05em;
+  font-weight: 600;
+}
+
+.batch-results-meta {
+  opacity: 0.85;
+  white-space: nowrap;
+}
+
+.batch-statement {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid var(--vscode-panel-border, #444);
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.batch-statement-error {
+  border-color: rgba(244, 135, 113, 0.45);
+}
+
+.batch-statement-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.batch-statement-title {
+  font-weight: 600;
+  color: var(--vscode-testing-iconPassed, #73c991);
+}
+
+.batch-statement-error .batch-statement-title {
+  color: var(--vscode-errorForeground, #f48771);
+}
+
+.batch-statement-meta {
+  opacity: 0.85;
+  font-size: 0.9em;
+}
+
+.batch-statement-sql {
+  margin: 0;
+  padding: 8px 10px;
+  font-family: var(--vscode-editor-font-family, monospace);
+  font-size: 0.9em;
+  line-height: 1.4;
+  white-space: pre-wrap;
+  word-break: break-word;
+  background: var(--vscode-textCodeBlock-background, #2d2d2d);
+  border-radius: 3px;
+  max-height: 6em;
+  overflow: auto;
+}
+
+.batch-statement-table .results-embedded {
+  height: auto;
+  max-height: 50vh;
+}
+
+.results-embedded .table-wrap {
+  max-height: 40vh;
+}
+
 /* Connection dialog modal */
 .modal-backdrop {
   display: flex;

@@ -1,8 +1,9 @@
+import { BatchResults } from "./BatchResults";
 import { ConnectionDialog } from "./ConnectionDialog";
 import { QueryError } from "./QueryError";
 import { QueryStatus } from "./QueryStatus";
 import { ResultsTable } from "./ResultsTable";
-import type { ConnectionDialogInit, QueryResult } from "./types";
+import type { ConnectionDialogInit, QueryExecuteResult } from "./types";
 
 export function App() {
   const mode = window.__SQL_STUDIO_MODE__ ?? "results";
@@ -15,14 +16,20 @@ export function App() {
     return <ConnectionDialog init={init} />;
   }
 
-  const result = window.__SQL_STUDIO_RESULT__ as QueryResult | undefined;
-  if (!result) {
+  const batch = window.__SQL_STUDIO_RESULT__ as QueryExecuteResult | undefined;
+  if (!batch?.statements?.length) {
     return <div className="empty">No query results.</div>;
   }
+
+  if (batch.statements.length > 1) {
+    return <BatchResults batch={batch} />;
+  }
+
+  const result = batch.statements[0];
   if (result.error) {
     return <QueryError error={result.error} />;
   }
-  if (result.columns.length === 0 && result.rows.length === 0) {
+  if (result.rows.length === 0 && !result.columns.length) {
     return <QueryStatus result={result} />;
   }
   return <ResultsTable result={result} />;

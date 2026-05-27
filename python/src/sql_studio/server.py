@@ -13,7 +13,14 @@ from sql_studio.dialect import sqlglot_service
 from sql_studio.drivers.registry import disconnect, get_driver, test_connection
 from sql_studio.export.csv_export import export_csv
 from sql_studio.export.excel_export import export_xlsx
-from sql_studio.models import ConnectionConfig, ExportResult, QueryResult, SchemaNode
+from sql_studio.models import (
+    ConnectionConfig,
+    ExportResult,
+    QueryExecuteResult,
+    QueryResult,
+    SchemaNode,
+    StatementResult,
+)
 
 
 Handler = Callable[[dict[str, Any]], Any]
@@ -94,13 +101,24 @@ class JsonRpcServer:
                 "No executable SQL found. Add a statement (e.g. SELECT) or select SQL text to run."
             )
         driver = get_driver(config)
-        last_result: QueryResult | None = None
-        for statement in statements:
-            last_result = driver.execute(statement, limit=limit)
-            if last_result.error:
+        batch: list[StatementResult] = []
+        total_duration_ms = 0.0
+        for index, statement in enumerate(statements, start=1):
+            result = driver.execute(statement, limit=limit)
+            total_duration_ms += result.duration_ms
+            batch.append(
+                StatementResult(
+                    index=index,
+                    sql=statement,
+                    **result.model_dump(),
+                )
+            )
+            if result.error:
                 break
-        assert last_result is not None
-        return last_result.model_dump()
+        return QueryExecuteResult(
+            statements=batch,
+            total_duration_ms=total_duration_ms,
+        ).model_dump()
 
     def _schema_list_children(self, params: dict[str, Any]) -> list[dict[str, Any]]:
         config = ConnectionConfig.model_validate(params["connection"])

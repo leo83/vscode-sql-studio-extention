@@ -13,20 +13,45 @@ import {
   formatActiveDocument,
 } from "./commands/agentCommands";
 import { createSqlQuery } from "./commands/createSqlQuery";
+import { ConnectionStatusBar } from "./connectionStatusBar";
+import { maybePromptConnectionForDocument } from "./sqlConnectionPrompt";
+import {
+  ensureSqlStudioLanguage,
+  findSqlStudioEditorReady,
+  isSqlFileDocument,
+} from "./sqlDocument";
 
 let pythonClient: PythonClient;
 let connectionManager: ConnectionManager;
 let queryRunner: QueryRunner;
 let resultsPanel: ResultsPanel;
 let explorerProvider: SchemaExplorerProvider;
+let connectionStatusBar: ConnectionStatusBar;
 
 export async function activate(context: vscode.ExtensionContext): Promise<void> {
   pythonClient = new PythonClient(context);
   connectionManager = new ConnectionManager(context, pythonClient);
   await connectionManager.initialize();
+  for (const doc of vscode.workspace.textDocuments) {
+    if (isSqlFileDocument(doc)) {
+      await ensureSqlStudioLanguage(doc);
+    }
+  }
   resultsPanel = new ResultsPanel(context, pythonClient);
   queryRunner = new QueryRunner(pythonClient, connectionManager, resultsPanel);
   explorerProvider = new SchemaExplorerProvider(connectionManager, pythonClient);
+  connectionStatusBar = new ConnectionStatusBar(connectionManager);
+
+  const onSqlEditorActive = async (document: vscode.TextDocument): Promise<void> => {
+    await ensureSqlStudioLanguage(document);
+    await maybePromptConnectionForDocument(connectionManager, document);
+    connectionStatusBar.refresh();
+  };
+
+  const activeOnStartup = vscode.window.activeTextEditor;
+  if (activeOnStartup && isSqlFileDocument(activeOnStartup.document)) {
+    void onSqlEditorActive(activeOnStartup.document);
+  }
 
   const explorerView = vscode.window.createTreeView("sqlStudio.explorer", {
     treeDataProvider: explorerProvider,
@@ -48,11 +73,24 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   context.subscriptions.push(
     pythonClient,
     explorerView,
+    connectionStatusBar,
+    vscode.workspace.onDidOpenTextDocument((doc) => {
+      if (isSqlFileDocument(doc)) {
+        void ensureSqlStudioLanguage(doc);
+      }
+    }),
+    vscode.window.onDidChangeActiveTextEditor((editor) => {
+      if (editor && isSqlFileDocument(editor.document)) {
+        void onSqlEditorActive(editor.document);
+      } else {
+        connectionStatusBar.refresh();
+      }
+    }),
     vscode.commands.registerCommand("sqlStudio.runQuery", async () => {
-      const editor = findSqlStudioEditor();
+      const editor = await findSqlStudioEditorReady();
       if (!editor) {
         const picked = await vscode.window.showWarningMessage(
-          "Open a SQL Studio editor (Create SQL Query or a .sql / .chsql file).",
+          "Open a .sql file or create a SQL query.",
           "Create SQL Query"
         );
         if (picked === "Create SQL Query") {
@@ -63,10 +101,10 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       await queryRunner.runAtCursor(editor);
     }),
     vscode.commands.registerCommand("sqlStudio.runAllInFile", async () => {
-      const editor = findSqlStudioEditor();
+      const editor = await findSqlStudioEditorReady();
       if (!editor) {
         const picked = await vscode.window.showWarningMessage(
-          "Open a SQL Studio editor (Create SQL Query or a .sql / .chsql file).",
+          "Open a .sql file or create a SQL query.",
           "Create SQL Query"
         );
         if (picked === "Create SQL Query") {
@@ -77,12 +115,34 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       await queryRunner.runDocument(editor);
     }),
     vscode.commands.registerCommand("sqlStudio.runSelection", async () => {
-      const editor = findSqlStudioEditor();
+      const editor = await findSqlStudioEditorReady();
       if (!editor) {
-        vscode.window.showWarningMessage("Open a SQL Studio editor first.");
+        vscode.window.showWarningMessage("Open a .sql file first.");
         return;
       }
       await queryRunner.runSelection(editor);
+    }),
+    vscode.commands.registerCommand("sqlStudio.selectConnection", async () => {
+      const editor = await findSqlStudioEditorReady();
+      const profile = await connectionManager.promptSelectConnection({
+        forDocumentUri: editor?.document.uri,
+        title: "SQL Studio: Select Connection",
+      });
+      if (!profile) {
+        return;
+      }
+      if (editor) {
+        await connectionManager.assignConnectionToDocument(
+          editor.document,
+          profile.id
+        );
+      } else {
+        await connectionManager.setActiveConnectionId(profile.id);
+      }
+      connectionStatusBar.refresh();
+      vscode.window.showInformationMessage(
+        `Connection: ${profile.name} (${profile.dialect})`
+      );
     }),
     vscode.commands.registerCommand("sqlStudio.formatSql", () =>
       formatActiveDocument(pythonClient, connectionManager)
@@ -171,6 +231,14 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       async (item: ExplorerTreeItem) => {
         if (item.connectionId) {
           await connectionManager.setActiveConnectionId(item.connectionId);
+          const editor = vscode.window.activeTextEditor;
+          if (editor && isSqlFileDocument(editor.document)) {
+            await connectionManager.assignConnectionToDocument(
+              editor.document,
+              item.connectionId
+            );
+          }
+          connectionStatusBar.refresh();
           vscode.window.showInformationMessage(`Active connection: ${item.label}`);
         }
       }
@@ -236,19 +304,6 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
 }
 
 export function deactivate(): void {
+  connectionStatusBar?.dispose();
   pythonClient?.dispose();
-}
-
-function findSqlStudioEditor(): vscode.TextEditor | undefined {
-  const active = vscode.window.activeTextEditor;
-  if (active?.document.languageId.match(/sql-studio/)) {
-    return active;
-  }
-  const sqlEditors = vscode.window.visibleTextEditors.filter((e) =>
-    e.document.languageId.match(/sql-studio/)
-  );
-  if (sqlEditors.length === 1) {
-    return sqlEditors[0];
-  }
-  return undefined;
 }

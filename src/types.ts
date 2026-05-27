@@ -34,6 +34,33 @@ export interface QueryResultPayload {
   status_message?: string | null;
 }
 
+export interface StatementResultPayload extends QueryResultPayload {
+  index: number;
+  sql: string;
+}
+
+export interface QueryExecutePayload {
+  statements: StatementResultPayload[];
+  total_duration_ms: number;
+}
+
+export function batchHasError(batch: QueryExecutePayload): boolean {
+  return batch.statements.some((s) => Boolean(s.error));
+}
+
+/** Last statement with a tabular result, for export. */
+export function lastExportableStatement(
+  batch: QueryExecutePayload
+): StatementResultPayload | undefined {
+  for (let i = batch.statements.length - 1; i >= 0; i--) {
+    const s = batch.statements[i];
+    if (s.columns.length > 0 && s.rows.length > 0 && !s.error) {
+      return s;
+    }
+  }
+  return undefined;
+}
+
 export interface SchemaNodePayload {
   id: string;
   label: string;

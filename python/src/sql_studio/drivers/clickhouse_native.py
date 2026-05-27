@@ -8,8 +8,9 @@ from typing import Any
 from clickhouse_driver import Client as NativeClient
 
 from sql_studio.dialect import sqlglot_service
+from sql_studio.drivers.clickhouse_query import build_query_result
 from sql_studio.execution_status import clickhouse_status, is_result_set_query
-from sql_studio.models import ConnectionConfig, QueryColumn, QueryResult, SchemaNode
+from sql_studio.models import ConnectionConfig, QueryResult, SchemaNode
 
 
 class ClickHouseNativeDriver:
@@ -75,28 +76,16 @@ class ClickHouseNativeDriver:
                 status_message=clickhouse_status(sql, None),
             )
         rows_raw, col_types = result
-        if not col_types:
-            return QueryResult(
-                columns=[],
-                rows=[],
-                row_count=0,
-                duration_ms=duration_ms,
-                status_message=clickhouse_status(sql, None),
-            )
-        columns = [
-            QueryColumn(name=str(col[0]), data_type=str(col[1])) for col in col_types
-        ]
-        all_rows = list(rows_raw or [])
-        truncated = len(all_rows) > effective_limit
-        if truncated:
-            all_rows = all_rows[:effective_limit]
-        rows = [list(row) for row in all_rows]
-        return QueryResult(
-            columns=columns,
-            rows=rows,
-            row_count=len(rows),
+        column_names = [str(col[0]) for col in col_types] if col_types else None
+        column_types = [col[1] for col in col_types] if col_types else None
+        return build_query_result(
+            sql=sql,
+            column_names=column_names,
+            column_types=column_types,
+            rows=list(rows_raw or []),
             duration_ms=duration_ms,
-            truncated=truncated,
+            limit=effective_limit,
+            status_for_empty=lambda query: clickhouse_status(query, None),
         )
 
     def list_schema_children(self, path: list[str]) -> list[SchemaNode]:

@@ -160,7 +160,9 @@ cd python && uv sync --all-groups && uv run pytest
 ### Запросы SQL
 
 - Команда `sqlStudio.createSqlQuery` — открывает untitled-редактор, выставляет active connection.
-- `sqlStudio.runQuery` — `findSqlStudioEditor()` ищет единственный открытый sql-studio редактор.
+- `.sql` по умолчанию: `configurationDefaults` + `ensureSqlStudioLanguage()` при открытии.
+- Connection: per-file (`workspaceState`) → active → quick pick; status bar `sqlStudio.selectConnection`.
+- `sqlStudio.runQuery` — `findSqlStudioEditorReady()` после привязки языка.
 - `split_statements` (sqlglot) отбрасывает пустые/comment-only; при ошибке парсинга — fallback без `--` строк.
 - При исключении backend показывать ошибку и в notification, и в Results panel.
 

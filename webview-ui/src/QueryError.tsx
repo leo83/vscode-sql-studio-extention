@@ -4,9 +4,10 @@ import { getVsCodeApi } from "./vscodeApi";
 
 interface Props {
   error: string;
+  compact?: boolean;
 }
 
-export function QueryError({ error }: Props) {
+export function QueryError({ error, compact = false }: Props) {
   const parsed = useMemo(() => parseQueryError(error), [error]);
   const [copied, setCopied] = useState(false);
   const stackLines = parsed.stackTrace?.split("\n").length ?? 0;
@@ -22,13 +23,22 @@ export function QueryError({ error }: Props) {
   };
 
   return (
-    <div className="query-error">
-      <div className="query-error-header">
-        <span className="query-error-title">Query failed</span>
-        <button type="button" className="secondary" onClick={handleCopy}>
-          {copied ? "Copied" : "Copy error"}
-        </button>
-      </div>
+    <div className={`query-error${compact ? " query-error-compact" : ""}`}>
+      {!compact ? (
+        <div className="query-error-header">
+          <span className="query-error-title">Query failed</span>
+          <button type="button" className="secondary" onClick={handleCopy}>
+            {copied ? "Copied" : "Copy error"}
+          </button>
+        </div>
+      ) : (
+        <div className="query-error-header">
+          <span className="query-error-title">Failed</span>
+          <button type="button" className="secondary" onClick={handleCopy}>
+            {copied ? "Copied" : "Copy"}
+          </button>
+        </div>
+      )}
 
       {(parsed.code || parsed.hint) && (
         <div className="query-error-badges">

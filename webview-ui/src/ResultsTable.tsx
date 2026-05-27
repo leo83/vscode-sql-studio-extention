@@ -14,17 +14,26 @@ import { getVsCodeApi } from "./vscodeApi";
 
 interface Props {
   result: QueryResult;
+  embedded?: boolean;
 }
 
-export function ResultsTable({ result }: Props) {
+export function ResultsTable({ result, embedded = false }: Props) {
   const [globalFilter, setGlobalFilter] = useState("");
   const [sorting, setSorting] = useState<SortingState>([]);
 
+  const columnNames = useMemo(() => {
+    if (result.columns.length > 0) {
+      return result.columns.map((col) => col.name);
+    }
+    const width = result.rows[0]?.length ?? 0;
+    return Array.from({ length: width }, (_, index) => `column_${index + 1}`);
+  }, [result.columns, result.rows]);
+
   const columns = useMemo<ColumnDef<Record<string, unknown>>[]>(
     () =>
-      result.columns.map((col) => ({
-        accessorKey: col.name,
-        header: col.name,
+      columnNames.map((name) => ({
+        accessorKey: name,
+        header: name,
         cell: (info) => {
           const v = info.getValue();
           if (v === null || v === undefined) {
@@ -33,19 +42,19 @@ export function ResultsTable({ result }: Props) {
           return String(v);
         },
       })),
-    [result.columns]
+    [columnNames]
   );
 
   const data = useMemo(
     () =>
       result.rows.map((row) => {
         const obj: Record<string, unknown> = {};
-        result.columns.forEach((col, i) => {
-          obj[col.name] = row[i];
+        columnNames.forEach((name, i) => {
+          obj[name] = row[i];
         });
         return obj;
       }),
-    [result.rows, result.columns]
+    [result.rows, columnNames]
   );
 
   const table = useReactTable({
@@ -62,7 +71,7 @@ export function ResultsTable({ result }: Props) {
   });
 
   return (
-    <div className="results">
+    <div className={`results${embedded ? " results-embedded" : ""}`}>
       <div className="toolbar">
         <input
           className="filter"

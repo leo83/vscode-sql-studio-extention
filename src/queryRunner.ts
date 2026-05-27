@@ -10,8 +10,9 @@ import {
   getStatementAtPosition,
 } from "./sqlUtils";
 import {
+  batchHasError,
   ConnectionWithSecret,
-  QueryResultPayload,
+  QueryExecutePayload,
   toRpcConnection,
 } from "./types";
 
@@ -27,7 +28,9 @@ export class QueryRunner {
 
   async runDocument(editor: vscode.TextEditor): Promise<void> {
     const sql = editor.document.getText();
-    await this.runSql(sql, editor.document.fileName);
+    await this.runSql(sql, editor.document.fileName, {
+      document: editor.document,
+    });
   }
 
   async runAtCursor(editor: vscode.TextEditor): Promise<void> {
@@ -41,8 +44,9 @@ export class QueryRunner {
     for (const stmt of context) {
       const result = await this.runSql(stmt, editor.document.fileName, {
         showResults: false,
+        document: editor.document,
       });
-      if (result?.error) {
+      if (result && batchHasError(result)) {
         return;
       }
     }
@@ -54,7 +58,9 @@ export class QueryRunner {
       );
       return;
     }
-    await this.runSql(sql, editor.document.fileName);
+    await this.runSql(sql, editor.document.fileName, {
+      document: editor.document,
+    });
   }
 
   async runSelection(editor: vscode.TextEditor): Promise<void> {
@@ -64,23 +70,48 @@ export class QueryRunner {
       vscode.window.showWarningMessage("No SQL selected.");
       return;
     }
-    await this.runSql(sql, editor.document.fileName);
+    await this.runSql(sql, editor.document.fileName, {
+      document: editor.document,
+    });
   }
 
   async runSql(
     sql: string,
     title?: string,
-    options?: { showResults?: boolean }
-  ): Promise<QueryResultPayload | undefined> {
-    const conn = await this.connections.getActiveConnectionWithSecret();
-    if (!conn) {
-      const picked = await vscode.window.showWarningMessage(
-        "No active connection. Add a connection first.",
-        "Add Connection"
-      );
-      if (picked === "Add Connection") {
-        await vscode.commands.executeCommand("sqlStudio.addConnection");
+    options?: {
+      showResults?: boolean;
+      document?: vscode.TextDocument;
+      connectionId?: string;
+    }
+  ): Promise<QueryExecutePayload | undefined> {
+    let conn: ConnectionWithSecret | undefined;
+    if (options?.connectionId) {
+      conn = await this.connections.getConnectionWithSecret(options.connectionId);
+    } else {
+      const document = options?.document;
+      const promptOnRun = vscode.workspace
+        .getConfiguration("sqlStudio")
+        .get<boolean>("promptForConnectionOnRun", false);
+
+      if (promptOnRun && document) {
+        const profile = await this.connections.promptSelectConnection({
+          forDocumentUri: document.uri,
+          title: "SQL Studio: Run on connection",
+        });
+        if (!profile) {
+          return undefined;
+        }
+        conn = await this.connections.assignConnectionToDocument(
+          document,
+          profile.id
+        );
+      } else {
+        conn = await this.connections.resolveConnectionForDocument(document, {
+          promptIfMissing: true,
+        });
       }
+    }
+    if (!conn) {
       return undefined;
     }
     return this.executeWithConnection(
@@ -123,8 +154,8 @@ export class QueryRunner {
     title: string,
     limit: number,
     showResults = true
-  ): Promise<QueryResultPayload | undefined> {
-    let result: QueryResultPayload | undefined;
+  ): Promise<QueryExecutePayload | undefined> {
+    let result: QueryExecutePayload | undefined;
     await vscode.window.withProgress(
       {
         location: vscode.ProgressLocation.Notification,
@@ -133,7 +164,7 @@ export class QueryRunner {
       },
       async () => {
         try {
-          result = await this.python.request<QueryResultPayload>("query/execute", {
+          result = await this.python.request<QueryExecutePayload>("query/execute", {
             connection: toRpcConnection(conn),
             sql,
             limit,
@@ -141,19 +172,27 @@ export class QueryRunner {
           if (showResults) {
             await this.results.show(result, title);
           }
-          if (result.truncated) {
+          const truncated = result.statements.some((s) => s.truncated);
+          if (truncated) {
             vscode.window.showInformationMessage(
               `Results truncated to ${limit} rows.`
             );
           }
         } catch (err) {
           const message = err instanceof Error ? err.message : String(err);
-          const errorResult: QueryResultPayload = {
-            columns: [],
-            rows: [],
-            row_count: 0,
-            duration_ms: 0,
-            error: message,
+          const errorResult: QueryExecutePayload = {
+            statements: [
+              {
+                index: 1,
+                sql,
+                columns: [],
+                rows: [],
+                row_count: 0,
+                duration_ms: 0,
+                error: message,
+              },
+            ],
+            total_duration_ms: 0,
           };
           if (showResults) {
             await this.results.show(errorResult, `${title} (error)`);
