@@ -7,8 +7,8 @@ import {
   getPreviewRowLimit,
   getQueryRowLimit,
   getSessionStatementsBeforeOffset,
-  getSessionStatementsBeforePosition,
   getStatementAtPosition,
+  getStatementStartOffset,
   isSessionStatement,
   normalizeStatementSql,
 } from "./sqlUtils";
@@ -48,7 +48,6 @@ export class QueryRunner {
     }
 
     const position = editor.selection.active;
-    const context = getSessionStatementsBeforePosition(editor.document, position);
     const sql = getStatementAtPosition(editor.document, position);
     if (!sql) {
       vscode.window.showWarningMessage(
@@ -57,14 +56,20 @@ export class QueryRunner {
       return;
     }
 
-    if (context.length > 0) {
-      await this.runSqlWithSessionContext(editor, sql, position, context);
-      return;
-    }
+    const stmtStart = getStatementStartOffset(editor.document, position);
+    const context =
+      stmtStart !== undefined
+        ? getSessionStatementsBeforeOffset(editor.document, stmtStart)
+        : [];
 
-    await this.runSql(sql, editor.document.fileName, {
-      document: editor.document,
-    });
+    await this.runSqlWithSessionContext(
+      editor,
+      sql,
+      stmtStart !== undefined
+        ? editor.document.positionAt(stmtStart)
+        : position,
+      context
+    );
   }
 
   async runSelection(editor: vscode.TextEditor): Promise<void> {

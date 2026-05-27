@@ -11,7 +11,14 @@ from typing import Any, Callable
 from pydantic import ValidationError
 
 from sql_studio.dialect import sqlglot_service
-from sql_studio.drivers.registry import cancel_query, disconnect, get_driver, set_session_database, test_connection
+from sql_studio.drivers.registry import (
+    cancel_query,
+    disconnect,
+    get_driver,
+    get_session_database,
+    set_session_database,
+    test_connection,
+)
 from sql_studio.drivers.clickhouse_session import parse_use_database
 from sql_studio.export.csv_export import export_csv
 from sql_studio.export.excel_export import export_xlsx
@@ -137,6 +144,11 @@ class JsonRpcServer:
         batch: list[StatementResult] = []
         total_duration_ms = 0.0
         for index, statement in enumerate(statements, start=1):
+            active_database = get_session_database(config.id)
+            if active_database:
+                setter = getattr(driver, "set_active_database", None)
+                if callable(setter):
+                    setter(active_database)
             result = driver.execute(statement, limit=limit)
             total_duration_ms += result.duration_ms
             database = parse_use_database(statement)

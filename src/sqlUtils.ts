@@ -233,19 +233,20 @@ function sessionStatementsBefore(
 /** USE/SET statements before a document offset (for selections and explicit anchors). */
 export function getSessionStatementsBeforeOffset(
   document: vscode.TextDocument,
-  position: vscode.Position
+  position: vscode.Position | number
 ): string[] {
   const sql = document.getText();
-  const offset = document.offsetAt(position);
+  const offset =
+    typeof position === "number" ? position : document.offsetAt(position);
   const ranges = findStatementRanges(sql);
   return sessionStatementsBefore(sql, offset, ranges);
 }
 
-/** USE/SET statements above the cursor that should run before the current query. */
-export function getSessionStatementsBeforePosition(
+/** Start offset of the executable statement at the cursor. */
+export function getStatementStartOffset(
   document: vscode.TextDocument,
   position: vscode.Position
-): string[] {
+): number | undefined {
   const sql = document.getText();
   const offset = document.offsetAt(position);
   const ranges = findStatementRanges(sql);
@@ -258,14 +259,9 @@ export function getSessionStatementsBeforePosition(
     executable
   );
   if (!matched) {
-    return [];
+    return undefined;
   }
-  const trimmed = trimStatementRange(sql, matched);
-  const statement = normalizeStatementSql(statementText(sql, matched));
-  if (!statement || isSessionStatement(statement)) {
-    return [];
-  }
-  return sessionStatementsBefore(sql, trimmed.start, ranges);
+  return trimStatementRange(sql, matched).start;
 }
 
 function findStatementRangeAtPosition(
