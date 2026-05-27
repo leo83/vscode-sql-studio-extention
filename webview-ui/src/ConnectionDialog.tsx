@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
-  DIALECT_OPTIONS,
   NAME_FIELD,
   defaultPort,
   getConnectionFields,
@@ -11,6 +10,7 @@ import {
 import type { ConnectionDialogInit, ConnectionTagPayload } from "./types";
 import { getVsCodeApi } from "./vscodeApi";
 import { TagEditor } from "./TagEditor";
+import { DialectPicker } from "./DialectPicker";
 import { normalizeTags } from "./tagColors";
 
 type FormValues = Record<string, string | boolean>;
@@ -283,18 +283,12 @@ export function ConnectionDialog({ init }: { init: ConnectionDialogInit }) {
           {renderField(NAME_FIELD)}
           <div className="form-row">
             <label htmlFor="field-dialect">Database type</label>
-            <select
-              id="field-dialect"
-              value={String(values.dialect)}
-              onChange={(e) => setField("dialect", e.target.value)}
+            <DialectPicker
+              value={dialect}
+              icons={init.dialectIcons ?? {}}
               disabled={isEdit}
-            >
-              {DIALECT_OPTIONS.map((opt) => (
-                <option key={opt.value} value={opt.value}>
-                  {opt.label}
-                </option>
-              ))}
-            </select>
+              onChange={(next) => setField("dialect", next)}
+            />
             {isEdit ? (
               <span className="field-hint">Dialect cannot be changed when editing</span>
             ) : null}

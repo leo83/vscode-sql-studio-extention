@@ -61,6 +61,7 @@ export class ConnectionDialog {
             vscode.Uri.file(
               path.join(this.context.extensionPath, "webview-ui", "dist")
             ),
+            vscode.Uri.joinPath(this.context.extensionUri, "resources", "icons"),
           ],
         }
       );
@@ -204,6 +205,7 @@ export class ConnectionDialog {
       mode: existing ? "edit" : "create",
       profile: existing,
       hasStoredPassword: Boolean(existing),
+      dialectIcons: this.getDialectIconUris(webview),
     };
     const payload = JSON.stringify(init);
 
@@ -211,7 +213,7 @@ export class ConnectionDialog {
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src ${webview.cspSource} 'unsafe-inline'; script-src 'nonce-${nonce}';">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src ${webview.cspSource} data:; style-src ${webview.cspSource} 'unsafe-inline'; script-src 'nonce-${nonce}';">
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <link rel="stylesheet" href="${styleUri}">
   <title>Connection</title>
@@ -225,5 +227,26 @@ export class ConnectionDialog {
   <script nonce="${nonce}" type="module" src="${scriptUri}"></script>
 </body>
 </html>`;
+  }
+
+  private getDialectIconUris(
+    webview: vscode.Webview
+  ): Record<Dialect, string> {
+    const iconsDir = vscode.Uri.joinPath(
+      this.context.extensionUri,
+      "resources",
+      "icons"
+    );
+    const files: Record<Dialect, string> = {
+      postgres: "postgres.svg",
+      clickhouse: "clickhouse.svg",
+      mssql: "mssql.svg",
+    };
+    return Object.fromEntries(
+      Object.entries(files).map(([dialect, file]) => [
+        dialect,
+        webview.asWebviewUri(vscode.Uri.joinPath(iconsDir, file)).toString(),
+      ])
+    ) as Record<Dialect, string>;
   }
 }

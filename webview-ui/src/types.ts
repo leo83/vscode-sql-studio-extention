@@ -50,6 +50,7 @@ export interface ConnectionDialogInit {
   mode: "create" | "edit";
   profile?: ConnectionProfilePayload;
   hasStoredPassword?: boolean;
+  dialectIcons?: Partial<Record<"postgres" | "clickhouse" | "mssql", string>>;
 }
 
 export interface ConnectionFormPayload {
