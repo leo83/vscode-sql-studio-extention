@@ -6,6 +6,18 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
+- Connection dialog webview (create/edit) with dialect-specific fields and masked password
+- ClickHouse Native TCP driver (`clickhouse-driver`, port 9000) alongside HTTP (`clickhouse-connect`, port 8123)
+- Test connection from dialog with RPC/UI timeouts
+- Database Explorer root node **Connections** always visible
+
+### Changed
+
+- Connection create/edit moved from sequential `showInputBox` prompts to modal webview
+- Documentation: README.md and AGENTS.md (incl. rule to keep docs in sync with architecture changes)
+
+### Added (initial release)
+
 - Initial SQL Studio extension scaffold
 - PostgreSQL and ClickHouse drivers
 - Database Explorer sidebar with lazy schema tree

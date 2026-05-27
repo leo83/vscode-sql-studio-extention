@@ -10,7 +10,7 @@ from typing import Any, Callable
 from pydantic import ValidationError
 
 from sql_studio.dialect import sqlglot_service
-from sql_studio.drivers.registry import disconnect, get_driver
+from sql_studio.drivers.registry import disconnect, get_driver, test_connection
 from sql_studio.export.csv_export import export_csv
 from sql_studio.export.excel_export import export_xlsx
 from sql_studio.models import ConnectionConfig, ExportResult, QueryResult, SchemaNode
@@ -76,8 +76,7 @@ class JsonRpcServer:
 
     def _connection_test(self, params: dict[str, Any]) -> dict[str, bool]:
         config = ConnectionConfig.model_validate(params["connection"])
-        driver = get_driver(config)
-        driver.test_connection()
+        test_connection(config)
         return {"ok": True}
 
     def _connection_disconnect(self, params: dict[str, Any]) -> dict[str, bool]:

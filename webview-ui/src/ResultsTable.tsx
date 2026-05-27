@@ -10,8 +10,7 @@ import {
 } from "@tanstack/react-table";
 import { useMemo, useState } from "react";
 import type { QueryResult } from "./types";
-
-const vscode = window.acquireVsCodeApi?.();
+import { getVsCodeApi } from "./vscodeApi";
 
 interface Props {
   result: QueryResult;
@@ -75,10 +74,10 @@ export function ResultsTable({ result }: Props) {
           {result.row_count} rows · {result.duration_ms.toFixed(1)} ms
           {result.truncated ? " · truncated" : ""}
         </span>
-        <button type="button" onClick={() => vscode?.postMessage({ type: "exportCsv" })}>
+        <button type="button" onClick={() => getVsCodeApi()?.postMessage({ type: "exportCsv" })}>
           Export CSV
         </button>
-        <button type="button" onClick={() => vscode?.postMessage({ type: "exportXlsx" })}>
+        <button type="button" onClick={() => getVsCodeApi()?.postMessage({ type: "exportXlsx" })}>
           Export Excel
         </button>
       </div>

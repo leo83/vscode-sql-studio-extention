@@ -1,20 +1,23 @@
-import * as crypto from "crypto";
 import * as vscode from "vscode";
+import { PythonClient } from "./pythonClient";
 import {
   ConnectionProfile,
   ConnectionWithSecret,
-  Dialect,
-  defaultPort,
   secretKeyForConnection,
 } from "./types";
+import { ConnectionDialog } from "./webview/connectionDialog";
 
 const STORAGE_KEY = "sqlStudio.connections";
 const ACTIVE_KEY = "sqlStudio.activeConnectionId";
 
 export class ConnectionManager {
   private profiles: ConnectionProfile[] = [];
+  private dialog: ConnectionDialog | undefined;
 
-  constructor(private readonly context: vscode.ExtensionContext) {}
+  constructor(
+    private readonly context: vscode.ExtensionContext,
+    private readonly python?: PythonClient
+  ) {}
 
   async initialize(): Promise<void> {
     this.profiles =
@@ -87,94 +90,23 @@ export class ConnectionManager {
     }
   }
 
-  async promptNewOrEdit(existing?: ConnectionProfile): Promise<ConnectionWithSecret | undefined> {
-    const dialectPick = await vscode.window.showQuickPick(
-      [
-        { label: "PostgreSQL", value: "postgres" as Dialect },
-        { label: "ClickHouse", value: "clickhouse" as Dialect },
-      ],
-      { title: "Select database dialect", placeHolder: "Dialect" }
-    );
-    if (!dialectPick) {
-      return undefined;
+  private getDialog(): ConnectionDialog {
+    if (!this.dialog) {
+      this.dialog = new ConnectionDialog(this.context, this.python);
     }
-    const dialect = dialectPick.value;
-    const name = await vscode.window.showInputBox({
-      title: "Connection name",
-      value: existing?.name ?? "",
-      validateInput: (v) => (v.trim() ? null : "Name is required"),
-    });
-    if (!name) {
-      return undefined;
-    }
-    const host = await vscode.window.showInputBox({
-      title: "Host",
-      value: existing?.host ?? "localhost",
-      validateInput: (v) => (v.trim() ? null : "Host is required"),
-    });
-    if (!host) {
-      return undefined;
-    }
-    const portStr = await vscode.window.showInputBox({
-      title: "Port",
-      value: String(existing?.port ?? defaultPort(dialect)),
-      validateInput: (v) => (/^\d+$/.test(v) ? null : "Port must be a number"),
-    });
-    if (!portStr) {
-      return undefined;
-    }
-    const database = await vscode.window.showInputBox({
-      title: "Database",
-      value: existing?.database ?? "default",
-      validateInput: (v) => (v.trim() ? null : "Database is required"),
-    });
-    if (!database) {
-      return undefined;
-    }
-    const username = await vscode.window.showInputBox({
-      title: "Username",
-      value: existing?.username ?? "default",
-      validateInput: (v) => (v.trim() ? null : "Username is required"),
-    });
-    if (!username) {
-      return undefined;
-    }
-    const password = await vscode.window.showInputBox({
-      title: "Password",
-      password: true,
-      placeHolder: existing ? "Leave empty to keep current password" : "",
-    });
-    let resolvedPassword = password ?? "";
-    if (existing && !resolvedPassword) {
-      resolvedPassword =
-        (await this.context.secrets.get(secretKeyForConnection(existing.id))) ??
-        "";
-    }
-    const ssl = await vscode.window.showQuickPick(["No", "Yes"], {
-      title: "Use SSL?",
-      placeHolder: existing?.ssl ? "Yes" : "No",
-    });
-    const readOnly = await vscode.window.showQuickPick(["No", "Yes"], {
-      title: "Read-only connection?",
-      placeHolder: existing?.readOnly ? "Yes" : "No",
-    });
+    return this.dialog;
+  }
 
-    const profile: ConnectionProfile = {
-      id: existing?.id ?? crypto.randomUUID(),
-      name: name.trim(),
-      dialect,
-      host: host.trim(),
-      port: Number(portStr),
-      database: database.trim(),
-      username: username.trim(),
-      ssl: ssl === "Yes",
-      readOnly: readOnly === "Yes",
-    };
-    await this.saveConnection(profile, resolvedPassword, existing?.id);
-    if (!this.getActiveConnectionId()) {
-      await this.setActiveConnectionId(profile.id);
+  async promptNewOrEdit(existing?: ConnectionProfile): Promise<ConnectionWithSecret | undefined> {
+    const result = await this.getDialog().open(existing);
+    if (!result) {
+      return undefined;
     }
-    return { ...profile, password: resolvedPassword };
+    await this.saveConnection(result, result.password, existing?.id);
+    if (!this.getActiveConnectionId()) {
+      await this.setActiveConnectionId(result.id);
+    }
+    return result;
   }
 
   private async persist(): Promise<void> {

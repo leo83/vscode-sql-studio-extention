@@ -8,6 +8,7 @@ from pydantic import BaseModel, Field
 
 
 Dialect = Literal["postgres", "clickhouse"]
+ClickHouseInterface = Literal["http", "native"]
 
 
 class ConnectionConfig(BaseModel):
@@ -20,6 +21,7 @@ class ConnectionConfig(BaseModel):
     password: str = ""
     ssl: bool = False
     read_only: bool = False
+    clickhouse_interface: ClickHouseInterface | None = None
 
 
 class ColumnInfo(BaseModel):

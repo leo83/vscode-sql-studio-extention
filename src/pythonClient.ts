@@ -87,7 +87,11 @@ export class PythonClient implements vscode.Disposable {
     await this.request("health", {});
   }
 
-  async request<T>(method: string, params: Record<string, unknown>): Promise<T> {
+  async request<T>(
+    method: string,
+    params: Record<string, unknown>,
+    options?: { timeoutMs?: number }
+  ): Promise<T> {
     if (!this.process) {
       await this.start();
     }
@@ -96,11 +100,30 @@ export class PythonClient implements vscode.Disposable {
     }
     const id = this.nextId++;
     const payload = JSON.stringify({ jsonrpc: "2.0", id, method, params });
+    const timeoutMs = options?.timeoutMs;
     return new Promise<T>((resolve, reject) => {
+      let timer: ReturnType<typeof setTimeout> | undefined;
+      const finish = (fn: () => void) => {
+        if (timer) {
+          clearTimeout(timer);
+        }
+        this.pending.delete(id);
+        fn();
+      };
       this.pending.set(id, {
-        resolve: resolve as (v: unknown) => void,
-        reject,
+        resolve: (v) => finish(() => resolve(v as T)),
+        reject: (e) => finish(() => reject(e)),
       });
+      if (timeoutMs && timeoutMs > 0) {
+        timer = setTimeout(() => {
+          const pending = this.pending.get(id);
+          if (pending) {
+            finish(() =>
+              reject(new Error(`Request timed out after ${timeoutMs / 1000}s`))
+            );
+          }
+        }, timeoutMs);
+      }
       this.process!.stdin.write(payload + "\n");
     });
   }

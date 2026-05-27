@@ -21,7 +21,7 @@ let explorerProvider: SchemaExplorerProvider;
 
 export async function activate(context: vscode.ExtensionContext): Promise<void> {
   pythonClient = new PythonClient(context);
-  connectionManager = new ConnectionManager(context);
+  connectionManager = new ConnectionManager(context, pythonClient);
   await connectionManager.initialize();
   resultsPanel = new ResultsPanel(context, pythonClient);
   queryRunner = new QueryRunner(pythonClient, connectionManager, resultsPanel);
@@ -110,19 +110,27 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
           return;
         }
         try {
-          await pythonClient.request("connection/test", {
-            connection: {
-              id: conn.id,
-              dialect: conn.dialect,
-              host: conn.host,
-              port: conn.port,
-              database: conn.database,
-              username: conn.username,
-              password: conn.password,
-              ssl: conn.ssl ?? false,
-              read_only: conn.readOnly ?? false,
+          await pythonClient.request(
+            "connection/test",
+            {
+              connection: {
+                id: conn.id,
+                dialect: conn.dialect,
+                host: conn.host,
+                port: conn.port,
+                database: conn.database,
+                username: conn.username,
+                password: conn.password,
+                ssl: conn.ssl ?? false,
+                read_only: conn.readOnly ?? false,
+                clickhouse_interface:
+                  conn.dialect === "clickhouse"
+                    ? conn.clickhouseInterface
+                    : undefined,
+              },
             },
-          });
+            { timeoutMs: 20_000 }
+          );
           vscode.window.showInformationMessage(`Connection "${conn.name}" OK`);
         } catch (err) {
           const msg = err instanceof Error ? err.message : String(err);

@@ -38,3 +38,13 @@ def _create_driver(config: ConnectionConfig) -> PostgresDriver | ClickHouseDrive
     if config.dialect == "postgres":
         return PostgresDriver()
     return ClickHouseDriver()
+
+
+def test_connection(config: ConnectionConfig) -> None:
+    """Test connectivity without caching the driver in the pool."""
+    driver = _create_driver(config)
+    try:
+        driver.connect(config)
+        driver.test_connection()
+    finally:
+        driver.disconnect()

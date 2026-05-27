@@ -25,7 +25,9 @@ export class ExplorerTreeItem extends vscode.TreeItem {
       collapsible
     );
     this.contextValue = itemType === "view" ? "table" : itemType;
-    if (itemType === "connection") {
+    if (itemType === "connections-root") {
+      this.iconPath = new vscode.ThemeIcon("server-environment");
+    } else if (itemType === "connection") {
       this.iconPath = new vscode.ThemeIcon("plug");
       this.description = connectionId ?? undefined;
     } else if (itemType === "table" || itemType === "view") {
@@ -72,17 +74,18 @@ export class SchemaExplorerProvider implements vscode.TreeDataProvider<ExplorerT
 
   async getChildren(element?: ExplorerTreeItem): Promise<ExplorerTreeItem[]> {
     if (!element) {
+      return [
+        new ExplorerTreeItem(
+          null,
+          null,
+          "connections-root",
+          vscode.TreeItemCollapsibleState.Expanded
+        ),
+      ];
+    }
+
+    if (element.itemType === "connections-root") {
       const profiles = this.connections.listProfiles();
-      if (profiles.length === 0) {
-        return [
-          new ExplorerTreeItem(
-            null,
-            null,
-            "connections-root",
-            vscode.TreeItemCollapsibleState.None
-          ),
-        ];
-      }
       return profiles.map(
         (p) =>
           new ExplorerTreeItem(

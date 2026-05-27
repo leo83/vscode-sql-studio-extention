@@ -7,6 +7,7 @@ authors = [{ name = "lev", email = "lev.ragulin@gmail.com" }]
 requires-python = ">=3.11"
 dependencies = [
     "clickhouse-connect>=1.1.0",
+    "clickhouse-driver>=0.2.10",
     "openpyxl>=3.1.5",
     "psycopg[binary]>=3.2",
     "pydantic>=2.13.4",

@@ -1,4 +1,5 @@
 export type Dialect = "postgres" | "clickhouse";
+export type ClickHouseInterface = "http" | "native";
 
 export interface ConnectionProfile {
   id: string;
@@ -10,6 +11,8 @@ export interface ConnectionProfile {
   username: string;
   ssl?: boolean;
   readOnly?: boolean;
+  /** ClickHouse only: native TCP (9000) or HTTP (8123). */
+  clickhouseInterface?: ClickHouseInterface;
 }
 
 export interface ConnectionWithSecret extends ConnectionProfile {
@@ -44,8 +47,14 @@ export function secretKeyForConnection(connectionId: string): string {
   return `sql-studio.connection.${connectionId}.password`;
 }
 
-export function defaultPort(dialect: Dialect): number {
-  return dialect === "postgres" ? 5432 : 8123;
+export function defaultPort(
+  dialect: Dialect,
+  clickhouseInterface?: ClickHouseInterface
+): number {
+  if (dialect === "postgres") {
+    return 5432;
+  }
+  return clickhouseInterface === "http" ? 8123 : 9000;
 }
 
 export function toRpcConnection(profile: ConnectionWithSecret): Record<string, unknown> {
@@ -59,5 +68,13 @@ export function toRpcConnection(profile: ConnectionWithSecret): Record<string, u
     password: profile.password,
     ssl: profile.ssl ?? false,
     read_only: profile.readOnly ?? false,
+    clickhouse_interface:
+      profile.dialect === "clickhouse"
+        ? profile.clickhouseInterface ?? inferClickHouseInterface(profile.port)
+        : undefined,
   };
+}
+
+export function inferClickHouseInterface(port: number): ClickHouseInterface {
+  return port === 8123 || port === 8443 ? "http" : "native";
 }

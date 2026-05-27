@@ -15,7 +15,7 @@
 
 ```
 src/              TypeScript — extension host (VS Code API)
-webview-ui/       React + Vite + TanStack Table — UI результатов
+webview-ui/       React + Vite — UI результатов и диалога подключений
 python/           Python backend (uv) — JSON-RPC over stdio
 grammars/         TextMate grammars (SQL подсветка)
 .cursor/          Rules и MCP-шаблон для Cursor
@@ -30,7 +30,7 @@ grammars/         TextMate grammars (SQL подсветка)
 | Часть | Технологии |
 |-------|------------|
 | Extension | TypeScript 5, esbuild, VS Code Extension API |
-| Backend | Python 3.11+, uv, psycopg3, clickhouse-connect, sqlglot, openpyxl |
+| Backend | Python 3.11+, uv, psycopg3, clickhouse-connect, clickhouse-driver, sqlglot, openpyxl |
 | Webview | React 18, Vite, TanStack Table v8 |
 | Тесты | pytest (python), tsc (extension) |
 
@@ -41,12 +41,16 @@ grammars/         TextMate grammars (SQL подсветка)
 | `src/extension.ts` | Точка входа, регистрация команд и explorer |
 | `src/pythonClient.ts` | Spawn uv + JSON-RPC клиент |
 | `src/connectionManager.ts` | Профили connections + SecretStorage |
+| `src/webview/connectionDialog.ts` | Webview-диалог создания/редактирования connection |
 | `src/queryRunner.ts` | Выполнение SQL и preview таблиц |
-| `src/schemaExplorer/treeProvider.ts` | Database Explorer TreeView |
+| `src/schemaExplorer/treeProvider.ts` | Database Explorer TreeView (корень **Connections**) |
 | `src/webview/resultsPanel.ts` | Webview panel результатов |
 | `src/sqlUtils.ts` | buildPreviewSql, лимиты строк |
+| `webview-ui/src/ConnectionDialog.tsx` | Форма подключения (поля по диалекту) |
+| `webview-ui/src/connectionFields.ts` | Схема полей PostgreSQL / ClickHouse |
+| `webview-ui/src/vscodeApi.ts` | Singleton `acquireVsCodeApi()` (один вызов на webview) |
 | `python/src/sql_studio/server.py` | JSON-RPC server |
-| `python/src/sql_studio/drivers/` | postgres.py, clickhouse.py |
+| `python/src/sql_studio/drivers/` | postgres, clickhouse (фасад), clickhouse_http, clickhouse_native |
 | `python/src/sql_studio/dialect/sqlglot_service.py` | format / split SQL |
 | `package.json` | Manifest расширения, contributes, settings |
 
@@ -93,6 +97,27 @@ cd python && uv sync --all-groups && uv run pytest
 - Минимальный diff: не рефакторить несвязанный код.
 - Следовать существующим паттернам имён и структуры папок.
 
+### Документация (обязательно при важных изменениях)
+
+При изменениях **архитектуры**, **публичного поведения**, **новых фич** или **смены зависимостей/протоколов** обновляйте в том же PR/коммите:
+
+| Файл | Что отражать |
+|------|----------------|
+| **[README.md](README.md)** | Возможности для пользователя, установка, первое подключение, таблицы настроек, типичные сценарии |
+| **[AGENTS.md](AGENTS.md)** | Структура файлов, стек, JSON-RPC, правила разработки, чеклисты тестирования, частые ошибки |
+| **[CHANGELOG.md](CHANGELOG.md)** | Краткая запись в Unreleased/версии (если файл ведётся) |
+
+Не откладывать документацию «на потом» — иначе агенты и разработчики расходятся с кодом.
+
+**Примеры, когда нужно обновить README + AGENTS:**
+
+- новый диалект БД или драйвер (как ClickHouse Native/HTTP);
+- новый webview, команда или поле connection;
+- смена формата JSON-RPC, путей explorer, хранения секретов;
+- новые `just` / npm / uv команды.
+
+**Можно не трогать** при чистом рефакторинге без смены поведения или мелких багфиксах.
+
 ### Безопасность
 
 - Пароли — **только** `context.secrets.store/get/delete`.
@@ -106,6 +131,15 @@ cd python && uv sync --all-groups && uv run pytest
 - Preview таблицы: `sqlStudio.previewRowLimit` (default 1000).
 - SQL-запросы: `sqlStudio.defaultRowLimit` (default 10000).
 
+### Connections
+
+- Создание/редактирование — **webview-диалог** (`ConnectionDialog`), не цепочка `showInputBox`.
+- Поля задаются в `webview-ui/src/connectionFields.ts` (разный набор для postgres / clickhouse).
+- Пароль: `type="password"` в UI; в профиле не хранится — только SecretStorage.
+- `connection/test` из диалога: таймаут RPC ~20 с; ответ webview — `testResult`.
+- ClickHouse: `clickhouse_interface` = `native` | `http`; Native → `clickhouse-driver` (9000), HTTP → `clickhouse-connect` (8123).
+- Explorer: корневой узел **Connections** всегда виден; дочерние элементы — сохранённые подключения.
+
 ### Explorer
 
 - Lazy load через `schema/listChildren`.
@@ -115,7 +149,9 @@ cd python && uv sync --all-groups && uv run pytest
 ### Webview
 
 - Стили через CSS variables `--vscode-*`.
-- Сообщения extension ↔ webview через `postMessage` (`exportCsv`, `exportXlsx`).
+- **`acquireVsCodeApi()` — строго один раз** на webview: использовать `webview-ui/src/vscodeApi.ts` (`getVsCodeApi()`).
+- Режимы одного бандла: `window.__SQL_STUDIO_MODE__` = `results` | `connection`.
+- Сообщения extension ↔ webview: `postMessage` (`save`, `cancel`, `test`, `testResult`, `exportCsv`, `exportXlsx`).
 
 ## Работа с Cursor Agent
 
@@ -167,6 +203,8 @@ echo '{"jsonrpc":"2.0","id":1,"method":"health","params":{}}' | uv run sql-studi
 | Backend not started | `uv` не в PATH → `sqlStudio.uvPath`; выполнить `cd python && uv sync` |
 | Explorer пустой | Test Connection; проверить credentials |
 | Webview пустой | `npm run build:webview`; проверить `webview-ui/dist/assets/` |
+| Диалог connection без полей | Повторный `acquireVsCodeApi()` — только через `getVsCodeApi()` |
+| Test connection зависает | ClickHouse: Native + 9000, не HTTP на 9000; проверить таймаут backend |
 | Import errors в extension | `npm run lint` |
 
 ## Что не делать

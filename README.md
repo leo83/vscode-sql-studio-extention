@@ -10,6 +10,8 @@
 - Выполнение запросов: **Cmd+Enter** / **Ctrl+Enter**
 - Таблица результатов: сортировка, фильтр, пагинация, экспорт CSV/Excel
 - Пароли connections хранятся **зашифрованно** (OS keychain через VS Code SecretStorage)
+- **Диалог подключения** (webview): создание и редактирование в одном окне, поля зависят от диалекта
+- **ClickHouse Native (TCP, порт 9000)** и **HTTP (8123)** — как Native Driver / HTTP в TablePlus
 - Интеграция с агентами Cursor (rules, MCP-шаблон)
 
 ## Архитектура
@@ -18,7 +20,7 @@
 |------|------|------------|
 | Extension | TypeScript | UI, explorer, webview, SecretStorage |
 | Backend | Python + **uv** | JSON-RPC: запросы, схема, export |
-| Results UI | React + TanStack Table | Таблица результатов |
+| Webview UI | React + Vite | Таблица результатов и диалог подключений |
 
 Backend запускается автоматически:
 
@@ -188,13 +190,31 @@ just package
 
 1. Откройте sidebar **SQL Studio** → **Database Explorer**
 2. Нажмите **+** (Add Connection) или Command Palette → **`SQL Studio: Add Connection`**
-3. Заполните:
-   - Dialect: **PostgreSQL** или **ClickHouse**
-   - Host, Port, Database, Username, Password
-   - SSL / Read-only — по необходимости
-4. Пароль сохранится в **зашифрованном виде** (Keychain на macOS)
-5. ПКМ на connection → **Test Connection**
-6. ПКМ → **Set Active Connection**
+3. В модальном окне заполните поля (набор зависит от типа БД):
+
+   | Поле | PostgreSQL | ClickHouse |
+   |------|------------|------------|
+   | Connection name | да | да |
+   | Database type | PostgreSQL | ClickHouse |
+   | Driver | — | **Native (TCP, 9000)** или **HTTP (8123)** |
+   | Host, Port, Username, Password | да | да |
+   | Database | обязательно | опционально (`default`) |
+   | SSL / Read-only | да | да |
+
+4. **Test connection** — проверка без сохранения (таймаут ~20 с)
+5. **Save** — пароль сохранится в **зашифрованном виде** (Keychain на macOS)
+6. В Explorer: разверните **Connections** → ПКМ на connection → **Set Active Connection**
+
+#### ClickHouse: Native vs HTTP
+
+| Режим | Порт | Когда использовать |
+|-------|------|-------------------|
+| **Native (TCP)** | 9000 (9440 + TLS) | Как TablePlus «Native Driver», внутренняя сеть |
+| **HTTP** | 8123 (8443 + TLS) | ClickHouse Cloud, прокси, только HTTP |
+
+> Порт **9000** с драйвером HTTP не работает — выберите **Native** в поле Driver.
+
+Редактирование: ПКМ на connection → **Edit Connection** (тот же диалог).
 
 ---
 

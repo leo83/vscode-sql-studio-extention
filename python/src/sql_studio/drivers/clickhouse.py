@@ -1,154 +1,73 @@
-"""ClickHouse driver via clickhouse-connect."""
+"""ClickHouse driver — HTTP (clickhouse-connect) or native TCP (clickhouse-driver)."""
 
 from __future__ import annotations
 
-import time
-from typing import Any
+from typing import Protocol
 
-import clickhouse_connect
-from clickhouse_connect.driver.client import Client
+from sql_studio.models import ClickHouseInterface, ConnectionConfig, QueryResult, SchemaNode
 
-from sql_studio.models import ConnectionConfig, QueryColumn, QueryResult, SchemaNode
+from sql_studio.drivers.clickhouse_http import ClickHouseHttpDriver
+from sql_studio.drivers.clickhouse_native import ClickHouseNativeDriver
+
+_NATIVE_PORTS = {9000, 9440}
+_HTTP_PORTS = {8123, 8443}
+
+
+class _ClickHouseBackend(Protocol):
+    def connect(self, config: ConnectionConfig) -> None: ...
+    def disconnect(self) -> None: ...
+    def test_connection(self) -> None: ...
+    def execute(self, sql: str, limit: int | None = 10_000) -> QueryResult: ...
+    def list_schema_children(self, path: list[str]) -> list[SchemaNode]: ...
+    def get_table_ddl(self, path: list[str]) -> str: ...
+
+
+def resolve_clickhouse_interface(config: ConnectionConfig) -> ClickHouseInterface:
+    if config.clickhouse_interface:
+        return config.clickhouse_interface
+    if config.port in _NATIVE_PORTS:
+        return "native"
+    if config.port in _HTTP_PORTS:
+        return "http"
+    return "native"
+
+
+def _create_backend(config: ConnectionConfig) -> _ClickHouseBackend:
+    if resolve_clickhouse_interface(config) == "http":
+        return ClickHouseHttpDriver()
+    return ClickHouseNativeDriver()
 
 
 class ClickHouseDriver:
     def __init__(self) -> None:
-        self._client: Client | None = None
-        self._config: ConnectionConfig | None = None
+        self._impl: _ClickHouseBackend | None = None
 
     def connect(self, config: ConnectionConfig) -> None:
         self.disconnect()
-        self._client = clickhouse_connect.get_client(
-            host=config.host,
-            port=config.port,
-            username=config.username,
-            password=config.password,
-            database=config.database,
-            secure=config.ssl,
-            connect_timeout=10,
-            settings={"readonly": 1 if config.read_only else 0},
-        )
-        self._config = config
+        self._impl = _create_backend(config)
+        self._impl.connect(config)
 
     def disconnect(self) -> None:
-        if self._client is not None:
-            self._client.close()
-            self._client = None
-        self._config = None
+        if self._impl is not None:
+            self._impl.disconnect()
+            self._impl = None
 
     def test_connection(self) -> None:
-        if self._client is None:
+        if self._impl is None:
             raise RuntimeError("Not connected")
-        self._client.command("SELECT 1")
+        self._impl.test_connection()
 
     def execute(self, sql: str, limit: int | None = 10_000) -> QueryResult:
-        if self._client is None:
+        if self._impl is None:
             raise RuntimeError("Not connected")
-        started = time.perf_counter()
-        effective_limit = limit if limit is not None else 10_000
-        result = self._client.query(sql)
-        duration_ms = (time.perf_counter() - started) * 1000
-        if not result.column_names:
-            return QueryResult(
-                columns=[],
-                rows=[],
-                row_count=0,
-                duration_ms=duration_ms,
-            )
-        columns = [
-            QueryColumn(name=name, data_type=str(result.column_types[i]))
-            for i, name in enumerate(result.column_names)
-        ]
-        all_rows = result.result_rows or []
-        truncated = len(all_rows) > effective_limit
-        rows_slice = all_rows[:effective_limit]
-        rows = [list(row) for row in rows_slice]
-        return QueryResult(
-            columns=columns,
-            rows=rows,
-            row_count=len(rows),
-            duration_ms=duration_ms,
-            truncated=truncated,
-        )
+        return self._impl.execute(sql, limit=limit)
 
     def list_schema_children(self, path: list[str]) -> list[SchemaNode]:
-        if self._client is None:
+        if self._impl is None:
             raise RuntimeError("Not connected")
-        if not path:
-            return [
-                SchemaNode(
-                    id="databases",
-                    label="Databases",
-                    node_type="folder",
-                    path=["databases"],
-                    has_children=True,
-                    icon="folder",
-                )
-            ]
-        if path == ["databases"]:
-            rows = self._client.query("SHOW DATABASES").result_rows or []
-            return [
-                SchemaNode(
-                    id=f"db:{row[0]}",
-                    label=str(row[0]),
-                    node_type="database",
-                    path=["databases", str(row[0])],
-                    has_children=True,
-                    icon="database",
-                )
-                for row in rows
-                if str(row[0]) not in ("system", "INFORMATION_SCHEMA")
-            ]
-        if len(path) == 2 and path[0] == "databases":
-            database = path[1]
-            rows = self._client.query(
-                f"SELECT name, engine FROM system.tables WHERE database = {{db:String}}",
-                parameters={"db": database},
-            ).result_rows or []
-            return [
-                SchemaNode(
-                    id=f"table:{database}.{row[0]}",
-                    label=str(row[0]),
-                    node_type="table",
-                    path=["databases", database, str(row[0])],
-                    has_children=True,
-                    icon="table",
-                    metadata={"engine": str(row[1]) if len(row) > 1 else ""},
-                )
-                for row in rows
-            ]
-        if len(path) == 3 and path[0] == "databases":
-            database, table = path[1], path[2]
-            rows = self._client.query(
-                """
-                SELECT name, type, default_kind
-                FROM system.columns
-                WHERE database = {db:String} AND table = {tbl:String}
-                ORDER BY position
-                """,
-                parameters={"db": database, "tbl": table},
-            ).result_rows or []
-            return [
-                SchemaNode(
-                    id=f"col:{database}.{table}.{row[0]}",
-                    label=f"{row[0]}: {row[1]}",
-                    node_type="column",
-                    path=["databases", database, table, str(row[0])],
-                    has_children=False,
-                    icon="column",
-                    metadata={"default_kind": str(row[2]) if len(row) > 2 else ""},
-                )
-                for row in rows
-            ]
-        return []
+        return self._impl.list_schema_children(path)
 
     def get_table_ddl(self, path: list[str]) -> str:
-        if self._client is None:
+        if self._impl is None:
             raise RuntimeError("Not connected")
-        if len(path) < 3 or path[0] != "databases":
-            return ""
-        database, table = path[1], path[2]
-        ddl = self._client.command(
-            f"SHOW CREATE TABLE `{database}`.`{table}`"
-        )
-        return str(ddl) if ddl else f"-- Table {database}.{table} not found"
+        return self._impl.get_table_ddl(path)

@@ -108,3 +108,131 @@ tr:nth-child(even) {
 .error {
   color: var(--vscode-errorForeground, #f48771);
 }
+
+/* Connection dialog modal */
+.modal-backdrop {
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  min-height: 100vh;
+  padding: 24px 16px;
+  box-sizing: border-box;
+  background: rgba(0, 0, 0, 0.45);
+}
+
+.modal-dialog {
+  width: 100%;
+  max-width: 480px;
+  background: var(--vscode-editor-background, #1e1e1e);
+  border: 1px solid var(--vscode-panel-border, #444);
+  border-radius: 6px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+  display: flex;
+  flex-direction: column;
+}
+
+.modal-header {
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--vscode-panel-border, #444);
+}
+
+.modal-header h2 {
+  margin: 0;
+  font-size: 1.1em;
+  font-weight: 600;
+}
+
+.modal-body {
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  max-height: calc(100vh - 160px);
+  overflow-y: auto;
+}
+
+.modal-footer {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+  padding: 12px 16px;
+  border-top: 1px solid var(--vscode-panel-border, #444);
+}
+
+.form-row {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.form-row label {
+  font-weight: 500;
+}
+
+.form-row .required {
+  color: var(--vscode-errorForeground, #f48771);
+  margin-left: 2px;
+}
+
+.form-row input,
+.form-row select {
+  padding: 6px 8px;
+  background: var(--vscode-input-background, #3c3c3c);
+  color: var(--vscode-input-foreground, #ccc);
+  border: 1px solid var(--vscode-input-border, #555);
+  border-radius: 2px;
+  font: inherit;
+}
+
+.form-row input[type="password"] {
+  font-family: inherit;
+  letter-spacing: 0.05em;
+}
+
+.form-row.has-error input,
+.form-row.has-error select {
+  border-color: var(--vscode-inputValidation-errorBorder, #be1100);
+}
+
+.form-check {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  cursor: pointer;
+  flex-direction: row;
+}
+
+.form-check input {
+  margin-top: 2px;
+}
+
+.field-hint {
+  font-size: 0.85em;
+  opacity: 0.75;
+}
+
+.field-error {
+  font-size: 0.85em;
+  color: var(--vscode-errorForeground, #f48771);
+}
+
+.test-result {
+  padding: 8px 10px;
+  border-radius: 3px;
+  font-size: 0.9em;
+}
+
+.test-result.ok {
+  background: rgba(0, 128, 0, 0.15);
+  color: var(--vscode-testing-iconPassed, #73c991);
+}
+
+.test-result.fail {
+  background: rgba(200, 0, 0, 0.15);
+  color: var(--vscode-errorForeground, #f48771);
+}
+
+button.secondary {
+  background: var(--vscode-button-secondaryBackground, #3a3d41);
+  color: var(--vscode-button-secondaryForeground, #ccc);
+}
