@@ -1,0 +1,11 @@
+node_modules/
+dist/
+out/
+*.vsix
+.DS_Store
+.env
+python/.venv/
+python/**/__pycache__/
+webview-ui/node_modules/
+webview-ui/dist/
+.vscode-test/

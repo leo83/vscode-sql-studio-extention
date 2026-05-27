@@ -1,0 +1,264 @@
+{
+  "name": "cursor-sql-studio",
+  "displayName": "SQL Studio",
+  "description": "Write SQL, explore databases, and view query results with agent integration",
+  "version": "0.1.0",
+  "publisher": "sql-studio",
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": ["Programming Languages", "Other"],
+  "activationEvents": [
+    "onLanguage:sql-studio-postgres",
+    "onLanguage:sql-studio-clickhouse",
+    "onView:sqlStudio.explorer",
+    "onCommand:sqlStudio.addConnection"
+  ],
+  "main": "./dist/extension.js",
+  "contributes": {
+    "languages": [
+      {
+        "id": "sql-studio-postgres",
+        "aliases": ["SQL (PostgreSQL)", "PostgreSQL SQL"],
+        "extensions": [".pgsql", ".psql"],
+        "configuration": "./language-configuration.json"
+      },
+      {
+        "id": "sql-studio-clickhouse",
+        "aliases": ["SQL (ClickHouse)", "ClickHouse SQL"],
+        "extensions": [".chsql"],
+        "configuration": "./language-configuration.json"
+      },
+      {
+        "id": "sql-studio-sql",
+        "aliases": ["SQL Studio"],
+        "extensions": [".sql"],
+        "configuration": "./language-configuration.json"
+      }
+    ],
+    "grammars": [
+      {
+        "language": "sql-studio-postgres",
+        "scopeName": "source.sql",
+        "path": "./grammars/sql-base.tmLanguage.json"
+      },
+      {
+        "language": "sql-studio-clickhouse",
+        "scopeName": "source.sql",
+        "path": "./grammars/sql-base.tmLanguage.json"
+      },
+      {
+        "language": "sql-studio-sql",
+        "scopeName": "source.sql",
+        "path": "./grammars/sql-base.tmLanguage.json"
+      }
+    ],
+    "commands": [
+      {
+        "command": "sqlStudio.runQuery",
+        "title": "SQL Studio: Run Query",
+        "icon": "$(play)"
+      },
+      {
+        "command": "sqlStudio.runSelection",
+        "title": "SQL Studio: Run Selection"
+      },
+      {
+        "command": "sqlStudio.formatSql",
+        "title": "SQL Studio: Format SQL"
+      },
+      {
+        "command": "sqlStudio.addConnection",
+        "title": "SQL Studio: Add Connection",
+        "icon": "$(add)"
+      },
+      {
+        "command": "sqlStudio.editConnection",
+        "title": "SQL Studio: Edit Connection"
+      },
+      {
+        "command": "sqlStudio.deleteConnection",
+        "title": "SQL Studio: Delete Connection"
+      },
+      {
+        "command": "sqlStudio.testConnection",
+        "title": "SQL Studio: Test Connection"
+      },
+      {
+        "command": "sqlStudio.setActiveConnection",
+        "title": "SQL Studio: Set Active Connection"
+      },
+      {
+        "command": "sqlStudio.previewData",
+        "title": "SQL Studio: Preview Data"
+      },
+      {
+        "command": "sqlStudio.copyObjectName",
+        "title": "SQL Studio: Copy Name"
+      },
+      {
+        "command": "sqlStudio.generateSelect",
+        "title": "SQL Studio: Generate SELECT"
+      },
+      {
+        "command": "sqlStudio.refreshExplorer",
+        "title": "SQL Studio: Refresh",
+        "icon": "$(refresh)"
+      },
+      {
+        "command": "sqlStudio.exportCsv",
+        "title": "SQL Studio: Export Results to CSV"
+      },
+      {
+        "command": "sqlStudio.exportExcel",
+        "title": "SQL Studio: Export Results to Excel"
+      },
+      {
+        "command": "sqlStudio.askAgentExplain",
+        "title": "SQL Studio: Ask Agent to Explain Query"
+      },
+      {
+        "command": "sqlStudio.askAgentFix",
+        "title": "SQL Studio: Ask Agent to Fix/Optimize Query"
+      }
+    ],
+    "menus": {
+      "view/title": [
+        {
+          "command": "sqlStudio.addConnection",
+          "when": "view == sqlStudio.explorer",
+          "group": "navigation@1"
+        },
+        {
+          "command": "sqlStudio.refreshExplorer",
+          "when": "view == sqlStudio.explorer",
+          "group": "navigation@2"
+        }
+      ],
+      "view/item/context": [
+        {
+          "command": "sqlStudio.previewData",
+          "when": "view == sqlStudio.explorer && viewItem == table",
+          "group": "inline@1"
+        },
+        {
+          "command": "sqlStudio.generateSelect",
+          "when": "view == sqlStudio.explorer && viewItem == table",
+          "group": "1_actions@1"
+        },
+        {
+          "command": "sqlStudio.copyObjectName",
+          "when": "view == sqlStudio.explorer",
+          "group": "1_actions@2"
+        },
+        {
+          "command": "sqlStudio.setActiveConnection",
+          "when": "view == sqlStudio.explorer && viewItem == connection",
+          "group": "1_actions@1"
+        },
+        {
+          "command": "sqlStudio.editConnection",
+          "when": "view == sqlStudio.explorer && viewItem == connection",
+          "group": "1_actions@2"
+        },
+        {
+          "command": "sqlStudio.deleteConnection",
+          "when": "view == sqlStudio.explorer && viewItem == connection",
+          "group": "1_actions@3"
+        },
+        {
+          "command": "sqlStudio.testConnection",
+          "when": "view == sqlStudio.explorer && viewItem == connection",
+          "group": "1_actions@4"
+        }
+      ],
+      "editor/title": [
+        {
+          "command": "sqlStudio.runQuery",
+          "when": "editorLangId =~ /sql-studio/",
+          "group": "navigation@1"
+        }
+      ],
+      "editor/context": [
+        {
+          "command": "sqlStudio.runSelection",
+          "when": "editorLangId =~ /sql-studio/",
+          "group": "sqlStudio@1"
+        },
+        {
+          "command": "sqlStudio.askAgentExplain",
+          "when": "editorLangId =~ /sql-studio/",
+          "group": "sqlStudio@2"
+        }
+      ]
+    },
+    "keybindings": [
+      {
+        "command": "sqlStudio.runQuery",
+        "key": "cmd+enter",
+        "mac": "cmd+enter",
+        "win": "ctrl+enter",
+        "linux": "ctrl+enter",
+        "when": "editorLangId =~ /sql-studio/"
+      }
+    ],
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "sql-studio",
+          "title": "SQL Studio",
+          "icon": "resources/icons/database.svg"
+        }
+      ]
+    },
+    "views": {
+      "sql-studio": [
+        {
+          "id": "sqlStudio.explorer",
+          "name": "Database Explorer"
+        }
+      ]
+    },
+    "configuration": {
+      "title": "SQL Studio",
+      "properties": {
+        "sqlStudio.uvPath": {
+          "type": "string",
+          "default": "uv",
+          "description": "Path to the uv executable used to run the Python backend (uv run --directory python sql-studio-server)."
+        },
+        "sqlStudio.defaultRowLimit": {
+          "type": "number",
+          "default": 10000,
+          "description": "Maximum rows returned per SQL query."
+        },
+        "sqlStudio.previewRowLimit": {
+          "type": "number",
+          "default": 1000,
+          "description": "Number of rows loaded when previewing a table from Database Explorer."
+        },
+        "sqlStudio.defaultDialect": {
+          "type": "string",
+          "enum": ["postgres", "clickhouse"],
+          "default": "postgres"
+        }
+      }
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run build",
+    "build": "npm run build:ext && npm run build:webview",
+    "build:ext": "node esbuild.mjs",
+    "build:webview": "cd webview-ui && npm run build",
+    "watch": "node esbuild.mjs --watch",
+    "lint": "tsc --noEmit",
+    "package": "vsce package --no-dependencies"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "@types/vscode": "^1.85.0",
+    "@vscode/vsce": "^3.2.1",
+    "esbuild": "^0.24.0",
+    "typescript": "^5.7.0"
+  }
+}

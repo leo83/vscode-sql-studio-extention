@@ -1,0 +1,16 @@
+.vscode/**
+.vscode-test/**
+src/**
+webview-ui/src/**
+node_modules/**
+webview-ui/node_modules/**
+python/.venv/**
+python/tests/**
+.gitignore
+.esbuild.mjs
+tsconfig.json
+webview-ui/tsconfig.json
+webview-ui/vite.config.ts
+webview-ui/index.html
+**/*.map
+**/.DS_Store

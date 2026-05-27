@@ -1,0 +1,15 @@
+# Third-party notices
+
+## SQL TextMate grammar (sql-base.tmLanguage.json)
+
+- Source: https://github.com/microsoft/vscode/tree/main/extensions/sql/syntaxes
+- License: MIT (Microsoft)
+
+## sqlglot
+
+- Source: https://github.com/tobymao/sqlglot
+- License: MIT
+
+## Other runtime dependencies
+
+See `python/pyproject.toml` and `package.json` for full dependency lists.

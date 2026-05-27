@@ -1,0 +1,9 @@
+{
+  "mcpServers": {
+    "sql-studio": {
+      "command": "uv",
+      "args": ["run", "--directory", "${workspaceFolder}/python", "sql-studio-mcp"],
+      "env": {}
+    }
+  }
+}
