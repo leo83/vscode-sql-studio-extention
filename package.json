@@ -55,6 +55,11 @@
     ],
     "commands": [
       {
+        "command": "sqlStudio.createSqlQuery",
+        "title": "SQL Studio: Create SQL Query",
+        "icon": "$(new-file)"
+      },
+      {
         "command": "sqlStudio.runQuery",
         "title": "SQL Studio: Run Query",
         "icon": "$(play)"
@@ -150,6 +155,11 @@
           "command": "sqlStudio.copyObjectName",
           "when": "view == sqlStudio.explorer",
           "group": "1_actions@2"
+        },
+        {
+          "command": "sqlStudio.createSqlQuery",
+          "when": "view == sqlStudio.explorer && viewItem == connection",
+          "group": "1_actions@0"
         },
         {
           "command": "sqlStudio.setActiveConnection",

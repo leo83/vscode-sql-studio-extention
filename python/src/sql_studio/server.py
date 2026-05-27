@@ -90,7 +90,9 @@ class JsonRpcServer:
         dialect = config.dialect
         statements = sqlglot_service.split_statements(sql, dialect)
         if not statements:
-            raise ValueError("No SQL statements to execute")
+            raise ValueError(
+                "No executable SQL found. Add a statement (e.g. SELECT) or select SQL text to run."
+            )
         driver = get_driver(config)
         last_result: QueryResult | None = None
         for statement in statements:

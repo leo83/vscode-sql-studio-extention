@@ -111,6 +111,14 @@ export class QueryRunner {
           }
         } catch (err) {
           const message = err instanceof Error ? err.message : String(err);
+          const errorResult: QueryResultPayload = {
+            columns: [],
+            rows: [],
+            row_count: 0,
+            duration_ms: 0,
+            error: message,
+          };
+          await this.results.show(errorResult, `${title} (error)`);
           vscode.window.showErrorMessage(`Query failed: ${message}`);
         }
       }

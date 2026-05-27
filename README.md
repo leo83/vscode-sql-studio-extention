@@ -7,8 +7,10 @@
 - Подсветка SQL (PostgreSQL / ClickHouse / generic `.sql`)
 - **Database Explorer** — schemas → tables → columns
 - Клик по таблице → preview данных (тот же UI, что и для SQL)
-- Выполнение запросов: **Cmd+Enter** / **Ctrl+Enter**
+- **Create SQL Query** — новый редактор запроса из Command Palette или ПКМ на connection
+- Выполнение запросов: **Cmd+Enter** / **Ctrl+Enter** (работает и при фокусе вне редактора, если открыт один SQL-файл)
 - Таблица результатов: сортировка, фильтр, пагинация, экспорт CSV/Excel
+- **Ошибки запросов** — краткое сообщение, код ClickHouse, stack trace в свёрнутом блоке
 - Пароли connections хранятся **зашифрованно** (OS keychain через VS Code SecretStorage)
 - **Диалог подключения** (webview): создание и редактирование в одном окне, поля зависят от диалекта
 - **ClickHouse Native (TCP, порт 9000)** и **HTTP (8123)** — как Native Driver / HTTP в TablePlus
@@ -223,9 +225,11 @@ just package
 | Действие | Как |
 |----------|-----|
 | Preview таблицы | Клик по таблице в Explorer |
+| Новый SQL-запрос | Command Palette → **`SQL Studio: Create SQL Query`** или ПКМ на connection → **Create SQL Query** |
 | SQL-запрос | Открыть `.sql` / `.pgsql` / `.chsql`, **Cmd+Enter** |
 | Формат SQL | Command Palette → `SQL Studio: Format SQL` |
 | Экспорт | Кнопки в панели результатов |
+| Ошибка запроса | Панель **SQL Results**: краткий текст, Code/тип, stack trace по клику, **Copy error** |
 | Спросить агента | `SQL Studio: Ask Agent to Explain Query` |
 
 ### Настройки (Cursor Settings → SQL Studio)

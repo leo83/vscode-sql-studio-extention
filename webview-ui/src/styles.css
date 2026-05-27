@@ -100,13 +100,83 @@ tr:nth-child(even) {
   border-top: 1px solid var(--vscode-panel-border, #444);
 }
 
-.empty,
-.error {
+.empty {
   padding: 16px;
 }
 
-.error {
+.query-error {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px;
+  height: 100vh;
+  box-sizing: border-box;
+  overflow: auto;
+}
+
+.query-error-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.query-error-title {
+  font-size: 1.05em;
+  font-weight: 600;
   color: var(--vscode-errorForeground, #f48771);
+}
+
+.query-error-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.query-error-badge {
+  font-size: 0.85em;
+  padding: 2px 8px;
+  border-radius: 3px;
+  background: rgba(244, 135, 113, 0.15);
+  color: var(--vscode-errorForeground, #f48771);
+  border: 1px solid rgba(244, 135, 113, 0.35);
+}
+
+.query-error-summary {
+  margin: 0;
+  line-height: 1.5;
+  color: var(--vscode-foreground, #ccc);
+  word-break: break-word;
+}
+
+.query-error-stack,
+.query-error-raw {
+  border: 1px solid var(--vscode-panel-border, #444);
+  border-radius: 4px;
+  background: var(--vscode-textCodeBlock-background, #2d2d2d);
+}
+
+.query-error-stack summary,
+.query-error-raw summary {
+  padding: 8px 12px;
+  cursor: pointer;
+  user-select: none;
+  color: var(--vscode-descriptionForeground, #aaa);
+}
+
+.query-error-stack pre,
+.query-error-raw pre {
+  margin: 0;
+  padding: 12px;
+  overflow: auto;
+  max-height: 50vh;
+  font-family: var(--vscode-editor-font-family, monospace);
+  font-size: var(--vscode-editor-font-size, 12px);
+  line-height: 1.45;
+  white-space: pre-wrap;
+  word-break: break-word;
+  color: var(--vscode-errorForeground, #f48771);
+  opacity: 0.9;
 }
 
 /* Connection dialog modal */

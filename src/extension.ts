@@ -12,6 +12,7 @@ import {
   askAgentFix,
   formatActiveDocument,
 } from "./commands/agentCommands";
+import { createSqlQuery } from "./commands/createSqlQuery";
 
 let pythonClient: PythonClient;
 let connectionManager: ConnectionManager;
@@ -48,20 +49,33 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     pythonClient,
     explorerView,
     vscode.commands.registerCommand("sqlStudio.runQuery", async () => {
-      const editor = vscode.window.activeTextEditor;
-      if (editor) {
-        await queryRunner.runDocument(editor);
+      const editor = findSqlStudioEditor();
+      if (!editor) {
+        const picked = await vscode.window.showWarningMessage(
+          "Open a SQL Studio editor (Create SQL Query or a .sql / .chsql file).",
+          "Create SQL Query"
+        );
+        if (picked === "Create SQL Query") {
+          await vscode.commands.executeCommand("sqlStudio.createSqlQuery");
+        }
+        return;
       }
+      await queryRunner.runDocument(editor);
     }),
     vscode.commands.registerCommand("sqlStudio.runSelection", async () => {
-      const editor = vscode.window.activeTextEditor;
-      if (editor) {
-        await queryRunner.runSelection(editor);
+      const editor = findSqlStudioEditor();
+      if (!editor) {
+        vscode.window.showWarningMessage("Open a SQL Studio editor first.");
+        return;
       }
+      await queryRunner.runSelection(editor);
     }),
     vscode.commands.registerCommand("sqlStudio.formatSql", () =>
       formatActiveDocument(pythonClient, connectionManager)
     ),
+    vscode.commands.registerCommand("sqlStudio.createSqlQuery", async (item?: ExplorerTreeItem) => {
+      await createSqlQuery(connectionManager, item?.connectionId ?? undefined);
+    }),
     vscode.commands.registerCommand("sqlStudio.addConnection", async () => {
       await connectionManager.promptNewOrEdit();
       explorerProvider.refresh();
@@ -209,4 +223,18 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
 
 export function deactivate(): void {
   pythonClient?.dispose();
+}
+
+function findSqlStudioEditor(): vscode.TextEditor | undefined {
+  const active = vscode.window.activeTextEditor;
+  if (active?.document.languageId.match(/sql-studio/)) {
+    return active;
+  }
+  const sqlEditors = vscode.window.visibleTextEditors.filter((e) =>
+    e.document.languageId.match(/sql-studio/)
+  );
+  if (sqlEditors.length === 1) {
+    return sqlEditors[0];
+  }
+  return undefined;
 }

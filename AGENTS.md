@@ -41,14 +41,17 @@ grammars/         TextMate grammars (SQL подсветка)
 | `src/extension.ts` | Точка входа, регистрация команд и explorer |
 | `src/pythonClient.ts` | Spawn uv + JSON-RPC клиент |
 | `src/connectionManager.ts` | Профили connections + SecretStorage |
+| `src/commands/createSqlQuery.ts` | Команда Create SQL Query (новый untitled-редактор) |
 | `src/webview/connectionDialog.ts` | Webview-диалог создания/редактирования connection |
-| `src/queryRunner.ts` | Выполнение SQL и preview таблиц |
+| `src/queryRunner.ts` | Выполнение SQL и preview таблиц; ошибки → Results panel |
 | `src/schemaExplorer/treeProvider.ts` | Database Explorer TreeView (корень **Connections**) |
 | `src/webview/resultsPanel.ts` | Webview panel результатов |
 | `src/sqlUtils.ts` | buildPreviewSql, лимиты строк |
 | `webview-ui/src/ConnectionDialog.tsx` | Форма подключения (поля по диалекту) |
 | `webview-ui/src/connectionFields.ts` | Схема полей PostgreSQL / ClickHouse |
 | `webview-ui/src/vscodeApi.ts` | Singleton `acquireVsCodeApi()` (один вызов на webview) |
+| `webview-ui/src/QueryError.tsx` | Форматированный вывод ошибок запроса |
+| `webview-ui/src/parseQueryError.ts` | Парсинг ClickHouse/Postgres error + stack trace |
 | `python/src/sql_studio/server.py` | JSON-RPC server |
 | `python/src/sql_studio/drivers/` | postgres, clickhouse (фасад), clickhouse_http, clickhouse_native |
 | `python/src/sql_studio/dialect/sqlglot_service.py` | format / split SQL |
@@ -152,6 +155,14 @@ cd python && uv sync --all-groups && uv run pytest
 - **`acquireVsCodeApi()` — строго один раз** на webview: использовать `webview-ui/src/vscodeApi.ts` (`getVsCodeApi()`).
 - Режимы одного бандла: `window.__SQL_STUDIO_MODE__` = `results` | `connection`.
 - Сообщения extension ↔ webview: `postMessage` (`save`, `cancel`, `test`, `testResult`, `exportCsv`, `exportXlsx`).
+- Ошибки `query/execute`: `QueryResult.error` → компонент `QueryError` (summary + collapsible stack trace), не plain text.
+
+### Запросы SQL
+
+- Команда `sqlStudio.createSqlQuery` — открывает untitled-редактор, выставляет active connection.
+- `sqlStudio.runQuery` — `findSqlStudioEditor()` ищет единственный открытый sql-studio редактор.
+- `split_statements` (sqlglot) отбрасывает пустые/comment-only; при ошибке парсинга — fallback без `--` строк.
+- При исключении backend показывать ошибку и в notification, и в Results panel.
 
 ## Работа с Cursor Agent
 
@@ -205,6 +216,7 @@ echo '{"jsonrpc":"2.0","id":1,"method":"health","params":{}}' | uv run sql-studi
 | Webview пустой | `npm run build:webview`; проверить `webview-ui/dist/assets/` |
 | Диалог connection без полей | Повторный `acquireVsCodeApi()` — только через `getVsCodeApi()` |
 | Test connection зависает | ClickHouse: Native + 9000, не HTTP на 9000; проверить таймаут backend |
+| Ошибка «No executable SQL» | В файле только комментарии; добавить `SELECT` или выделить текст запроса |
 | Import errors в extension | `npm run lint` |
 
 ## Что не делать

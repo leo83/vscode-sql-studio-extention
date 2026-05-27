@@ -79,7 +79,7 @@ export class ResultsPanel {
       )
     );
     const nonce = String(Date.now());
-    const payload = JSON.stringify(result);
+    const payload = JSON.stringify(result).replace(/</g, "\\u003c");
     return `<!DOCTYPE html>
 <html lang="en">
 <head>

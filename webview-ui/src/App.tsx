@@ -1,4 +1,5 @@
 import { ConnectionDialog } from "./ConnectionDialog";
+import { QueryError } from "./QueryError";
 import { ResultsTable } from "./ResultsTable";
 import type { ConnectionDialogInit, QueryResult } from "./types";
 
@@ -18,7 +19,7 @@ export function App() {
     return <div className="empty">No query results.</div>;
   }
   if (result.error) {
-    return <div className="error">Error: {result.error}</div>;
+    return <QueryError error={result.error} />;
   }
   return <ResultsTable result={result} />;
 }

@@ -23,9 +23,28 @@ def split_statements(sql: str, dialect: str) -> list[str]:
     read = dialect_read(dialect)
     try:
         statements = sqlglot.parse(sql, read=read)
-        return [s.sql(dialect=read) for s in statements if s is not None]
+        out: list[str] = []
+        for statement in statements:
+            if statement is None:
+                continue
+            text = statement.sql(dialect=read).strip()
+            if text:
+                out.append(text)
+        return out
     except sqlglot.errors.ParseError:
-        return [sql.strip()] if sql.strip() else []
+        stripped = _strip_sql_comments(sql).strip()
+        return [stripped] if stripped else []
+
+
+def _strip_sql_comments(sql: str) -> str:
+    """Fallback when sqlglot cannot parse: remove line comments, keep SQL."""
+    lines: list[str] = []
+    for line in sql.splitlines():
+        trimmed = line.strip()
+        if not trimmed or trimmed.startswith("--"):
+            continue
+        lines.append(line)
+    return "\n".join(lines)
 
 
 def validate_sql(sql: str, dialect: str) -> str | None:
