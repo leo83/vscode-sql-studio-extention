@@ -2,10 +2,11 @@ import * as vscode from "vscode";
 import { PythonClient } from "./pythonClient";
 import {
   ConnectionTag,
+  formatTagsBracketPlain,
   normalizeTags,
   promptTagColor,
+  tagBracketIconUri,
   tagColorLabel,
-  tagPillIconUri,
 } from "./connectionTags";
 import {
   ConnectionProfile,
@@ -104,12 +105,10 @@ export class ConnectionManager {
       : this.getActiveConnectionId();
 
     const items = profiles.map((p) => {
-      const tagDesc = normalizeTags(p.tags)
-        .map((t) => t.name)
-        .join(", ");
+      const tagDesc = formatTagsBracketPlain(p.tags);
       return {
         label: p.name,
-        description: tagDesc || `${p.dialect} — ${p.host}:${p.port}`,
+        description: tagDesc ?? `${p.host}:${p.port}`,
         detail: p.id === currentId ? "Current for this editor" : undefined,
         profile: p,
       };
@@ -251,7 +250,7 @@ export class ConnectionManager {
         ...tags.map((tag) => ({
           label: tag.name,
           description: tagColorLabel(tag.color),
-          iconPath: tagPillIconUri(tag),
+          iconPath: tagBracketIconUri(tag),
           tag,
         })),
       ];

@@ -1,7 +1,6 @@
 import { useMemo, useState } from "react";
 import {
   TAG_COLOR_OPTIONS,
-  contrastingTextColor,
   normalizeTags,
   paletteColorFromHex,
   tagColorHex,
@@ -22,7 +21,6 @@ export function TagEditor({ tags, onChange }: Props) {
 
   const normalized = normalizeTags(tags);
   const selectedHex = useMemo(() => tagColorHex(color), [color]);
-  const selectedText = useMemo(() => contrastingTextColor(selectedHex), [selectedHex]);
 
   const applyColor = (nextColor: string) => {
     setColor(nextColor);
@@ -73,24 +71,23 @@ export function TagEditor({ tags, onChange }: Props) {
     <div className="tag-editor">
       <div className="form-row">
         <label htmlFor="field-tags">Tags (optional)</label>
-        <span className="field-hint">Colored labels shown in Database Explorer</span>
+        <span className="field-hint">Colored [tags] shown in Database Explorer</span>
       </div>
 
       {normalized.length > 0 ? (
         <ul className="tag-list">
           {normalized.map((tag, index) => {
-            const bg = tagColorHex(tag.color);
-            const fg = contrastingTextColor(bg);
+            const color = tagColorHex(tag.color);
             return (
               <li key={`${tag.name}-${index}`}>
                 <button
                   type="button"
-                  className={`tag-pill${editingIndex === index ? " tag-pill-editing" : ""}`}
-                  style={{ backgroundColor: bg, color: fg }}
+                  className={`tag-bracket${editingIndex === index ? " tag-bracket-editing" : ""}`}
+                  style={{ color }}
                   aria-label={`Change color for ${tag.name}`}
                   onClick={() => startEditColor(index)}
                 >
-                  <span className="tag-name">{tag.name}</span>
+                  <span className="tag-name">[{tag.name}]</span>
                   <span
                     className="tag-remove"
                     role="button"
@@ -114,10 +111,10 @@ export function TagEditor({ tags, onChange }: Props) {
               : "Tag color"}
           </span>
           <span
-            className="tag-color-preview-pill"
-            style={{ backgroundColor: selectedHex, color: selectedText }}
+            className="tag-color-preview-bracket"
+            style={{ color: selectedHex }}
           >
-            {editingIndex !== null ? normalized[editingIndex]?.name : tagColorLabel(color)}
+            [{editingIndex !== null ? normalized[editingIndex]?.name : tagColorLabel(color)}]
           </span>
         </div>
 

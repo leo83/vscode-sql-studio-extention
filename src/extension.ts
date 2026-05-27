@@ -39,7 +39,11 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   }
   resultsPanel = new ResultsPanel(context, pythonClient);
   queryRunner = new QueryRunner(pythonClient, connectionManager, resultsPanel);
-  explorerProvider = new SchemaExplorerProvider(connectionManager, pythonClient);
+  explorerProvider = new SchemaExplorerProvider(
+    connectionManager,
+    pythonClient,
+    context.extensionUri
+  );
   connectionStatusBar = new ConnectionStatusBar(connectionManager);
 
   const onSqlEditorActive = async (document: vscode.TextDocument): Promise<void> => {

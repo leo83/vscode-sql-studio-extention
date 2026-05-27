@@ -1,4 +1,5 @@
 import * as vscode from "vscode";
+import type { Dialect } from "./types";
 
 export interface ConnectionTag {
   name: string;
@@ -102,100 +103,74 @@ export function normalizeTags(tags: ConnectionTag[] | undefined): ConnectionTag[
   return out;
 }
 
-export function formatTagsDescription(tags: ConnectionTag[] | undefined): string | undefined {
+export function formatTagBracketPlain(tag: ConnectionTag): string {
+  return `[${tag.name}]`;
+}
+
+export function formatTagsBracketPlain(tags: ConnectionTag[] | undefined): string | undefined {
   const normalized = normalizeTags(tags);
   if (normalized.length === 0) {
     return undefined;
   }
-  return normalized.map((t) => t.name).join("  ");
+  return normalized.map(formatTagBracketPlain).join(" ");
 }
 
-/** Plain description: tag names + dialect/host (always shown together). */
-export function formatConnectionExplorerDescriptionText(
+/** Explorer description: colored bracket tags are plain text here (TreeView description is string-only). */
+export function formatConnectionExplorerDescription(
   tags: ConnectionTag[] | undefined,
-  dialectDesc: string
+  endpoint: string
 ): string {
-  const tagDesc = formatTagsDescription(tags);
-  return tagDesc ? `${tagDesc}  ${dialectDesc}` : dialectDesc;
+  const tagPart = formatTagsBracketPlain(tags);
+  return tagPart ? `${tagPart}  ${endpoint}` : endpoint;
 }
 
-export function formatTagPillHtml(tag: ConnectionTag): string {
-  const bg = tagColorHex(tag.color);
-  const fg = contrastingTextColor(bg);
+export function formatTagBracketHtml(tag: ConnectionTag): string {
+  const color = tagColorHex(tag.color);
   return (
-    `<span style="display:inline-block;background:${bg};color:${fg};` +
-    `padding:0 5px;border-radius:3px;margin-left:3px;` +
-    `font-size:10px;font-weight:600;line-height:15px;white-space:nowrap;">` +
-    `${escapeHtml(tag.name)}</span>`
+    `<span style="color:${color};font-weight:600;">[${escapeHtml(tag.name)}]</span>`
   );
 }
 
-/** SVG pill icon for Quick Pick / tree decorations. */
-export function tagPillSvg(tag: ConnectionTag, fontSize = 10): string {
-  const bg = tagColorHex(tag.color);
-  const fg = contrastingTextColor(bg);
-  const padX = 5;
-  const padY = 2;
-  const charW = fontSize * 0.58;
-  const textW = Math.max(tag.name.length * charW, fontSize);
-  const width = Math.ceil(textW + padX * 2);
-  const height = Math.ceil(fontSize + padY * 2);
-  const rx = 3;
-  const textY = height - padY - 1;
+/** @deprecated Use formatTagsBracketPlain */
+export function formatTagsDescription(tags: ConnectionTag[] | undefined): string | undefined {
+  return formatTagsBracketPlain(tags);
+}
+
+/** @deprecated Use formatTagBracketHtml */
+export function formatTagPillHtml(tag: ConnectionTag): string {
+  return formatTagBracketHtml(tag);
+}
+
+function svgDataUri(svg: string): vscode.Uri {
+  return vscode.Uri.parse(
+    `data:image/svg+xml;base64,${Buffer.from(svg, "utf8").toString("base64")}`
+  );
+}
+
+/** SVG bracket tag for Quick Pick icons. */
+export function tagBracketSvg(tag: ConnectionTag, fontSize = 11): string {
+  const text = `[${tag.name}]`;
+  const color = tagColorHex(tag.color);
+  const charW = fontSize * 0.55;
+  const width = Math.ceil(text.length * charW + 2);
+  const height = Math.ceil(fontSize + 4);
+  const textY = fontSize + 1;
   return (
     `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" ` +
     `viewBox="0 0 ${width} ${height}">` +
-    `<rect x="0" y="0" width="${width}" height="${height}" rx="${rx}" ry="${rx}" fill="${bg}"/>` +
-    `<text x="${padX}" y="${textY}" fill="${fg}" font-size="${fontSize}" ` +
-    `font-family="system-ui,-apple-system,sans-serif" font-weight="600">${escapeXml(tag.name)}</text>` +
+    `<text x="1" y="${textY}" fill="${color}" font-size="${fontSize}" ` +
+    `font-family="system-ui,-apple-system,sans-serif" font-weight="600">${escapeXml(text)}</text>` +
     `</svg>`
   );
 }
 
-export function tagPillIconUri(tag: ConnectionTag): vscode.Uri {
-  const svg = tagPillSvg(tag);
-  return vscode.Uri.parse(
-    `data:image/svg+xml;base64,${Buffer.from(svg, "utf8").toString("base64")}`
-  );
+export function tagBracketIconUri(tag: ConnectionTag): vscode.Uri {
+  return svgDataUri(tagBracketSvg(tag));
 }
 
-export function formatTagsPillsSvgUri(tags: ConnectionTag[]): vscode.Uri | undefined {
-  const normalized = normalizeTags(tags);
-  if (normalized.length === 0) {
-    return undefined;
-  }
-  const fontSize = 10;
-  const gap = 3;
-  const padY = 2;
-  const padX = 5;
-  const charW = fontSize * 0.58;
-  const pillWidths = normalized.map((tag) => {
-    const textW = Math.max(tag.name.length * charW, fontSize);
-    return Math.ceil(textW + padX * 2);
-  });
-  const height = Math.ceil(fontSize + padY * 2);
-  const width = pillWidths.reduce((sum, w) => sum + w, 0) + gap * (normalized.length - 1);
-  let x = 0;
-  const pills = normalized
-    .map((tag, index) => {
-      const bg = tagColorHex(tag.color);
-      const fg = contrastingTextColor(bg);
-      const w = pillWidths[index];
-      const textY = height - padY - 1;
-      const pill =
-        `<rect x="${x}" y="0" width="${w}" height="${height}" rx="3" ry="3" fill="${bg}"/>` +
-        `<text x="${x + padX}" y="${textY}" fill="${fg}" font-size="${fontSize}" ` +
-        `font-family="system-ui,-apple-system,sans-serif" font-weight="600">${escapeXml(tag.name)}</text>`;
-      x += w + gap;
-      return pill;
-    })
-    .join("");
-  const svg =
-    `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" ` +
-    `viewBox="0 0 ${width} ${height}">${pills}</svg>`;
-  return vscode.Uri.parse(
-    `data:image/svg+xml;base64,${Buffer.from(svg, "utf8").toString("base64")}`
-  );
+/** @deprecated Use tagBracketIconUri */
+export function tagPillIconUri(tag: ConnectionTag): vscode.Uri {
+  return tagBracketIconUri(tag);
 }
 
 export function formatTagsTooltip(tags: ConnectionTag[] | undefined): vscode.MarkdownString | undefined {
@@ -204,15 +179,19 @@ export function formatTagsTooltip(tags: ConnectionTag[] | undefined): vscode.Mar
     return undefined;
   }
   const md = new vscode.MarkdownString(
-    normalized.map((t) => formatTagPillHtml(t)).join("")
+    normalized.map((t) => formatTagBracketHtml(t)).join(" ")
   );
   md.supportHtml = true;
   md.isTrusted = true;
   return md;
 }
 
-export function connectionIcon(): vscode.ThemeIcon {
-  return new vscode.ThemeIcon("plug");
+export function connectionDialectIcon(
+  dialect: Dialect,
+  extensionUri: vscode.Uri
+): vscode.Uri {
+  const file = dialect === "clickhouse" ? "clickhouse.svg" : "postgres.svg";
+  return vscode.Uri.joinPath(extensionUri, "resources", "icons", file);
 }
 
 function escapeHtml(text: string): string {

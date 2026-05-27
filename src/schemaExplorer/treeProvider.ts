@@ -1,8 +1,8 @@
 import * as vscode from "vscode";
 import { ConnectionManager } from "../connectionManager";
 import {
-  connectionIcon,
-  formatConnectionExplorerDescriptionText,
+  connectionDialectIcon,
+  formatConnectionExplorerDescription,
   formatTagsTooltip,
   normalizeTags,
 } from "../connectionTags";
@@ -25,7 +25,8 @@ export class ExplorerTreeItem extends vscode.TreeItem {
     public readonly connectionId: string | null,
     public readonly itemType: ExplorerItemType,
     collapsible: vscode.TreeItemCollapsibleState,
-    connectionProfile?: ConnectionProfile
+    connectionProfile?: ConnectionProfile,
+    extensionUri?: vscode.Uri
   ) {
     super(
       node?.label ?? (connectionId ? connectionId : "Connections"),
@@ -35,16 +36,16 @@ export class ExplorerTreeItem extends vscode.TreeItem {
     if (itemType === "connections-root") {
       this.iconPath = new vscode.ThemeIcon("server-environment");
     } else if (itemType === "connection") {
-      this.iconPath = connectionIcon();
       const tags = normalizeTags(connectionProfile?.tags);
-      const dialectDesc = connectionProfile
-        ? `${connectionProfile.dialect} — ${connectionProfile.host}:${connectionProfile.port}`
+      const endpoint = connectionProfile
+        ? `${connectionProfile.host}:${connectionProfile.port}`
         : undefined;
 
-      if (connectionProfile && dialectDesc) {
+      if (connectionProfile && endpoint && extensionUri) {
         this.id = `connection:${connectionProfile.id}`;
         this.label = connectionProfile.name;
-        this.description = formatConnectionExplorerDescriptionText(tags, dialectDesc);
+        this.iconPath = connectionDialectIcon(connectionProfile.dialect, extensionUri);
+        this.description = formatConnectionExplorerDescription(tags, endpoint);
       }
 
       if (connectionProfile) {
@@ -52,12 +53,12 @@ export class ExplorerTreeItem extends vscode.TreeItem {
           const tagMd = formatTagsTooltip(tags);
           if (tagMd) {
             tagMd.appendMarkdown(
-              `\n\n${connectionProfile.dialect} @ ${connectionProfile.host}:${connectionProfile.port}`
+              `\n\n${connectionProfile.host}:${connectionProfile.port}`
             );
             this.tooltip = tagMd;
           }
         } else {
-          this.tooltip = `${connectionProfile.name} (${connectionProfile.dialect})`;
+          this.tooltip = `${connectionProfile.name}\n${connectionProfile.host}:${connectionProfile.port}`;
         }
       }
     } else if (itemType === "table" || itemType === "view") {
@@ -91,7 +92,8 @@ export class SchemaExplorerProvider implements vscode.TreeDataProvider<ExplorerT
 
   constructor(
     private readonly connections: ConnectionManager,
-    private readonly python: PythonClient
+    private readonly python: PythonClient,
+    private readonly extensionUri: vscode.Uri
   ) {}
 
   refresh(): void {
@@ -129,7 +131,8 @@ export class SchemaExplorerProvider implements vscode.TreeDataProvider<ExplorerT
             p.id,
             "connection",
             vscode.TreeItemCollapsibleState.Collapsed,
-            p
+            p,
+            this.extensionUri
           )
       );
     }
