@@ -268,6 +268,31 @@ just package      # .vsix
 
 Инструкции для AI-агентов: [AGENTS.md](AGENTS.md).
 
-## License
+---
 
-MIT
+## Автор
+
+**lev** — [lev.ragulin@gmail.com](mailto:lev.ragulin@gmail.com)
+
+## Отказ от ответственности
+
+Проект распространяется **«как есть»**, без каких‑либо явных или подразумеваемых гарантий. Автор **не несёт ответственности** за возможные сбои, потерю данных, некорректные результаты запросов или любой другой ущерб, связанный с использованием расширения.
+
+Вы используете SQL Studio **на свой страх и риск**, в том числе при подключении к production-базам и выполнении запросов, меняющих данные.
+
+## Поддерживаемые СУБД
+
+На данный момент поддерживаются **только два типа баз данных**:
+
+- **PostgreSQL**
+- **ClickHouse** (Native TCP и HTTP)
+
+Другие СУБД (MySQL, SQLite, MS SQL Server и т.д.) **не поддерживаются**.
+
+## Лицензия
+
+Проект распространяется под лицензией [**The Beerware License (Revision 42)**](LICENSE) («Buy Me A Beer»):
+
+> As long as you retain this notice you can do whatever you want with this stuff. If we meet some day, and you think this stuff is worth it, you can buy me a beer in return.
+
+Полный текст — в файле [LICENSE](LICENSE).

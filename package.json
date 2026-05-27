@@ -4,6 +4,8 @@
   "description": "Write SQL, explore databases, and view query results with agent integration",
   "version": "0.1.0",
   "publisher": "sql-studio",
+  "license": "Beerware-1.0",
+  "author": "lev <lev.ragulin@gmail.com>",
   "engines": {
     "vscode": "^1.85.0"
   },
@@ -61,12 +63,17 @@
       },
       {
         "command": "sqlStudio.runQuery",
-        "title": "SQL Studio: Run Query",
+        "title": "SQL Studio: Run Query at Cursor",
         "icon": "$(play)"
       },
       {
         "command": "sqlStudio.runSelection",
         "title": "SQL Studio: Run Selection"
+      },
+      {
+        "command": "sqlStudio.runAllInFile",
+        "title": "SQL Studio: Run All in File",
+        "icon": "$(debug-continue)"
       },
       {
         "command": "sqlStudio.formatSql",
@@ -187,18 +194,33 @@
           "command": "sqlStudio.runQuery",
           "when": "editorLangId =~ /sql-studio/",
           "group": "navigation@1"
+        },
+        {
+          "command": "sqlStudio.runAllInFile",
+          "when": "editorLangId =~ /sql-studio/",
+          "group": "navigation@2"
         }
       ],
       "editor/context": [
         {
-          "command": "sqlStudio.runSelection",
+          "command": "sqlStudio.runQuery",
           "when": "editorLangId =~ /sql-studio/",
           "group": "sqlStudio@1"
         },
         {
-          "command": "sqlStudio.askAgentExplain",
+          "command": "sqlStudio.runAllInFile",
           "when": "editorLangId =~ /sql-studio/",
           "group": "sqlStudio@2"
+        },
+        {
+          "command": "sqlStudio.runSelection",
+          "when": "editorLangId =~ /sql-studio/",
+          "group": "sqlStudio@3"
+        },
+        {
+          "command": "sqlStudio.askAgentExplain",
+          "when": "editorLangId =~ /sql-studio/",
+          "group": "sqlStudio@4"
         }
       ]
     },
@@ -209,6 +231,14 @@
         "mac": "cmd+enter",
         "win": "ctrl+enter",
         "linux": "ctrl+enter",
+        "when": "editorLangId =~ /sql-studio/"
+      },
+      {
+        "command": "sqlStudio.runAllInFile",
+        "key": "cmd+shift+enter",
+        "mac": "cmd+shift+enter",
+        "win": "ctrl+shift+enter",
+        "linux": "ctrl+shift+enter",
         "when": "editorLangId =~ /sql-studio/"
       }
     ],

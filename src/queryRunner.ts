@@ -6,6 +6,7 @@ import {
   buildPreviewSql,
   getPreviewRowLimit,
   getQueryRowLimit,
+  getStatementAtPosition,
 } from "./sqlUtils";
 import {
   ConnectionWithSecret,
@@ -25,6 +26,22 @@ export class QueryRunner {
 
   async runDocument(editor: vscode.TextEditor): Promise<void> {
     const sql = editor.document.getText();
+    await this.runSql(sql, editor.document.fileName);
+  }
+
+  async runAtCursor(editor: vscode.TextEditor): Promise<void> {
+    if (!editor.selection.isEmpty) {
+      await this.runSelection(editor);
+      return;
+    }
+
+    const sql = getStatementAtPosition(editor.document, editor.selection.active);
+    if (!sql) {
+      vscode.window.showWarningMessage(
+        "No SQL at cursor. Move the cursor into a statement or select SQL text to run."
+      );
+      return;
+    }
     await this.runSql(sql, editor.document.fileName);
   }
 

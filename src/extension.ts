@@ -60,6 +60,20 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
         }
         return;
       }
+      await queryRunner.runAtCursor(editor);
+    }),
+    vscode.commands.registerCommand("sqlStudio.runAllInFile", async () => {
+      const editor = findSqlStudioEditor();
+      if (!editor) {
+        const picked = await vscode.window.showWarningMessage(
+          "Open a SQL Studio editor (Create SQL Query or a .sql / .chsql file).",
+          "Create SQL Query"
+        );
+        if (picked === "Create SQL Query") {
+          await vscode.commands.executeCommand("sqlStudio.createSqlQuery");
+        }
+        return;
+      }
       await queryRunner.runDocument(editor);
     }),
     vscode.commands.registerCommand("sqlStudio.runSelection", async () => {
