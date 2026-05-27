@@ -31,6 +31,7 @@ export interface QueryResultPayload {
   duration_ms: number;
   truncated?: boolean;
   error?: string | null;
+  status_message?: string | null;
 }
 
 export interface SchemaNodePayload {

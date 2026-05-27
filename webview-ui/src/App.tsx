@@ -1,5 +1,6 @@
 import { ConnectionDialog } from "./ConnectionDialog";
 import { QueryError } from "./QueryError";
+import { QueryStatus } from "./QueryStatus";
 import { ResultsTable } from "./ResultsTable";
 import type { ConnectionDialogInit, QueryResult } from "./types";
 
@@ -20,6 +21,9 @@ export function App() {
   }
   if (result.error) {
     return <QueryError error={result.error} />;
+  }
+  if (result.columns.length === 0 && result.rows.length === 0) {
+    return <QueryStatus result={result} />;
   }
   return <ResultsTable result={result} />;
 }

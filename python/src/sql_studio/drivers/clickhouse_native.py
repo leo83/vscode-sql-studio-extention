@@ -7,6 +7,8 @@ from typing import Any
 
 from clickhouse_driver import Client as NativeClient
 
+from sql_studio.dialect import sqlglot_service
+from sql_studio.execution_status import clickhouse_status, is_result_set_query
 from sql_studio.models import ConnectionConfig, QueryColumn, QueryResult, SchemaNode
 
 
@@ -39,6 +41,9 @@ class ClickHouseNativeDriver:
             self._client = None
         self._config = None
 
+    def is_connected_with(self, config: ConnectionConfig) -> bool:
+        return self._config == config and self._client is not None
+
     def test_connection(self) -> None:
         if self._client is None:
             raise RuntimeError("Not connected")
@@ -48,6 +53,16 @@ class ClickHouseNativeDriver:
         if self._client is None:
             raise RuntimeError("Not connected")
         started = time.perf_counter()
+        if sqlglot_service.is_session_statement(sql) or not is_result_set_query(sql):
+            self._client.execute(sql)
+            duration_ms = (time.perf_counter() - started) * 1000
+            return QueryResult(
+                columns=[],
+                rows=[],
+                row_count=0,
+                duration_ms=duration_ms,
+                status_message=clickhouse_status(sql, None),
+            )
         effective_limit = limit if limit is not None else 10_000
         result = self._client.execute(sql, with_column_types=True)
         duration_ms = (time.perf_counter() - started) * 1000
@@ -57,6 +72,7 @@ class ClickHouseNativeDriver:
                 rows=[],
                 row_count=0,
                 duration_ms=duration_ms,
+                status_message=clickhouse_status(sql, None),
             )
         rows_raw, col_types = result
         if not col_types:
@@ -65,6 +81,7 @@ class ClickHouseNativeDriver:
                 rows=[],
                 row_count=0,
                 duration_ms=duration_ms,
+                status_message=clickhouse_status(sql, None),
             )
         columns = [
             QueryColumn(name=str(col[0]), data_type=str(col[1])) for col in col_types

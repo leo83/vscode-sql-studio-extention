@@ -179,6 +179,49 @@ tr:nth-child(even) {
   opacity: 0.9;
 }
 
+.query-status {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px;
+  height: 100vh;
+  box-sizing: border-box;
+}
+
+.query-status-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.query-status-title {
+  font-size: 1.05em;
+  font-weight: 600;
+  color: var(--vscode-testing-iconPassed, #73c991);
+}
+
+.query-status-meta {
+  opacity: 0.85;
+  white-space: nowrap;
+}
+
+.query-status-message {
+  margin: 0;
+  padding: 12px 14px;
+  border-radius: 4px;
+  background: rgba(115, 201, 145, 0.12);
+  border: 1px solid rgba(115, 201, 145, 0.35);
+  color: var(--vscode-foreground, #ccc);
+  line-height: 1.5;
+  word-break: break-word;
+}
+
+.query-status-detail {
+  margin: 0;
+  opacity: 0.85;
+}
+
 /* Connection dialog modal */
 .modal-backdrop {
   display: flex;

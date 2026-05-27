@@ -8,6 +8,7 @@ from typing import Any
 import psycopg
 from psycopg.rows import dict_row
 
+from sql_studio.execution_status import postgres_status
 from sql_studio.models import ConnectionConfig, QueryColumn, QueryResult, SchemaNode
 
 
@@ -39,6 +40,13 @@ class PostgresDriver:
             self._conn = None
         self._config = None
 
+    def is_connected_with(self, config: ConnectionConfig) -> bool:
+        return (
+            self._config == config
+            and self._conn is not None
+            and not self._conn.closed
+        )
+
     def test_connection(self) -> None:
         if self._conn is None:
             raise RuntimeError("Not connected")
@@ -53,11 +61,13 @@ class PostgresDriver:
             cur.execute(sql)
             if cur.description is None:
                 duration_ms = (time.perf_counter() - started) * 1000
+                row_count = cur.rowcount if cur.rowcount >= 0 else 0
                 return QueryResult(
                     columns=[],
                     rows=[],
-                    row_count=cur.rowcount if cur.rowcount >= 0 else 0,
+                    row_count=row_count,
                     duration_ms=duration_ms,
+                    status_message=postgres_status(sql, cur.statusmessage, cur.rowcount),
                 )
             columns = [
                 QueryColumn(name=desc.name, data_type=str(desc.type_code))

@@ -6,6 +6,7 @@ import {
   buildPreviewSql,
   getPreviewRowLimit,
   getQueryRowLimit,
+  getSessionStatementsBeforePosition,
   getStatementAtPosition,
 } from "./sqlUtils";
 import {
@@ -35,7 +36,18 @@ export class QueryRunner {
       return;
     }
 
-    const sql = getStatementAtPosition(editor.document, editor.selection.active);
+    const position = editor.selection.active;
+    const context = getSessionStatementsBeforePosition(editor.document, position);
+    for (const stmt of context) {
+      const result = await this.runSql(stmt, editor.document.fileName, {
+        showResults: false,
+      });
+      if (result?.error) {
+        return;
+      }
+    }
+
+    const sql = getStatementAtPosition(editor.document, position);
     if (!sql) {
       vscode.window.showWarningMessage(
         "No SQL at cursor. Move the cursor into a statement or select SQL text to run."
@@ -55,7 +67,11 @@ export class QueryRunner {
     await this.runSql(sql, editor.document.fileName);
   }
 
-  async runSql(sql: string, title?: string): Promise<QueryResultPayload | undefined> {
+  async runSql(
+    sql: string,
+    title?: string,
+    options?: { showResults?: boolean }
+  ): Promise<QueryResultPayload | undefined> {
     const conn = await this.connections.getActiveConnectionWithSecret();
     if (!conn) {
       const picked = await vscode.window.showWarningMessage(
@@ -71,7 +87,8 @@ export class QueryRunner {
       conn,
       sql,
       title ?? conn.name,
-      getQueryRowLimit()
+      getQueryRowLimit(),
+      options?.showResults !== false
     );
   }
 
@@ -104,7 +121,8 @@ export class QueryRunner {
     conn: ConnectionWithSecret,
     sql: string,
     title: string,
-    limit: number
+    limit: number,
+    showResults = true
   ): Promise<QueryResultPayload | undefined> {
     let result: QueryResultPayload | undefined;
     await vscode.window.withProgress(
@@ -120,7 +138,9 @@ export class QueryRunner {
             sql,
             limit,
           });
-          await this.results.show(result, title);
+          if (showResults) {
+            await this.results.show(result, title);
+          }
           if (result.truncated) {
             vscode.window.showInformationMessage(
               `Results truncated to ${limit} rows.`
@@ -135,7 +155,9 @@ export class QueryRunner {
             duration_ms: 0,
             error: message,
           };
-          await this.results.show(errorResult, `${title} (error)`);
+          if (showResults) {
+            await this.results.show(errorResult, `${title} (error)`);
+          }
           vscode.window.showErrorMessage(`Query failed: ${message}`);
         }
       }

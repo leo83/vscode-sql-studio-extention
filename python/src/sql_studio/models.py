@@ -53,6 +53,7 @@ class QueryResult(BaseModel):
     duration_ms: float
     truncated: bool = False
     error: str | None = None
+    status_message: str | None = None
 
 
 class ExportResult(BaseModel):

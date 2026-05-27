@@ -10,6 +10,7 @@ export interface QueryResult {
   duration_ms: number;
   truncated?: boolean;
   error?: string | null;
+  status_message?: string | null;
 }
 
 export type WebviewMode = "results" | "connection";

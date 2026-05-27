@@ -1,6 +1,6 @@
 """Tests for sqlglot dialect service."""
 
-from sql_studio.dialect.sqlglot_service import format_sql, split_statements
+from sql_studio.dialect.sqlglot_service import format_sql, is_session_statement, split_statements
 
 
 def test_split_postgres_statements() -> None:
@@ -26,3 +26,17 @@ def test_split_clickhouse_with_header_comment() -> None:
     parts = split_statements(sql, "clickhouse")
     assert len(parts) == 1
     assert "SELECT 1" in parts[0].upper()
+
+
+def test_split_fallback_on_parse_error() -> None:
+    sql = "use robotisation; SELECT * FROM message; broken @@"
+    parts = split_statements(sql, "clickhouse")
+    assert len(parts) == 3
+    assert parts[0].upper().startswith("USE")
+    assert parts[1].upper().startswith("SELECT")
+
+
+def test_is_session_statement() -> None:
+    assert is_session_statement("use robotisation")
+    assert is_session_statement("SET readonly = 1")
+    assert not is_session_statement("SELECT 1")

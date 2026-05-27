@@ -12,11 +12,16 @@ _DRIVERS: dict[str, PostgresDriver | ClickHouseDriver] = {}
 def get_driver(config: ConnectionConfig) -> PostgresDriver | ClickHouseDriver:
     existing = _DRIVERS.get(config.id)
     if existing is not None and isinstance(existing, _driver_class(config)):
-        existing.connect(config)
-        return existing
-    if existing is not None:
+        if existing.is_connected_with(config):
+            return existing
         existing.disconnect()
-    driver = _create_driver(config)
+    elif existing is not None:
+        existing.disconnect()
+    driver = (
+        existing
+        if existing is not None and isinstance(existing, _driver_class(config))
+        else _create_driver(config)
+    )
     driver.connect(config)
     _DRIVERS[config.id] = driver
     return driver

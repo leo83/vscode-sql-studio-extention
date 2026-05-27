@@ -8,6 +8,8 @@ from typing import Any
 import clickhouse_connect
 from clickhouse_connect.driver.client import Client
 
+from sql_studio.dialect import sqlglot_service
+from sql_studio.execution_status import clickhouse_status, is_result_set_query
 from sql_studio.models import ConnectionConfig, QueryColumn, QueryResult, SchemaNode
 
 
@@ -37,6 +39,9 @@ class ClickHouseHttpDriver:
             self._client = None
         self._config = None
 
+    def is_connected_with(self, config: ConnectionConfig) -> bool:
+        return self._config == config and self._client is not None
+
     def test_connection(self) -> None:
         if self._client is None:
             raise RuntimeError("Not connected")
@@ -46,15 +51,28 @@ class ClickHouseHttpDriver:
         if self._client is None:
             raise RuntimeError("Not connected")
         started = time.perf_counter()
-        effective_limit = limit if limit is not None else 10_000
-        result = self._client.query(sql)
-        duration_ms = (time.perf_counter() - started) * 1000
-        if not result.column_names:
+        if sqlglot_service.is_session_statement(sql) or not is_result_set_query(sql):
+            response = self._client.command(sql)
+            duration_ms = (time.perf_counter() - started) * 1000
+            summary = getattr(response, "summary", None) or response
             return QueryResult(
                 columns=[],
                 rows=[],
                 row_count=0,
                 duration_ms=duration_ms,
+                status_message=clickhouse_status(sql, summary),
+            )
+        effective_limit = limit if limit is not None else 10_000
+        result = self._client.query(sql)
+        duration_ms = (time.perf_counter() - started) * 1000
+        if not result.column_names:
+            summary = getattr(result, "summary", None)
+            return QueryResult(
+                columns=[],
+                rows=[],
+                row_count=0,
+                duration_ms=duration_ms,
+                status_message=clickhouse_status(sql, summary),
             )
         columns = [
             QueryColumn(name=name, data_type=str(result.column_types[i]))

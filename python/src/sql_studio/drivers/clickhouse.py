@@ -41,16 +41,26 @@ def _create_backend(config: ConnectionConfig) -> _ClickHouseBackend:
 class ClickHouseDriver:
     def __init__(self) -> None:
         self._impl: _ClickHouseBackend | None = None
+        self._config: ConnectionConfig | None = None
 
     def connect(self, config: ConnectionConfig) -> None:
         self.disconnect()
         self._impl = _create_backend(config)
         self._impl.connect(config)
+        self._config = config
 
     def disconnect(self) -> None:
         if self._impl is not None:
             self._impl.disconnect()
             self._impl = None
+        self._config = None
+
+    def is_connected_with(self, config: ConnectionConfig) -> bool:
+        return (
+            self._config == config
+            and self._impl is not None
+            and self._impl.is_connected_with(config)
+        )
 
     def test_connection(self) -> None:
         if self._impl is None:

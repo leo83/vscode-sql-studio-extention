@@ -4,7 +4,7 @@ version = "0.1.0"
 description = "SQL Studio backend — query execution, schema introspection, export"
 readme = "README.md"
 authors = [{ name = "lev", email = "lev.ragulin@gmail.com" }]
-license = "Beerware-1.0"
+license = { text = "The Beerware License (Revision 42)" }
 requires-python = ">=3.11"
 dependencies = [
     "clickhouse-connect>=1.1.0",

@@ -163,19 +163,79 @@ function isExecutableStatement(sql: string, range: StatementRange): boolean {
   return Boolean(text) && !isCommentOnlySql(text);
 }
 
-/** Return the SQL statement at the editor cursor (not the whole document). */
-export function getStatementAtPosition(
+const SESSION_STATEMENT_RE = /^(USE|SET)\b/is;
+
+function stripLeadingLineComments(sql: string): string {
+  return sql
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter((line) => line && !line.startsWith("--"))
+    .join("\n")
+    .trim();
+}
+
+export function isSessionStatement(sql: string): boolean {
+  const stripped = stripLeadingLineComments(sql.replace(/;\s*$/, "").trim());
+  return Boolean(stripped) && SESSION_STATEMENT_RE.test(stripped);
+}
+
+function sessionStatementsBefore(
+  sql: string,
+  beforeOffset: number,
+  ranges: StatementRange[]
+): string[] {
+  const out: string[] = [];
+  for (const range of ranges) {
+    if (range.end > beforeOffset) {
+      break;
+    }
+    if (!isExecutableStatement(sql, range)) {
+      continue;
+    }
+    const text = statementText(sql, range);
+    if (isSessionStatement(text)) {
+      out.push(text);
+    }
+  }
+  return out;
+}
+
+/** USE/SET statements above the cursor that should run before the current query. */
+export function getSessionStatementsBeforePosition(
   document: vscode.TextDocument,
   position: vscode.Position
-): string | undefined {
+): string[] {
   const sql = document.getText();
   const offset = document.offsetAt(position);
   const ranges = findStatementRanges(sql);
   const executable = ranges.filter((range) => isExecutableStatement(sql, range));
+  const matched = findStatementRangeAtPosition(
+    sql,
+    offset,
+    document,
+    position,
+    executable
+  );
+  if (!matched) {
+    return [];
+  }
+  const statement = statementText(sql, matched);
+  if (isSessionStatement(statement)) {
+    return [];
+  }
+  return sessionStatementsBefore(sql, matched.start, ranges);
+}
 
+function findStatementRangeAtPosition(
+  sql: string,
+  offset: number,
+  document: vscode.TextDocument,
+  position: vscode.Position,
+  executable: StatementRange[]
+): StatementRange | undefined {
   for (const range of executable) {
     if (offset >= range.start && offset <= range.end) {
-      return statementText(sql, range);
+      return range;
     }
   }
 
@@ -185,19 +245,36 @@ export function getStatementAtPosition(
 
   for (const range of executable) {
     if (range.end >= lineStart && range.start <= lineEnd) {
-      return statementText(sql, range);
+      return range;
     }
   }
 
-  const next = executable.find((range) => range.start >= offset);
-  if (next) {
-    return statementText(sql, next);
+  return (
+    executable.find((range) => range.start >= offset) ??
+    [...executable].reverse().find((range) => range.end <= offset)
+  );
+}
+
+/** Return the SQL statement at the editor cursor (not the whole document). */
+export function getStatementAtPosition(
+  document: vscode.TextDocument,
+  position: vscode.Position
+): string | undefined {
+  const sql = document.getText();
+  const offset = document.offsetAt(position);
+  const ranges = findStatementRanges(sql);
+  const executable = ranges.filter((range) => isExecutableStatement(sql, range));
+  const matched = findStatementRangeAtPosition(
+    sql,
+    offset,
+    document,
+    position,
+    executable
+  );
+  if (!matched) {
+    return undefined;
   }
 
-  const prev = [...executable].reverse().find((range) => range.end <= offset);
-  if (prev) {
-    return statementText(sql, prev);
-  }
-
-  return undefined;
+  const statement = statementText(sql, matched);
+  return statement;
 }
