@@ -8,8 +8,10 @@ import {
   type Dialect,
   type ConnectionFieldDef,
 } from "./connectionFields";
-import type { ConnectionDialogInit } from "./types";
+import type { ConnectionDialogInit, ConnectionTagPayload } from "./types";
 import { getVsCodeApi } from "./vscodeApi";
+import { TagEditor } from "./TagEditor";
+import { normalizeTags } from "./tagColors";
 
 type FormValues = Record<string, string | boolean>;
 
@@ -80,6 +82,9 @@ export function ConnectionDialog({ init }: { init: ConnectionDialogInit }) {
   const [testing, setTesting] = useState(false);
   const [testMessage, setTestMessage] = useState<string | null>(null);
   const [testOk, setTestOk] = useState<boolean | null>(null);
+  const [tags, setTags] = useState<ConnectionTagPayload[]>(() =>
+    normalizeTags(init.profile?.tags)
+  );
 
   const dialect = values.dialect as Dialect;
   const clickhouseInterface = (values.clickhouseInterface ?? "native") as ClickHouseInterface;
@@ -171,6 +176,7 @@ export function ConnectionDialog({ init }: { init: ConnectionDialogInit }) {
         d === "clickhouse"
           ? ((values.clickhouseInterface ?? "native") as ClickHouseInterface)
           : undefined,
+      tags: normalizeTags(tags),
       id: init.profile?.id,
     };
   };
@@ -283,6 +289,7 @@ export function ConnectionDialog({ init }: { init: ConnectionDialogInit }) {
             ) : null}
           </div>
           {connectionFields.map(renderField)}
+          <TagEditor tags={tags} onChange={setTags} />
           {testMessage ? (
             <div className={`test-result${testOk ? " ok" : " fail"}`}>{testMessage}</div>
           ) : null}

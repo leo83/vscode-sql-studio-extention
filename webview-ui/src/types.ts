@@ -27,6 +27,11 @@ export type WebviewMode = "results" | "connection";
 
 export type ClickHouseInterface = "http" | "native";
 
+export interface ConnectionTagPayload {
+  name: string;
+  color: string;
+}
+
 export interface ConnectionProfilePayload {
   id?: string;
   name: string;
@@ -38,6 +43,7 @@ export interface ConnectionProfilePayload {
   ssl?: boolean;
   readOnly?: boolean;
   clickhouseInterface?: ClickHouseInterface;
+  tags?: ConnectionTagPayload[];
 }
 
 export interface ConnectionDialogInit {
@@ -58,4 +64,5 @@ export interface ConnectionFormPayload {
   ssl: boolean;
   readOnly: boolean;
   clickhouseInterface?: ClickHouseInterface;
+  tags?: ConnectionTagPayload[];
 }

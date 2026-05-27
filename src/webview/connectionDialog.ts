@@ -11,6 +11,7 @@ import {
   secretKeyForConnection,
   toRpcConnection,
 } from "../types";
+import { ConnectionTag, normalizeTags } from "../connectionTags";
 
 export interface ConnectionFormPayload {
   id?: string;
@@ -24,6 +25,7 @@ export interface ConnectionFormPayload {
   ssl: boolean;
   readOnly: boolean;
   clickhouseInterface?: ClickHouseInterface;
+  tags?: ConnectionTag[];
 }
 
 export class ConnectionDialog {
@@ -125,6 +127,7 @@ export class ConnectionDialog {
         payload.dialect === "clickhouse"
           ? payload.clickhouseInterface ?? inferClickHouseInterface(payload.port)
           : undefined,
+      tags: normalizeTags(payload.tags),
     };
 
     return { ...profile, password };

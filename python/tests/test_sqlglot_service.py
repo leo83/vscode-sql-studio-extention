@@ -40,3 +40,32 @@ def test_is_session_statement() -> None:
     assert is_session_statement("use robotisation")
     assert is_session_statement("SET readonly = 1")
     assert not is_session_statement("SELECT 1")
+
+
+def test_validate_sql_valid() -> None:
+    from sql_studio.dialect.sqlglot_service import validate_sql
+
+    assert validate_sql("SELECT 1", "postgres") is None
+
+
+def test_validate_sql_invalid() -> None:
+    from sql_studio.dialect.sqlglot_service import validate_sql
+
+    err = validate_sql("SELECT FROM", "postgres")
+    assert err is not None
+
+
+def test_format_returns_original_on_parse_error() -> None:
+    broken = "SELECT @@broken"
+    assert format_sql(broken, "postgres") == broken
+
+
+def test_split_semicolon_inside_string() -> None:
+    sql = "SELECT ';' AS x; SELECT 2;"
+    parts = split_statements(sql, "postgres")
+    assert len(parts) == 2
+
+
+def test_split_clickhouse_format() -> None:
+    parts = split_statements("SELECT 1", "clickhouse")
+    assert len(parts) == 1

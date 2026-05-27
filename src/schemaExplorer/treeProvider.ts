@@ -1,7 +1,13 @@
 import * as vscode from "vscode";
 import { ConnectionManager } from "../connectionManager";
+import {
+  connectionIcon,
+  formatTagsDescription,
+  formatTagsTooltip,
+  normalizeTags,
+} from "../connectionTags";
 import { PythonClient } from "../pythonClient";
-import { SchemaNodePayload, toRpcConnection } from "../types";
+import { ConnectionProfile, SchemaNodePayload, toRpcConnection } from "../types";
 
 export type ExplorerItemType =
   | "connections-root"
@@ -18,7 +24,8 @@ export class ExplorerTreeItem extends vscode.TreeItem {
     public readonly node: SchemaNodePayload | null,
     public readonly connectionId: string | null,
     public readonly itemType: ExplorerItemType,
-    collapsible: vscode.TreeItemCollapsibleState
+    collapsible: vscode.TreeItemCollapsibleState,
+    connectionProfile?: ConnectionProfile
   ) {
     super(
       node?.label ?? (connectionId ? connectionId : "Connections"),
@@ -28,8 +35,27 @@ export class ExplorerTreeItem extends vscode.TreeItem {
     if (itemType === "connections-root") {
       this.iconPath = new vscode.ThemeIcon("server-environment");
     } else if (itemType === "connection") {
-      this.iconPath = new vscode.ThemeIcon("plug");
-      this.description = connectionId ?? undefined;
+      this.iconPath = connectionIcon();
+      const tags = normalizeTags(connectionProfile?.tags);
+      const tagDesc = formatTagsDescription(tags);
+      const dialectDesc = connectionProfile
+        ? `${connectionProfile.dialect} — ${connectionProfile.host}:${connectionProfile.port}`
+        : undefined;
+      this.description = tagDesc ?? dialectDesc;
+
+      if (connectionProfile) {
+        if (tags.length > 0) {
+          const tagMd = formatTagsTooltip(tags);
+          if (tagMd) {
+            tagMd.appendMarkdown(
+              `\n\n${connectionProfile.dialect} @ ${connectionProfile.host}:${connectionProfile.port}`
+            );
+            this.tooltip = tagMd;
+          }
+        } else {
+          this.tooltip = `${connectionProfile.name} (${connectionProfile.dialect})`;
+        }
+      }
     } else if (itemType === "table" || itemType === "view") {
       this.iconPath = new vscode.ThemeIcon("table");
       this.tooltip = "Click to preview data";
@@ -98,7 +124,8 @@ export class SchemaExplorerProvider implements vscode.TreeDataProvider<ExplorerT
             },
             p.id,
             "connection",
-            vscode.TreeItemCollapsibleState.Collapsed
+            vscode.TreeItemCollapsibleState.Collapsed,
+            p
           )
       );
     }

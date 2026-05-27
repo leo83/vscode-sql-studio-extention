@@ -1,3 +1,5 @@
+import type { ConnectionTag } from "./connectionTags";
+
 export type Dialect = "postgres" | "clickhouse";
 export type ClickHouseInterface = "http" | "native";
 
@@ -13,6 +15,8 @@ export interface ConnectionProfile {
   readOnly?: boolean;
   /** ClickHouse only: native TCP (9000) or HTTP (8123). */
   clickhouseInterface?: ClickHouseInterface;
+  /** Optional colored labels shown in Database Explorer. */
+  tags?: ConnectionTag[];
 }
 
 export interface ConnectionWithSecret extends ConnectionProfile {

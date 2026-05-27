@@ -169,6 +169,18 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       }
     ),
     vscode.commands.registerCommand(
+      "sqlStudio.manageConnectionTags",
+      async (item: ExplorerTreeItem) => {
+        const id = item.connectionId;
+        if (!id) {
+          return;
+        }
+        await connectionManager.manageConnectionTags(id);
+        explorerProvider.refresh();
+        connectionStatusBar.refresh();
+      }
+    ),
+    vscode.commands.registerCommand(
       "sqlStudio.deleteConnection",
       async (item: ExplorerTreeItem) => {
         const id = item.connectionId;

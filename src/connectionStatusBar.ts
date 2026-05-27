@@ -1,5 +1,6 @@
 import * as vscode from "vscode";
 import { ConnectionManager } from "./connectionManager";
+import { formatTagsDescription } from "./connectionTags";
 import { isSqlStudioEditor } from "./sqlDocument";
 
 export class ConnectionStatusBar implements vscode.Disposable {
@@ -35,8 +36,11 @@ export class ConnectionStatusBar implements vscode.Disposable {
 
     if (profile) {
       const scope = docId ? "file" : "workspace";
+      const tagDesc = formatTagsDescription(profile.tags);
       this.item.text = `$(database) ${profile.name} (${profile.dialect})`;
-      this.item.tooltip = `SQL Studio connection (${scope}). Click to change.`;
+      this.item.tooltip = tagDesc
+        ? `SQL Studio connection (${scope}). Tags: ${tagDesc}. Click to change.`
+        : `SQL Studio connection (${scope}). Click to change.`;
     } else {
       this.item.text = "$(database) Select connection";
       this.item.tooltip = "Choose a database connection for this SQL file";
