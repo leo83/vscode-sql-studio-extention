@@ -44,7 +44,12 @@ export async function askAgentExplain(
     try {
       const ddl = await python.request<{ ddl: string }>("schema/getTableDDL", {
         connection: toRpcConnection(conn),
-        path: conn.dialect === "postgres" ? ["schemas", "public", ""] : ["databases", conn.database, ""],
+        path:
+          conn.dialect === "postgres"
+            ? ["schemas", "public", ""]
+            : conn.dialect === "mssql"
+              ? ["schemas", "dbo", ""]
+              : ["databases", conn.database, ""],
       });
       if (ddl.ddl && !ddl.ddl.startsWith("--")) {
         schemaHint = `\n\nSchema context:\n${ddl.ddl}`;

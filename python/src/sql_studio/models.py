@@ -7,7 +7,7 @@ from typing import Any, Literal
 from pydantic import BaseModel, Field
 
 
-Dialect = Literal["postgres", "clickhouse"]
+Dialect = Literal["postgres", "clickhouse", "mssql"]
 ClickHouseInterface = Literal["http", "native"]
 
 

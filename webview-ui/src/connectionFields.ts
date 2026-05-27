@@ -1,4 +1,4 @@
-export type Dialect = "postgres" | "clickhouse";
+export type Dialect = "postgres" | "clickhouse" | "mssql";
 export type ClickHouseInterface = "http" | "native";
 
 export const CLICKHOUSE_INTERFACE_OPTIONS: FieldOption[] = [
@@ -26,6 +26,7 @@ export interface ConnectionFieldDef {
 export const DIALECT_OPTIONS: FieldOption[] = [
   { label: "PostgreSQL", value: "postgres" },
   { label: "ClickHouse", value: "clickhouse" },
+  { label: "Microsoft SQL Server", value: "mssql" },
 ];
 
 const baseConnectionFields: ConnectionFieldDef[] = [
@@ -64,17 +65,16 @@ const baseConnectionFields: ConnectionFieldDef[] = [
   },
 ];
 
-const postgresExtras: ConnectionFieldDef[] = [
+const sqlExtras: ConnectionFieldDef[] = [
   {
     key: "ssl",
-    label: "Use SSL (sslmode=require)",
+    label: "Use encrypted connection (TLS)",
     type: "checkbox",
   },
   {
     key: "readOnly",
     label: "Read-only connection",
     type: "checkbox",
-    hint: "Sets default_transaction_read_only=on",
   },
 ];
 
@@ -107,6 +107,9 @@ export function defaultPort(
   if (dialect === "postgres") {
     return 5432;
   }
+  if (dialect === "mssql") {
+    return 1433;
+  }
   return clickhouseInterface === "http" ? 8123 : 9000;
 }
 
@@ -114,7 +117,7 @@ export function getConnectionFields(
   dialect: Dialect,
   clickhouseInterface: ClickHouseInterface = "native"
 ): ConnectionFieldDef[] {
-  const extras = dialect === "postgres" ? postgresExtras : clickhouseExtras;
+  const extras = dialect === "clickhouse" ? clickhouseExtras : sqlExtras;
   const chPort = clickhouseInterface === "http" ? "8123" : "9000";
   return [
     ...(dialect === "clickhouse" ? [clickhouseInterfaceField] : []),
@@ -129,6 +132,9 @@ export function getConnectionFields(
               : "Native TCP port (9000 or 9440)",
         };
       }
+      if (field.key === "port" && dialect === "mssql") {
+        return { ...field, placeholder: "1433" };
+      }
       if (field.key === "database" && dialect === "clickhouse") {
         return {
           ...field,
@@ -139,6 +145,9 @@ export function getConnectionFields(
       }
       if (field.key === "database" && dialect === "postgres") {
         return { ...field, placeholder: "postgres" };
+      }
+      if (field.key === "database" && dialect === "mssql") {
+        return { ...field, placeholder: "master" };
       }
       return field;
     }),

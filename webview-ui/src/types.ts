@@ -35,7 +35,7 @@ export interface ConnectionTagPayload {
 export interface ConnectionProfilePayload {
   id?: string;
   name: string;
-  dialect: "postgres" | "clickhouse";
+  dialect: "postgres" | "clickhouse" | "mssql";
   host: string;
   port: number;
   database: string;
@@ -55,7 +55,7 @@ export interface ConnectionDialogInit {
 export interface ConnectionFormPayload {
   id?: string;
   name: string;
-  dialect: "postgres" | "clickhouse";
+  dialect: "postgres" | "clickhouse" | "mssql";
   host: string;
   port: number;
   database: string;

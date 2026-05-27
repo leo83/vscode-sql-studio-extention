@@ -7,7 +7,11 @@ from sqlglot import parse_one
 
 
 def dialect_read(dialect: str) -> str:
-    return "postgres" if dialect == "postgres" else "clickhouse"
+    if dialect == "postgres":
+        return "postgres"
+    if dialect == "mssql":
+        return "tsql"
+    return "clickhouse"
 
 
 def format_sql(sql: str, dialect: str) -> str:

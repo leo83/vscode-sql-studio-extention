@@ -69,3 +69,14 @@ def test_split_semicolon_inside_string() -> None:
 def test_split_clickhouse_format() -> None:
     parts = split_statements("SELECT 1", "clickhouse")
     assert len(parts) == 1
+
+
+def test_split_mssql_statements() -> None:
+    sql = "SELECT TOP 10 * FROM dbo.Users; SELECT 2;"
+    parts = split_statements(sql, "mssql")
+    assert len(parts) == 2
+
+
+def test_format_mssql() -> None:
+    formatted = format_sql("select top 1 1", "mssql")
+    assert "SELECT" in formatted.upper()

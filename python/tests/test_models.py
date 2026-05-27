@@ -41,6 +41,18 @@ def test_connection_config_clickhouse_interface() -> None:
     assert cfg.clickhouse_interface == "native"
 
 
+def test_connection_config_mssql() -> None:
+    cfg = ConnectionConfig(
+        id="4",
+        dialect="mssql",
+        host="sql.local",
+        port=1433,
+        database="master",
+        username="sa",
+    )
+    assert cfg.dialect == "mssql"
+
+
 def test_connection_config_invalid_dialect() -> None:
     with pytest.raises(ValidationError):
         ConnectionConfig(

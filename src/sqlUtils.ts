@@ -15,6 +15,9 @@ export function buildPreviewSql(
   if (dialect === "postgres") {
     return `SELECT * FROM "${schema}"."${table}" LIMIT ${limit}`;
   }
+  if (dialect === "mssql") {
+    return `SELECT TOP ${limit} * FROM [${schema}].[${table}]`;
+  }
   return `SELECT * FROM \`${schema}\`.\`${table}\` LIMIT ${limit}`;
 }
 

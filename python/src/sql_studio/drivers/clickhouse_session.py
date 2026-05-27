@@ -14,7 +14,7 @@ def parse_use_database(sql: str) -> str | None:
     parts = stripped.split()
     if len(parts) < 2 or parts[0].upper() != "USE":
         return None
-    return parts[1].strip("`;\"'")
+    return parts[1].strip("`;\"'[]")
 
 
 def apply_use_database(client: Any, sql: str) -> None:

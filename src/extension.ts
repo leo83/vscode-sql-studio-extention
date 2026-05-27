@@ -21,11 +21,13 @@ import {
 } from "./commands/objectCommands";
 import { ConnectionStatusBar } from "./connectionStatusBar";
 import { maybePromptConnectionForDocument } from "./sqlConnectionPrompt";
+import { buildPreviewSql } from "./sqlUtils";
 import {
   ensureSqlStudioLanguage,
   findSqlStudioEditorReady,
   isSqlFileDocument,
 } from "./sqlDocument";
+import { languageForDialect } from "./types";
 
 let pythonClient: PythonClient;
 let connectionManager: ConnectionManager;
@@ -326,12 +328,14 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
         const profile = item.connectionId
           ? connectionManager.getProfile(item.connectionId)
           : undefined;
+        const previewSql = profile
+          ? buildPreviewSql(profile.dialect, qn, 100)
+          : `SELECT *\nFROM ${qn}\nLIMIT 100;`;
         const doc = await vscode.workspace.openTextDocument({
-          content: `SELECT *\nFROM ${qn}\nLIMIT 100;\n`,
-          language:
-            profile?.dialect === "clickhouse"
-              ? "sql-studio-clickhouse"
-              : "sql-studio-postgres",
+          content: `${previewSql}\n`,
+          language: profile
+            ? languageForDialect(profile.dialect)
+            : "sql-studio-sql",
         });
         if (item.connectionId) {
           await connectionManager.assignConnectionToDocument(doc, item.connectionId);

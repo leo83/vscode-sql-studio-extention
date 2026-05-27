@@ -16,6 +16,7 @@
     "onLanguage:sql-studio-sql",
     "onLanguage:sql-studio-postgres",
     "onLanguage:sql-studio-clickhouse",
+    "onLanguage:sql-studio-mssql",
     "workspaceContains:**/*.sql",
     "onView:sqlStudio.explorer",
     "onView:sqlStudio.results",
@@ -50,6 +51,16 @@
         }
       },
       {
+        "id": "sql-studio-mssql",
+        "aliases": ["SQL (Microsoft SQL Server)", "T-SQL"],
+        "extensions": [".tsql"],
+        "configuration": "./language-configuration.json",
+        "icon": {
+          "light": "resources/icons/sql-studio-file-light.png",
+          "dark": "resources/icons/sql-studio-file-dark.png"
+        }
+      },
+      {
         "id": "sql-studio-sql",
         "aliases": ["SQL Studio"],
         "extensions": [".sql"],
@@ -68,6 +79,11 @@
       },
       {
         "language": "sql-studio-clickhouse",
+        "scopeName": "source.sql",
+        "path": "./grammars/sql-base.tmLanguage.json"
+      },
+      {
+        "language": "sql-studio-mssql",
         "scopeName": "source.sql",
         "path": "./grammars/sql-base.tmLanguage.json"
       },
@@ -432,7 +448,7 @@
         },
         "sqlStudio.defaultDialect": {
           "type": "string",
-          "enum": ["postgres", "clickhouse"],
+          "enum": ["postgres", "clickhouse", "mssql"],
           "default": "postgres"
         },
         "sqlStudio.autoAssociateSqlFiles": {

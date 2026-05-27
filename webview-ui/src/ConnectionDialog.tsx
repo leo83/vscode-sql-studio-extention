@@ -27,6 +27,16 @@ function inferClickHouseInterface(
   return port === 8123 || port === 8443 ? "http" : "native";
 }
 
+function defaultDatabase(dialect: Dialect): string {
+  if (dialect === "postgres") {
+    return "postgres";
+  }
+  if (dialect === "mssql") {
+    return "master";
+  }
+  return "";
+}
+
 function buildInitialValues(init: ConnectionDialogInit): FormValues {
   const profile = init.profile;
   const dialect = (profile?.dialect ?? "postgres") as Dialect;
@@ -40,7 +50,7 @@ function buildInitialValues(init: ConnectionDialogInit): FormValues {
     clickhouseInterface: chIface,
     host: profile?.host ?? "localhost",
     port: String(profile?.port ?? defaultPort(dialect, chIface)),
-    database: profile?.database ?? (dialect === "postgres" ? "postgres" : ""),
+    database: profile?.database ?? defaultDatabase(dialect),
     username: profile?.username ?? "default",
     password: "",
     ssl: profile?.ssl ?? false,
@@ -106,7 +116,7 @@ export function ConnectionDialog({ init }: { init: ConnectionDialogInit }) {
         }
         next.port = String(defaultPort(d, d === "clickhouse" ? "native" : undefined));
         if (!isEdit) {
-          next.database = d === "postgres" ? "postgres" : "";
+          next.database = defaultDatabase(d);
         }
       }
       if (key === "clickhouseInterface") {
@@ -161,7 +171,8 @@ export function ConnectionDialog({ init }: { init: ConnectionDialogInit }) {
     const d = values.dialect as Dialect;
     const dbRaw = String(values.database).trim();
     const database =
-      dbRaw || (d === "postgres" ? "" : "default");
+      dbRaw ||
+      (d === "clickhouse" ? "default" : defaultDatabase(d));
     return {
       name: String(values.name).trim(),
       dialect: d,

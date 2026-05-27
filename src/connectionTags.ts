@@ -190,8 +190,12 @@ export function connectionDialectIcon(
   dialect: Dialect,
   extensionUri: vscode.Uri
 ): vscode.Uri {
-  const file = dialect === "clickhouse" ? "clickhouse.svg" : "postgres.svg";
-  return vscode.Uri.joinPath(extensionUri, "resources", "icons", file);
+  const files: Record<Dialect, string> = {
+    postgres: "postgres.svg",
+    clickhouse: "clickhouse.svg",
+    mssql: "mssql.svg",
+  };
+  return vscode.Uri.joinPath(extensionUri, "resources", "icons", files[dialect]);
 }
 
 function escapeHtml(text: string): string {

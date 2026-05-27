@@ -12,6 +12,7 @@ import {
   ConnectionProfile,
   ConnectionWithSecret,
   Dialect,
+  languageForDialect,
   lastExportableStatement,
   ObjectDescriptionPayload,
   QueryExecutePayload,
@@ -20,10 +21,6 @@ import {
 import { createSqlQuery } from "./createSqlQuery";
 
 const descriptionPanel = new ObjectDescriptionPanel();
-
-function languageForDialect(dialect: Dialect): string {
-  return dialect === "clickhouse" ? "sql-studio-clickhouse" : "sql-studio-postgres";
-}
 
 function isDataObject(item: ExplorerTreeItem): boolean {
   return (
@@ -64,6 +61,14 @@ function defaultQueryForObject(
         "",
       ].join("\n");
     }
+    if (profile.dialect === "mssql") {
+      return [
+        `-- function: ${qn}`,
+        "",
+        `SELECT ${schema}.${name}();`,
+        "",
+      ].join("\n");
+    }
     return [`-- function: ${qn}`, "", `SELECT ${qn}()`, ""].join("\n");
   }
 
@@ -78,6 +83,14 @@ function defaultQueryForObject(
         `-- procedure: ${qn}`,
         "",
         `CALL ${schema}.${name}();`,
+        "",
+      ].join("\n");
+    }
+    if (profile.dialect === "mssql") {
+      return [
+        `-- procedure: ${qn}`,
+        "",
+        `EXEC ${schema}.${name};`,
         "",
       ].join("\n");
     }

@@ -42,3 +42,54 @@ uv run --directory <extension>/python sql-studio-server
 ```bash
 curl -LsSf https://astral.sh/uv/install.sh | sh
 ```
+
+## Зависимости по диалектам
+
+| Диалект | Python-пакет | Системная зависимость |
+|---------|--------------|------------------------|
+| PostgreSQL | `psycopg[binary]` | — |
+| ClickHouse HTTP | `clickhouse-connect` | — |
+| ClickHouse Native | `clickhouse-driver` | — |
+| Microsoft SQL Server | `pyodbc` | **ODBC Driver for SQL Server** на ОС |
+
+`pyodbc` ставится автоматически при `uv sync`. **ODBC Driver for SQL Server** в venv не попадает — его нужно установить отдельно на машине пользователя.
+
+### Microsoft SQL Server (ODBC)
+
+Драйвер `MssqlDriver` (`python/src/sql_studio/drivers/mssql.py`) подключается через **pyodbc** и перебирает ODBC-драйверы:
+
+1. ODBC Driver 18 for SQL Server
+2. ODBC Driver 17 for SQL Server
+3. ODBC Driver 13 for SQL Server
+4. SQL Server (legacy)
+
+Если ни один не найден, `connection/test` и `query/execute` вернут ошибку с просьбой установить драйвер.
+
+**macOS**
+
+```bash
+brew tap microsoft/mssql-release https://github.com/Microsoft/homebrew-mssql-release
+brew install msodbcsql18
+odbcinst -q -d   # проверка
+```
+
+**Windows / Linux** — см. [Microsoft ODBC Driver for SQL Server](https://learn.microsoft.com/en-us/sql/connect/odbc/download-odbc-driver-for-sql-server).
+
+Строка подключения формируется с параметрами:
+
+- `Encrypt=yes/no` — из флага SSL в профиле connection
+- `TrustServerCertificate=yes` — при отключённом SSL (типично для локального dev)
+- `ApplicationIntent=ReadOnly` — при read-only connection
+
+Parse/format/split для T-SQL: **sqlglot** с `read=tsql` (`dialect_read("mssql")`).
+
+## Драйверы (файлы)
+
+| Файл | СУБД |
+|------|------|
+| `drivers/postgres.py` | PostgreSQL |
+| `drivers/clickhouse.py` | ClickHouse (фасад) |
+| `drivers/clickhouse_http.py` | ClickHouse HTTP |
+| `drivers/clickhouse_native.py` | ClickHouse Native TCP |
+| `drivers/mssql.py` | Microsoft SQL Server |
+| `drivers/registry.py` | пул соединений и фабрика драйверов |

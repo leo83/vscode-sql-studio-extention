@@ -3,10 +3,11 @@
 from __future__ import annotations
 
 from sql_studio.drivers.clickhouse import ClickHouseDriver
+from sql_studio.drivers.mssql import MssqlDriver
 from sql_studio.drivers.postgres import PostgresDriver
 from sql_studio.models import ConnectionConfig
 
-_DRIVERS: dict[str, PostgresDriver | ClickHouseDriver] = {}
+_DRIVERS: dict[str, PostgresDriver | ClickHouseDriver | MssqlDriver] = {}
 _SESSION_DATABASES: dict[str, str] = {}
 
 
@@ -22,7 +23,7 @@ def clear_session_database(connection_id: str) -> None:
     _SESSION_DATABASES.pop(connection_id, None)
 
 
-def get_driver(config: ConnectionConfig) -> PostgresDriver | ClickHouseDriver:
+def get_driver(config: ConnectionConfig) -> PostgresDriver | ClickHouseDriver | MssqlDriver:
     existing = _DRIVERS.get(config.id)
     if existing is not None and isinstance(existing, _driver_class(config)):
         if existing.is_connected_with(config):
@@ -43,7 +44,7 @@ def get_driver(config: ConnectionConfig) -> PostgresDriver | ClickHouseDriver:
 
 
 def _restore_session_database(
-    driver: PostgresDriver | ClickHouseDriver, connection_id: str
+    driver: PostgresDriver | ClickHouseDriver | MssqlDriver, connection_id: str
 ) -> None:
     database = get_session_database(connection_id)
     if not database:
@@ -74,12 +75,18 @@ def cancel_query(connection_id: str) -> bool:
 def _driver_class(config: ConnectionConfig) -> type:
     if config.dialect == "postgres":
         return PostgresDriver
+    if config.dialect == "mssql":
+        return MssqlDriver
     return ClickHouseDriver
 
 
-def _create_driver(config: ConnectionConfig) -> PostgresDriver | ClickHouseDriver:
+def _create_driver(
+    config: ConnectionConfig,
+) -> PostgresDriver | ClickHouseDriver | MssqlDriver:
     if config.dialect == "postgres":
         return PostgresDriver()
+    if config.dialect == "mssql":
+        return MssqlDriver()
     return ClickHouseDriver()
 
 

@@ -11,6 +11,7 @@ dependencies = [
     "clickhouse-driver>=0.2.10",
     "openpyxl>=3.1.5",
     "psycopg[binary]>=3.2",
+    "pyodbc>=5.2.0",
     "pydantic>=2.13.4",
     "sqlglot>=30.8.0",
 ]

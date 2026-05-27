@@ -6,6 +6,8 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
+- **Microsoft SQL Server** support: `mssql` dialect, `MssqlDriver` (pyodbc), connection dialog, Schema Explorer, T-SQL language mode (`.tsql`)
+- ODBC requirement documented in README and `python/README.md`
 - Database Explorer context menu: Object Description, Sample Data, Export Data, Create SQL Query
 - `schema/getObjectDescription` RPC and object description panel
 - PostgreSQL functions/procedures in explorer tree

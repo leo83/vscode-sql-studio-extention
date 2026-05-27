@@ -1,10 +1,6 @@
 import * as vscode from "vscode";
 import { ConnectionManager } from "../connectionManager";
-import { ConnectionProfile, Dialect } from "../types";
-
-function languageForDialect(dialect: Dialect): string {
-  return dialect === "clickhouse" ? "sql-studio-clickhouse" : "sql-studio-postgres";
-}
+import { ConnectionProfile, languageForDialect } from "../types";
 
 function defaultQueryContent(profile: ConnectionProfile): string {
   return [

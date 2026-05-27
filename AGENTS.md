@@ -6,7 +6,7 @@
 
 Расширение Cursor/VS Code для:
 
-- написания и выполнения SQL (PostgreSQL, ClickHouse);
+- написания и выполнения SQL (PostgreSQL, ClickHouse, Microsoft SQL Server);
 - просмотра объектов БД в Database Explorer;
 - отображения результатов в webview (sort / filter / export);
 - интеграции с Cursor Agent (rules, MCP).
@@ -30,7 +30,7 @@ grammars/         TextMate grammars (SQL подсветка)
 | Часть | Технологии |
 |-------|------------|
 | Extension | TypeScript 5, esbuild, VS Code Extension API |
-| Backend | Python 3.11+, uv, psycopg3, clickhouse-connect, clickhouse-driver, sqlglot, openpyxl |
+| Backend | Python 3.11+, uv, psycopg3, clickhouse-connect, clickhouse-driver, pyodbc, sqlglot, openpyxl |
 | Webview | React 18, Vite, TanStack Table v8 |
 | Тесты | pytest (python), tsc (extension) |
 
@@ -48,12 +48,12 @@ grammars/         TextMate grammars (SQL подсветка)
 | `src/webview/resultsPanel.ts` | Webview panel результатов |
 | `src/sqlUtils.ts` | buildPreviewSql, лимиты строк |
 | `webview-ui/src/ConnectionDialog.tsx` | Форма подключения (поля по диалекту) |
-| `webview-ui/src/connectionFields.ts` | Схема полей PostgreSQL / ClickHouse |
+| `webview-ui/src/connectionFields.ts` | Схема полей PostgreSQL / ClickHouse / MSSQL |
 | `webview-ui/src/vscodeApi.ts` | Singleton `acquireVsCodeApi()` (один вызов на webview) |
 | `webview-ui/src/QueryError.tsx` | Форматированный вывод ошибок запроса |
 | `webview-ui/src/parseQueryError.ts` | Парсинг ClickHouse/Postgres error + stack trace |
 | `python/src/sql_studio/server.py` | JSON-RPC server |
-| `python/src/sql_studio/drivers/` | postgres, clickhouse (фасад), clickhouse_http, clickhouse_native |
+| `python/src/sql_studio/drivers/` | postgres, clickhouse (фасад), clickhouse_http, clickhouse_native, mssql |
 | `python/src/sql_studio/dialect/sqlglot_service.py` | format / split SQL |
 | `package.json` | Manifest расширения, contributes, settings |
 
@@ -130,24 +130,25 @@ cd python && uv sync --all-groups && uv run pytest
 ### SQL и диалекты
 
 - Подсветка — TextMate grammars (`grammars/`), не писать parser с нуля.
-- Parse/format/split — **sqlglot** (`read=postgres|clickhouse`).
-- Preview таблицы: `sqlStudio.previewRowLimit` (default 1000).
+- Parse/format/split — **sqlglot** (`read=postgres|clickhouse|tsql` для `mssql`).
+- Preview таблицы: `sqlStudio.previewRowLimit` (default 1000). MSSQL: `SELECT TOP N`.
 - SQL-запросы: `sqlStudio.defaultRowLimit` (default 10000).
 
 ### Connections
 
 - Создание/редактирование — **webview-диалог** (`ConnectionDialog`), не цепочка `showInputBox`.
-- Поля задаются в `webview-ui/src/connectionFields.ts` (разный набор для postgres / clickhouse).
+- Поля задаются в `webview-ui/src/connectionFields.ts` (разный набор для postgres / clickhouse / mssql).
 - Пароль: `type="password"` в UI; в профиле не хранится — только SecretStorage.
 - `connection/test` из диалога: таймаут RPC ~20 с; ответ webview — `testResult`.
 - ClickHouse: `clickhouse_interface` = `native` | `http`; Native → `clickhouse-driver` (9000), HTTP → `clickhouse-connect` (8123).
+- MSSQL: `pyodbc` + **системный ODBC Driver for SQL Server** (18/17/13); без ODBC на ОС подключение не работает.
 - Explorer: корневой узел **Connections** всегда виден; дочерние элементы — сохранённые подключения.
 
 ### Explorer
 
 - Lazy load через `schema/listChildren`.
 - Клик по table/view → `queryRunner.previewTable()` → тот же ResultsPanel, что для SQL.
-- PostgreSQL: path `schemas/{schema}/{table}`; ClickHouse: `databases/{db}/{table}`.
+- PostgreSQL / MSSQL: path `schemas/{schema}/{table}`; ClickHouse: `databases/{db}/{table}`.
 
 ### Webview
 
@@ -218,6 +219,7 @@ echo '{"jsonrpc":"2.0","id":1,"method":"health","params":{}}' | uv run sql-studi
 | Webview пустой | `npm run build:webview`; проверить `webview-ui/dist/assets/` |
 | Диалог connection без полей | Повторный `acquireVsCodeApi()` — только через `getVsCodeApi()` |
 | Test connection зависает | ClickHouse: Native + 9000, не HTTP на 9000; проверить таймаут backend |
+| MSSQL: ODBC driver not found | Установить `msodbcsql18`; `odbcinst -q -d` на macOS/Linux |
 | Ошибка «No executable SQL» | В файле только комментарии; добавить `SELECT` или выделить текст запроса |
 | Import errors в extension | `npm run lint` |
 

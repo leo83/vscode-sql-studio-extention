@@ -1,6 +1,6 @@
 import type { ConnectionTag } from "./connectionTags";
 
-export type Dialect = "postgres" | "clickhouse";
+export type Dialect = "postgres" | "clickhouse" | "mssql";
 export type ClickHouseInterface = "http" | "native";
 
 export interface ConnectionProfile {
@@ -101,12 +101,26 @@ export function secretKeyForConnection(connectionId: string): string {
   return `sql-studio.connection.${connectionId}.password`;
 }
 
+export function languageForDialect(dialect: Dialect): string {
+  switch (dialect) {
+    case "clickhouse":
+      return "sql-studio-clickhouse";
+    case "mssql":
+      return "sql-studio-mssql";
+    default:
+      return "sql-studio-postgres";
+  }
+}
+
 export function defaultPort(
   dialect: Dialect,
   clickhouseInterface?: ClickHouseInterface
 ): number {
   if (dialect === "postgres") {
     return 5432;
+  }
+  if (dialect === "mssql") {
+    return 1433;
   }
   return clickhouseInterface === "http" ? 8123 : 9000;
 }

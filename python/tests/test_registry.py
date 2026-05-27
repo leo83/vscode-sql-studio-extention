@@ -94,9 +94,11 @@ def test_get_driver_restores_session_database() -> None:
 
 
 @patch("sql_studio.drivers.registry.ClickHouseDriver")
+@patch("sql_studio.drivers.registry.MssqlDriver")
 @patch("sql_studio.drivers.registry.PostgresDriver")
 def test_get_driver_creates_postgres(
     mock_pg_cls: MagicMock,
+    mock_mssql_cls: MagicMock,
     mock_ch_cls: MagicMock,
 ) -> None:
     mock_pg = MagicMock()
@@ -107,12 +109,15 @@ def test_get_driver_creates_postgres(
     assert driver is mock_pg
     mock_pg.connect.assert_called_once()
     mock_ch_cls.assert_not_called()
+    mock_mssql_cls.assert_not_called()
 
 
 @patch("sql_studio.drivers.registry.ClickHouseDriver")
+@patch("sql_studio.drivers.registry.MssqlDriver")
 @patch("sql_studio.drivers.registry.PostgresDriver")
 def test_get_driver_creates_clickhouse(
     mock_pg_cls: MagicMock,
+    mock_mssql_cls: MagicMock,
     mock_ch_cls: MagicMock,
 ) -> None:
     mock_ch = MagicMock()
@@ -123,3 +128,35 @@ def test_get_driver_creates_clickhouse(
     assert driver is mock_ch
     mock_ch.connect.assert_called_once()
     mock_pg_cls.assert_not_called()
+    mock_mssql_cls.assert_not_called()
+
+
+def _mssql_config(connection_id: str = "mssql-1") -> ConnectionConfig:
+    return ConnectionConfig(
+        id=connection_id,
+        dialect="mssql",
+        host="localhost",
+        port=1433,
+        database="master",
+        username="sa",
+        password="secret",
+    )
+
+
+@patch("sql_studio.drivers.registry.ClickHouseDriver")
+@patch("sql_studio.drivers.registry.MssqlDriver")
+@patch("sql_studio.drivers.registry.PostgresDriver")
+def test_get_driver_creates_mssql(
+    mock_pg_cls: MagicMock,
+    mock_mssql_cls: MagicMock,
+    mock_ch_cls: MagicMock,
+) -> None:
+    mock_mssql = MagicMock()
+    mock_mssql.is_connected_with.return_value = True
+    mock_mssql_cls.return_value = mock_mssql
+
+    driver = get_driver(_mssql_config())
+    assert driver is mock_mssql
+    mock_mssql.connect.assert_called_once()
+    mock_pg_cls.assert_not_called()
+    mock_ch_cls.assert_not_called()

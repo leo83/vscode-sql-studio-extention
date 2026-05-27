@@ -1,10 +1,10 @@
 # SQL Studio
 
-Расширение для **Cursor** и **VS Code**: написание SQL, просмотр схемы базы в sidebar, выполнение запросов и интерактивный просмотр результатов. Поддерживаются **PostgreSQL** и **ClickHouse**.
+Расширение для **Cursor** и **VS Code**: написание SQL, просмотр схемы базы в sidebar, выполнение запросов и интерактивный просмотр результатов. Поддерживаются **PostgreSQL**, **ClickHouse** и **Microsoft SQL Server**.
 
 ## Возможности
 
-- Подсветка SQL (PostgreSQL / ClickHouse / generic `.sql`)
+- Подсветка SQL (PostgreSQL / ClickHouse / T-SQL / generic `.sql`)
 - **Database Explorer** — schemas → tables / views / functions → columns
 - ПКМ на объект схемы: **Object Description**, **Sample Data**, **Export Data**, **Create SQL Query**
 - Клик по таблице / view → preview данных (тот же UI, что и для SQL)
@@ -15,6 +15,7 @@
 - Пароли connections хранятся **зашифрованно** (OS keychain через VS Code SecretStorage)
 - **Диалог подключения** (webview): создание и редактирование в одном окне, поля зависят от диалекта
 - **ClickHouse Native (TCP, порт 9000)** и **HTTP (8123)** — как Native Driver / HTTP в TablePlus
+- **Microsoft SQL Server** — подключение через ODBC (pyodbc), Schema Explorer, T-SQL (`.tsql`)
 - Интеграция с агентами Cursor (rules, MCP-шаблон)
 
 ## Архитектура
@@ -48,6 +49,7 @@ uv run --directory python sql-studio-server
 - [Node.js](https://nodejs.org/) 18+
 - [uv](https://docs.astral.sh/uv/) — Python backend и зависимости
 - (опционально) [just](https://github.com/casey/just) — shortcuts из `justfile`
+- **Microsoft SQL Server:** установленный **ODBC Driver for SQL Server** на машине, где запускается расширение (см. [Microsoft SQL Server](#microsoft-sql-server))
 
 ```bash
 # uv
@@ -207,14 +209,15 @@ just package
 2. Нажмите **+** (Add Connection) или Command Palette → **`SQL Studio: Add Connection`**
 3. В модальном окне заполните поля (набор зависит от типа БД):
 
-   | Поле | PostgreSQL | ClickHouse |
-   |------|------------|------------|
-   | Connection name | да | да |
-   | Database type | PostgreSQL | ClickHouse |
-   | Driver | — | **Native (TCP, 9000)** или **HTTP (8123)** |
-   | Host, Port, Username, Password | да | да |
-   | Database | обязательно | опционально (`default`) |
-   | SSL / Read-only | да | да |
+   | Поле | PostgreSQL | ClickHouse | Microsoft SQL Server |
+   |------|------------|------------|----------------------|
+   | Connection name | да | да | да |
+   | Database type | PostgreSQL | ClickHouse | Microsoft SQL Server |
+   | Driver | — | **Native (TCP, 9000)** или **HTTP (8123)** | — (ODBC, см. ниже) |
+   | Host, Port, Username, Password | да | да | да |
+   | Database | обязательно (`postgres`) | опционально (`default`) | обязательно (`master`) |
+   | Port (по умолчанию) | 5432 | 9000 / 8123 | 1433 |
+   | SSL / Read-only | да | да | да (TLS / `ApplicationIntent=ReadOnly`) |
 
 4. **Test connection** — проверка без сохранения (таймаут ~20 с)
 5. **Save** — пароль сохранится в **зашифрованном виде** (Keychain на macOS)
@@ -229,6 +232,63 @@ just package
 
 > Порт **9000** с драйвером HTTP не работает — выберите **Native** в поле Driver.
 
+#### Microsoft SQL Server
+
+Подключение к SQL Server идёт через Python-библиотеку **pyodbc**, которая использует **системный ODBC-драйвер**. Без него **Test connection** и запросы завершатся ошибкой вида *Could not connect to SQL Server. Install Microsoft ODBC Driver for SQL Server*.
+
+| Компонент | Где ставится | Зачем |
+|-----------|--------------|-------|
+| **pyodbc** | автоматически через `uv sync` в `python/` | Python-обёртка над ODBC |
+| **ODBC Driver for SQL Server** | **на вашей ОС** (не в npm/uv) | реальное TCP-подключение к SQL Server |
+
+**Установка ODBC Driver for SQL Server**
+
+| ОС | Как установить |
+|----|----------------|
+| **macOS** | `brew tap microsoft/mssql-release https://github.com/Microsoft/homebrew-mssql-release && brew install msodbcsql18` |
+| **Windows** | [Microsoft ODBC Driver 18 for SQL Server](https://learn.microsoft.com/en-us/sql/connect/odbc/download-odbc-driver-for-sql-server) (обычно уже есть) |
+| **Linux (Debian/Ubuntu)** | [инструкция Microsoft](https://learn.microsoft.com/en-us/sql/connect/odbc/linux-mac/installing-the-microsoft-odbc-driver-for-sql-server) — пакет `msodbcsql18` |
+
+Backend пробует драйверы в порядке: **ODBC Driver 18 → 17 → 13 → SQL Server** (legacy).
+
+**Проверка, что ODBC виден в системе**
+
+```bash
+# macOS / Linux (unixODBC)
+odbcinst -q -d
+
+# должны быть строки вроде:
+# [ODBC Driver 18 for SQL Server]
+```
+
+**Параметры connection в SQL Studio**
+
+| Опция | Поведение |
+|-------|-----------|
+| **Database** | начальная база (часто `master` или ваша рабочая БД) |
+| **Use encrypted connection (TLS)** | `Encrypt=yes` в строке ODBC |
+| **Read-only connection** | `ApplicationIntent=ReadOnly` |
+| **USE database** в SQL | поддерживается; сессия запоминается для следующих запросов |
+
+**Язык редактора и файлы**
+
+- dialect `mssql` → язык **`SQL (Microsoft SQL Server)`** / `sql-studio-mssql`
+- расширение файла **`.tsql`** автоматически ассоциируется с T-SQL
+- подсветка: TextMate-грамматика T-SQL (`TOP`, `EXEC`, `@@variables`, и т.д.)
+
+**Schema Explorer**
+
+Структура как у PostgreSQL: **Schemas → tables / views / functions / procedures → columns**. Квалифицированные имена: `schema.table`. Preview использует `SELECT TOP N * FROM [schema].[table]`.
+
+**Типичные проблемы**
+
+| Симптом | Что проверить |
+|---------|----------------|
+| *Install Microsoft ODBC Driver* | установлен ли `msodbcsql18` / Driver 17; `odbcinst -q -d` |
+| SSL / certificate errors | для dev без валидного сертификата отключите TLS в connection или настройте trust на стороне SQL Server |
+| Login failed | логин/пароль, разрешён ли SQL auth, firewall на порту 1433 |
+| `LIMIT` не работает | в T-SQL используйте **`TOP`** или `OFFSET/FETCH`, не `LIMIT` |
+
 Редактирование: ПКМ на connection → **Edit Connection** (тот же диалог).
 
 #### Когда реально подключается к базе
@@ -239,6 +299,7 @@ just package
 | Когда создаётся TCP/DB-соединение? | При первом использовании: раскрыли connection, preview, SQL, export, object description |
 | Одновременно подключены все connections? | **Нет** — только тот, с которым вы работаете (кэш на backend) |
 | PostgreSQL: одна база или все на сервере? | **Одна** — поле Database в профиле connection |
+| Microsoft SQL Server: одна база или все? | **Одна** в профиле; `USE db` в SQL переключает сессию |
 | ClickHouse: все databases? | **Да**, но только после раскрытия connection в Explorer (`SHOW DATABASES`) |
 
 Отключить активное соединение: ПКМ на connection → **Disconnect**.
@@ -268,7 +329,7 @@ just package
 | `sqlStudio.uvPath` | `uv` | Путь к uv |
 | `sqlStudio.previewRowLimit` | `1000` | Строк при preview таблицы |
 | `sqlStudio.defaultRowLimit` | `10000` | Лимит для SQL-запросов |
-| `sqlStudio.defaultDialect` | `postgres` | Dialect по умолчанию |
+| `sqlStudio.defaultDialect` | `postgres` | Dialect по умолчанию (`postgres`, `clickhouse`, `mssql`) |
 | `sqlStudio.autoAssociateSqlFiles` | `true` | Открывать `.sql` в режиме SQL Studio |
 | `sqlStudio.promptForConnectionOnRun` | `false` | Спрашивать connection перед каждым запуском |
 | `sqlStudio.promptForConnectionOnOpen` | `true` | Спрашивать connection при открытии `.sql` без привязки к файлу |
@@ -314,12 +375,11 @@ just package      # .vsix
 
 ## Поддерживаемые СУБД
 
-На данный момент поддерживаются **только два типа баз данных**:
-
 - **PostgreSQL**
 - **ClickHouse** (Native TCP и HTTP)
+- **Microsoft SQL Server** (T-SQL, через ODBC Driver 18/17/13)
 
-Другие СУБД (MySQL, SQLite, MS SQL Server и т.д.) **не поддерживаются**.
+Другие СУБД (MySQL, SQLite, Oracle и т.д.) **не поддерживаются**.
 
 ## Лицензия
 
