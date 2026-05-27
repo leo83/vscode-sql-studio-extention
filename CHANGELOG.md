@@ -6,6 +6,9 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
+- Database Explorer context menu: Object Description, Sample Data, Export Data, Create SQL Query
+- `schema/getObjectDescription` RPC and object description panel
+- PostgreSQL functions/procedures in explorer tree
 - Connection dialog webview (create/edit) with dialect-specific fields and masked password
 - ClickHouse Native TCP driver (`clickhouse-driver`, port 9000) alongside HTTP (`clickhouse-connect`, port 8123)
 - Test connection from dialog with RPC/UI timeouts
@@ -20,6 +23,7 @@ All notable changes to this project will be documented in this file.
 - Query failures shown in Results panel, not only toast notification
 - SQL comment-only buffers rejected with clearer message; improved sqlglot split fallback
 - Documentation: README.md and AGENTS.md (incl. rule to keep docs in sync with architecture changes)
+- README: Cursor `.vsix` install (drag & drop, CLI, menu), lazy connection behavior, explorer context menu
 
 ### Added (initial release)
 

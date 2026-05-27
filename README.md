@@ -5,8 +5,9 @@
 ## Возможности
 
 - Подсветка SQL (PostgreSQL / ClickHouse / generic `.sql`)
-- **Database Explorer** — schemas → tables → columns
-- Клик по таблице → preview данных (тот же UI, что и для SQL)
+- **Database Explorer** — schemas → tables / views / functions → columns
+- ПКМ на объект схемы: **Object Description**, **Sample Data**, **Export Data**, **Create SQL Query**
+- Клик по таблице / view → preview данных (тот же UI, что и для SQL)
 - **Create SQL Query** — новый редактор запроса из Command Palette или ПКМ на connection
 - Выполнение запросов: **Cmd+Enter** / **Ctrl+Enter** (работает и при фокусе вне редактора, если открыт один SQL-файл)
 - Таблица результатов: сортировка, фильтр, пагинация, экспорт CSV/Excel
@@ -115,42 +116,51 @@ just build
 
 ---
 
-### B. Установка из `.vsix`
+### B. Установка из `.vsix` (постоянная)
 
 Подходит для **ежедневного использования** в обычном окне Cursor (не Dev Host).
 
-**1. Собрать `.vsix`**
+#### 1. Собрать `.vsix`
 
 ```bash
 cd cursor-sql-studio
-just install
-just package
+just install && just package
 ```
 
-Или:
+Или по шагам:
 
 ```bash
 npm install
 cd webview-ui && npm install && cd ..
 cd python && uv sync --all-groups && cd ..
 npm run build
-npx vsce package --no-dependencies
+npx vsce package --no-dependencies --allow-missing-repository --no-rewrite-relative-links
 ```
 
 В корне появится файл вида `cursor-sql-studio-0.1.0.vsix`.
 
-**2. Установить в Cursor**
+> Команда `just package` уже включает нужные флаги `vsce`. Без `--no-rewrite-relative-links` сборка может упасть из‑за относительных ссылок в README.
 
-- `Cmd+Shift+P` → **`Extensions: Install from VSIX...`**
-- Выберите `cursor-sql-studio-0.1.0.vsix`
-- `Cmd+Shift+P` → **`Developer: Reload Window`**
+#### 2. Установить в Cursor
 
-**3. Проверить**
+В Cursor команда **`Extensions: Install from VSIX...`** иногда **не находится** в Command Palette. Используйте любой из способов ниже.
+
+| Способ | Как |
+|--------|-----|
+| **Drag & drop** (рекомендуется) | `Cmd+Shift+X` → панель Extensions → перетащите `.vsix` в панель → подтвердите установку |
+| **Меню Extensions** | Панель Extensions → **⋯** (три точки) → **Install from VSIX...** / **Install Extension from VSIX...** |
+| **Command Palette** | `Cmd+Shift+P` → введите **`vsix`** или **`install vsix`** (не обязательно полное имя команды) |
+| **Терминал** | Сначала: **Cursor → Install 'cursor' command in PATH**, затем: `cursor --install-extension /полный/путь/cursor-sql-studio-0.1.0.vsix` |
+
+После установки: `Cmd+Shift+P` → **Developer: Reload Window**.
+
+#### 3. Проверить
 
 - Activity Bar → иконка **SQL Studio**
-- **Extensions** (`Cmd+Shift+X`) → в списке **Installed** должно быть **SQL Studio**
+- **Extensions** (`Cmd+Shift+X`) → в **Installed** должно быть **SQL Studio**
+- `Cmd+Shift+P` → **`SQL Studio: Add Connection`** — команда находится
 
-**4. Зависимости runtime**
+#### 4. Зависимости runtime
 
 Расширение при работе вызывает:
 
@@ -160,27 +170,30 @@ uv run --directory <путь-к-расширению>/python sql-studio-server
 
 Нужно:
 
-- **`uv` в PATH** (или настройка `sqlStudio.uvPath`)
-- При первом запуске uv создаст venv внутри `python/` расширения
+- **`uv` в PATH** (или настройка **`SQL Studio: Uv Path`** в Cursor Settings)
+- при первом запуске uv создаст venv внутри `python/` установленного расширения
 
-Проверка в терминале:
+Проверка:
 
 ```bash
+which uv
 uv --version
 ```
 
-**5. Обновление после изменений в коде**
+Если backend не стартует — укажите полный путь к `uv`, например `/Users/<user>/.local/bin/uv`.
+
+#### 5. Обновление после изменений в коде
 
 ```bash
 just package
-# снова Extensions: Install from VSIX... (перезапишет локальную версию)
+# переустановите .vsix (drag & drop или cursor --install-extension)
 # Developer: Reload Window
 ```
 
-**6. Удаление**
+#### 6. Удаление
 
 - Extensions → SQL Studio → **Uninstall**
-- (опционально) удалить сохранённые connections — они в global state Cursor
+- (опционально) сохранённые connections лежат в global state Cursor
 
 ---
 
@@ -218,19 +231,34 @@ just package
 
 Редактирование: ПКМ на connection → **Edit Connection** (тот же диалог).
 
+#### Когда реально подключается к базе
+
+| Вопрос | Ответ |
+|--------|--------|
+| Все сохранённые connections подключаются при старте Cursor? | **Нет** — в Explorer видны только профили |
+| Когда создаётся TCP/DB-соединение? | При первом использовании: раскрыли connection, preview, SQL, export, object description |
+| Одновременно подключены все connections? | **Нет** — только тот, с которым вы работаете (кэш на backend) |
+| PostgreSQL: одна база или все на сервере? | **Одна** — поле Database в профиле connection |
+| ClickHouse: все databases? | **Да**, но только после раскрытия connection в Explorer (`SHOW DATABASES`) |
+
+Отключить активное соединение: ПКМ на connection → **Disconnect**.
+
 ---
 
 ### Работа с данными
 
 | Действие | Как |
 |----------|-----|
-| Preview таблицы | Клик по таблице в Explorer |
-| Новый SQL-запрос | Command Palette → **`SQL Studio: Create SQL Query`** или ПКМ на connection → **Create SQL Query** |
-| SQL-запрос | Открыть любой `.sql` (по умолчанию в SQL Studio), выбрать connection в status bar, **Cmd+Enter** |
+| Preview / sample data | Клик по table/view в Explorer или ПКМ → **Sample Data** |
+| Описание объекта | ПКМ на table / view / function / procedure / column → **Object Description** |
+| Экспорт данных таблицы | ПКМ → **Export Data…** (CSV, до `defaultRowLimit` строк) |
+| Новый SQL из объекта | ПКМ → **Create SQL Query** (шаблон SELECT / CALL) |
+| Новый SQL (connection) | Command Palette → **`SQL Studio: Create SQL Query`** или ПКМ на connection |
+| SQL-запрос | Открыть `.sql`, connection в status bar, **Cmd+Enter** |
 | Connection для файла | Status bar `$(database) …` или **SQL Studio: Select Connection for File** |
 | Формат SQL | Command Palette → `SQL Studio: Format SQL` |
-| Экспорт | Кнопки в панели результатов |
-| Ошибка запроса | Панель **SQL Results**: краткий текст, Code/тип, stack trace по клику, **Copy error** |
+| Экспорт результатов запроса | Кнопки в панели **SQL Results** |
+| Ошибка запроса | Панель **SQL Results**: краткий текст, Code/тип, stack trace, **Copy error** |
 | Спросить агента | `SQL Studio: Ask Agent to Explain Query` |
 
 ### Настройки (Cursor Settings → SQL Studio)

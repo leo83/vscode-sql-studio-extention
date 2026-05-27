@@ -46,7 +46,7 @@ test:
 
 package:
     npm run build
-    npx vsce package --no-dependencies
+    npx vsce package --no-dependencies --allow-missing-repository --no-rewrite-relative-links
 
 dev:
     @echo "1. just install && just build"
