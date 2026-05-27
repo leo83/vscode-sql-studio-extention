@@ -28,7 +28,12 @@ export class ResultsPanel implements vscode.WebviewViewProvider {
     };
     webviewView.webview.onDidReceiveMessage(async (msg) => {
       if (msg.type === "exportCsv" || msg.type === "exportXlsx") {
-        await this.handleExport(msg.type === "exportCsv" ? "csv" : "xlsx");
+        try {
+          await this.handleExport(msg.type === "exportCsv" ? "csv" : "xlsx");
+        } catch (err) {
+          const message = err instanceof Error ? err.message : String(err);
+          vscode.window.showErrorMessage(`Export failed: ${message}`);
+        }
       }
     });
     webviewView.onDidDispose(() => {
@@ -76,12 +81,15 @@ export class ResultsPanel implements vscode.WebviewViewProvider {
     }
     const columns = exportable.columns.map((c) => c.name);
     const method = kind === "csv" ? "export/csv" : "export/xlsx";
-    await this.python.request(method, {
+    const params: Record<string, unknown> = {
       path: uri.fsPath,
       columns,
       rows: exportable.rows,
-      bom: true,
-    });
+    };
+    if (kind === "csv") {
+      params.bom = true;
+    }
+    await this.python.request(method, params);
     vscode.window.showInformationMessage(`Exported to ${uri.fsPath}`);
   }
 

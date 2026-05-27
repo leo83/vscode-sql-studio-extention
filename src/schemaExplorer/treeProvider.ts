@@ -182,21 +182,27 @@ export class SchemaExplorerProvider implements vscode.TreeDataProvider<ExplorerT
       if (!conn || !element.node) {
         return [];
       }
-      const nodes = await this.python.request<SchemaNodePayload[]>(
-        "schema/listChildren",
-        { connection: toRpcConnection(conn), path: element.node.path }
-      );
-      return nodes.map(
-        (n) =>
-          new ExplorerTreeItem(
-            n,
-            element.connectionId,
-            n.node_type as ExplorerItemType,
-            n.has_children
-              ? vscode.TreeItemCollapsibleState.Collapsed
-              : vscode.TreeItemCollapsibleState.None
-          )
-      );
+      try {
+        const nodes = await this.python.request<SchemaNodePayload[]>(
+          "schema/listChildren",
+          { connection: toRpcConnection(conn), path: element.node.path }
+        );
+        return nodes.map(
+          (n) =>
+            new ExplorerTreeItem(
+              n,
+              element.connectionId,
+              n.node_type as ExplorerItemType,
+              n.has_children
+                  ? vscode.TreeItemCollapsibleState.Collapsed
+                  : vscode.TreeItemCollapsibleState.None
+            )
+        );
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        vscode.window.showErrorMessage(`Schema load failed: ${msg}`);
+        return [];
+      }
     }
 
     return [];

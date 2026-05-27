@@ -35,6 +35,10 @@ let explorerProvider: SchemaExplorerProvider;
 let connectionStatusBar: ConnectionStatusBar;
 
 export async function activate(context: vscode.ExtensionContext): Promise<void> {
+  const log = vscode.window.createOutputChannel("SQL Studio");
+  context.subscriptions.push(log);
+  log.appendLine("Activating SQL Studio…");
+
   pythonClient = new PythonClient(context);
   connectionManager = new ConnectionManager(context, pythonClient);
   await connectionManager.initialize();
@@ -44,10 +48,24 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     pythonClient,
     context.extensionUri
   );
-  const explorerView = vscode.window.createTreeView("sqlStudio.explorer", {
-    treeDataProvider: explorerProvider,
-    showCollapseAll: true,
-  });
+
+  let explorerView: vscode.TreeView<ExplorerTreeItem>;
+  try {
+    explorerView = vscode.window.createTreeView("sqlStudio.explorer", {
+      treeDataProvider: explorerProvider,
+      showCollapseAll: true,
+    });
+    context.subscriptions.push(explorerView);
+    log.appendLine("Database Explorer tree view registered.");
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    log.appendLine(`Failed to register Database Explorer: ${msg}`);
+    vscode.window.showErrorMessage(`SQL Studio: Database Explorer failed to start: ${msg}`);
+    return;
+  }
+
+  void startPythonBackend(log);
+
   explorerView.onDidChangeVisibility((event) => {
     if (event.visible) {
       explorerProvider.refresh();
@@ -57,7 +75,12 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
 
   for (const doc of vscode.workspace.textDocuments) {
     if (isSqlFileDocument(doc)) {
-      await ensureSqlStudioLanguage(doc);
+      try {
+        await ensureSqlStudioLanguage(doc);
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        log.appendLine(`Language association skipped for ${doc.uri.fsPath}: ${msg}`);
+      }
     }
   }
   resultsPanel = new ResultsPanel(context, pythonClient);
@@ -94,7 +117,6 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
 
   context.subscriptions.push(
     pythonClient,
-    explorerView,
     connectionStatusBar,
     vscode.workspace.onDidOpenTextDocument((doc) => {
       if (isSqlFileDocument(doc)) {
@@ -382,15 +404,23 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     vscode.commands.registerCommand("sqlStudio.askAgentFix", askAgentFix)
   );
 
-  try {
-    await pythonClient.start();
-    explorerProvider.refresh();
-  } catch (err) {
-    const msg = err instanceof Error ? err.message : String(err);
-    vscode.window.showWarningMessage(
-      `SQL Studio backend not started: ${msg}. Install uv and run: cd python && uv sync`
-    );
-  }
+  log.appendLine("SQL Studio activated.");
+}
+
+function startPythonBackend(log: vscode.OutputChannel): void {
+  void pythonClient
+    .start()
+    .then(() => {
+      explorerProvider.refresh();
+      log.appendLine("Python backend started.");
+    })
+    .catch((err: unknown) => {
+      const msg = err instanceof Error ? err.message : String(err);
+      log.appendLine(`Python backend failed: ${msg}`);
+      vscode.window.showWarningMessage(
+        `SQL Studio backend not started: ${msg}. Set sqlStudio.uvPath or run: cd python && uv sync`
+      );
+    });
 }
 
 export function deactivate(): void {

@@ -25,7 +25,11 @@ def export_xlsx(
     ws.freeze_panes = "A2"
     for idx, col in enumerate(columns, start=1):
         letter = get_column_letter(idx)
-        max_len = max(len(str(col)), *(len(str(r[idx - 1])) for r in rows[:100] if r), default=10)
+        lengths = [len(str(col))]
+        for row in rows[:100]:
+            if idx - 1 < len(row) and row[idx - 1] is not None:
+                lengths.append(len(str(row[idx - 1])))
+        max_len = max(lengths) if lengths else 10
         ws.column_dimensions[letter].width = min(max_len + 2, 50)
     wb.save(file_path)
     return len(rows)

@@ -10,6 +10,7 @@
     "vscode": "^1.85.0"
   },
   "categories": ["Programming Languages", "Other"],
+  "icon": "resources/icons/sql-studio-extension.png",
   "activationEvents": [
     "onStartupFinished",
     "onLanguage:sql-studio-sql",
@@ -32,19 +33,31 @@
         "id": "sql-studio-postgres",
         "aliases": ["SQL (PostgreSQL)", "PostgreSQL SQL"],
         "extensions": [".pgsql", ".psql"],
-        "configuration": "./language-configuration.json"
+        "configuration": "./language-configuration.json",
+        "icon": {
+          "light": "resources/icons/sql-studio-file-light.png",
+          "dark": "resources/icons/sql-studio-file-dark.png"
+        }
       },
       {
         "id": "sql-studio-clickhouse",
         "aliases": ["SQL (ClickHouse)", "ClickHouse SQL"],
         "extensions": [".chsql"],
-        "configuration": "./language-configuration.json"
+        "configuration": "./language-configuration.json",
+        "icon": {
+          "light": "resources/icons/sql-studio-file-light.png",
+          "dark": "resources/icons/sql-studio-file-dark.png"
+        }
       },
       {
         "id": "sql-studio-sql",
         "aliases": ["SQL Studio"],
         "extensions": [".sql"],
-        "configuration": "./language-configuration.json"
+        "configuration": "./language-configuration.json",
+        "icon": {
+          "light": "resources/icons/sql-studio-file-light.png",
+          "dark": "resources/icons/sql-studio-file-dark.png"
+        }
       }
     ],
     "grammars": [
@@ -362,19 +375,25 @@
         "when": "editorLangId =~ /sql-studio/"
       }
     ],
+    "viewsWelcome": [
+      {
+        "view": "sqlStudio.explorer",
+        "contents": "No database connections yet.\n[Add Connection](command:sqlStudio.addConnection)\n\nConfigure `sqlStudio.uvPath` if the Python backend fails to start."
+      }
+    ],
     "viewsContainers": {
       "activitybar": [
         {
           "id": "sql-studio",
           "title": "SQL Studio",
-          "icon": "resources/icons/database.svg"
+          "icon": "resources/icons/sql-studio-extension.png"
         }
       ],
       "panel": [
         {
           "id": "sql-studio-results",
           "title": "SQL Results",
-          "icon": "resources/icons/database.svg"
+          "icon": "resources/icons/sql-studio-extension.png"
         }
       ]
     },

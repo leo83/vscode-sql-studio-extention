@@ -15,6 +15,7 @@ export interface JsonRpcResponse<T = unknown> {
  */
 export class PythonClient implements vscode.Disposable {
   private process: ChildProcessWithoutNullStreams | null = null;
+  private startPromise: Promise<void> | null = null;
   private nextId = 1;
   private pending = new Map<
     number,
@@ -26,6 +27,7 @@ export class PythonClient implements vscode.Disposable {
   constructor(context: vscode.ExtensionContext) {
     this.extensionPath = context.extensionPath;
     this.outputChannel = vscode.window.createOutputChannel("SQL Studio Backend");
+    context.subscriptions.push(this.outputChannel);
   }
 
   private getUvCommand(): string {
@@ -40,51 +42,86 @@ export class PythonClient implements vscode.Disposable {
     if (this.process) {
       return;
     }
+    if (this.startPromise) {
+      return this.startPromise;
+    }
+
+    this.startPromise = this.launchBackend().finally(() => {
+      this.startPromise = null;
+    });
+    return this.startPromise;
+  }
+
+  private launchBackend(): Promise<void> {
     const uv = this.getUvCommand();
     const pythonDir = this.getPythonProjectDir();
     const args = ["run", "--directory", pythonDir, "sql-studio-server"];
 
     this.outputChannel.appendLine(`Starting backend: ${uv} ${args.join(" ")}`);
 
-    this.process = spawn(uv, args, {
-      cwd: this.extensionPath,
-      env: { ...process.env, PYTHONUNBUFFERED: "1" },
-      stdio: "pipe",
-    });
+    return new Promise((resolve, reject) => {
+      const child = spawn(uv, args, {
+        cwd: this.extensionPath,
+        env: { ...process.env, PYTHONUNBUFFERED: "1" },
+        stdio: "pipe",
+      });
 
-    this.process.stderr.on("data", (chunk: Buffer) => {
-      this.outputChannel.append(chunk.toString());
-    });
+      this.process = child;
 
-    const rl = readline.createInterface({ input: this.process.stdout });
-    rl.on("line", (line) => {
-      try {
-        const msg = JSON.parse(line) as JsonRpcResponse;
-        const pending = this.pending.get(msg.id);
-        if (!pending) {
-          return;
+      child.on("error", (err) => {
+        this.outputChannel.appendLine(`Backend spawn failed: ${err.message}`);
+        this.process = null;
+        this.rejectAllPending(new Error(`Failed to launch ${uv}: ${err.message}`));
+        reject(new Error(`Failed to launch ${uv}: ${err.message}`));
+      });
+
+      child.stderr.on("data", (chunk: Buffer) => {
+        this.outputChannel.append(chunk.toString());
+      });
+
+      const rl = readline.createInterface({ input: child.stdout });
+      rl.on("line", (line) => {
+        try {
+          const msg = JSON.parse(line) as JsonRpcResponse;
+          const pending = this.pending.get(msg.id);
+          if (!pending) {
+            return;
+          }
+          this.pending.delete(msg.id);
+          if (msg.error) {
+            pending.reject(new Error(msg.error.message));
+          } else {
+            pending.resolve(msg.result);
+          }
+        } catch {
+          this.outputChannel.appendLine(`Failed to parse RPC response: ${line}`);
         }
-        this.pending.delete(msg.id);
-        if (msg.error) {
-          pending.reject(new Error(msg.error.message));
-        } else {
-          pending.resolve(msg.result);
-        }
-      } catch {
-        this.outputChannel.appendLine(`Failed to parse RPC response: ${line}`);
-      }
-    });
+      });
 
-    this.process.on("exit", (code) => {
-      this.outputChannel.appendLine(`Python server exited with code ${code}`);
-      this.process = null;
-      for (const [, p] of this.pending) {
-        p.reject(new Error("Python server stopped"));
-      }
-      this.pending.clear();
-    });
+      child.on("exit", (code) => {
+        this.outputChannel.appendLine(`Python server exited with code ${code}`);
+        this.process = null;
+        this.rejectAllPending(new Error("Python server stopped"));
+      });
 
-    await this.request("health", {});
+      void this.request<{ status: string }>("health", {}, { timeoutMs: 20_000 })
+        .then(() => {
+          this.outputChannel.appendLine("Backend ready.");
+          resolve();
+        })
+        .catch((err) => {
+          this.process?.kill();
+          this.process = null;
+          reject(err);
+        });
+    });
+  }
+
+  private rejectAllPending(error: Error): void {
+    for (const [, pending] of this.pending) {
+      pending.reject(error);
+    }
+    this.pending.clear();
   }
 
   async request<T>(
@@ -131,6 +168,6 @@ export class PythonClient implements vscode.Disposable {
   dispose(): void {
     this.process?.kill();
     this.process = null;
-    this.outputChannel.dispose();
+    this.rejectAllPending(new Error("Python server stopped"));
   }
 }

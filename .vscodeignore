@@ -14,3 +14,4 @@ webview-ui/vite.config.ts
 webview-ui/index.html
 **/*.map
 **/.DS_Store
+resources/icons/sql-studio-source.jpeg
