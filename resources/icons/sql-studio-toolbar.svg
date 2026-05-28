@@ -1,15 +1,9 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" fill="none" stroke="currentColor" stroke-width="7.5" stroke-linecap="round" stroke-linejoin="round">
-  <ellipse cx="64" cy="19" rx="40" ry="11"/>
-  <path d="M24 19v24"/>
-  <path d="M104 19v24"/>
-  <path d="M24 43c7 8 22 13 40 13s33-5 40-13"/>
-  <path d="M24 52v25"/>
-  <path d="M104 52v25"/>
-  <path d="M24 77c7 8 22 13 40 13s33-5 40-13"/>
-  <path d="M24 86v23"/>
-  <path d="M104 86v23"/>
-  <path d="M24 109c7 8 22 13 40 13s33-5 40-13"/>
-  <path d="M50 55 37 64l13 9"/>
-  <path d="M78 55 91 64l-13 9"/>
-  <path d="M68 46 60 82"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" fill="none" stroke="currentColor" stroke-width="9" stroke-linecap="round" stroke-linejoin="round">
+  <ellipse cx="64" cy="23" rx="38" ry="13"/>
+  <path d="M26 23v76"/>
+  <path d="M102 23v76"/>
+  <path d="M26 99c0 12 17 22 38 22s38-10 38-22"/>
+  <path d="M51 53 35 66l16 13"/>
+  <path d="M77 53 93 66 77 79"/>
+  <path d="M68 48 60 84"/>
 </svg>
