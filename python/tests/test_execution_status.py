@@ -23,7 +23,7 @@ def test_postgres_status_formats_rowcount() -> None:
 
 
 def test_clickhouse_status_use() -> None:
-    assert clickhouse_status("use robotisation;", None) == "Database changed to `robotisation`"
+    assert clickhouse_status("use app_db;", None) == "Database changed to `app_db`"
 
 
 def test_clickhouse_status_written_rows() -> None:

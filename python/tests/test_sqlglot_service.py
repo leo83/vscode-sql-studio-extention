@@ -29,7 +29,7 @@ def test_split_clickhouse_with_header_comment() -> None:
 
 
 def test_split_fallback_on_parse_error() -> None:
-    sql = "use robotisation; SELECT * FROM message; broken @@"
+    sql = "use app_db; SELECT * FROM message; broken @@"
     parts = split_statements(sql, "clickhouse")
     assert len(parts) == 3
     assert parts[0].upper().startswith("USE")
@@ -37,7 +37,7 @@ def test_split_fallback_on_parse_error() -> None:
 
 
 def test_is_session_statement() -> None:
-    assert is_session_statement("use robotisation")
+    assert is_session_statement("use app_db")
     assert is_session_statement("SET readonly = 1")
     assert not is_session_statement("SELECT 1")
 

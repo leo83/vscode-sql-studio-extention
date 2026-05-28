@@ -70,8 +70,8 @@ def test_cancel_query_missing_id_returns_false() -> None:
 
 
 def test_session_database_persists_until_disconnect() -> None:
-    set_session_database("c1", "robotisation")
-    assert get_session_database("c1") == "robotisation"
+    set_session_database("c1", "app_db")
+    assert get_session_database("c1") == "app_db"
     disconnect("c1")
     assert get_session_database("c1") is None
 
@@ -79,7 +79,7 @@ def test_session_database_persists_until_disconnect() -> None:
 def test_get_driver_restores_session_database() -> None:
     from sql_studio.drivers.clickhouse import ClickHouseDriver
 
-    set_session_database("ch-1", "robotisation")
+    set_session_database("ch-1", "app_db")
     driver = ClickHouseDriver()
     mock_impl = MagicMock()
     mock_impl.is_connected_with.return_value = True
@@ -90,7 +90,7 @@ def test_get_driver_restores_session_database() -> None:
     result = get_driver(_clickhouse_config("ch-1"))
 
     assert result is driver
-    mock_impl.set_active_database.assert_called_once_with("robotisation")
+    mock_impl.set_active_database.assert_called_once_with("app_db")
 
 
 @patch("sql_studio.drivers.registry.ClickHouseDriver")

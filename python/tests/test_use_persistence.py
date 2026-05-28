@@ -31,7 +31,7 @@ def test_use_then_select_on_same_driver(mock_get_driver: MagicMock) -> None:
             rows=[],
             row_count=0,
             duration_ms=1.0,
-            status_message="Database changed to `robotisation`",
+            status_message="Database changed to `app_db`",
         ),
         QueryResult(
             columns=[],
@@ -48,7 +48,7 @@ def test_use_then_select_on_same_driver(mock_get_driver: MagicMock) -> None:
             "method": "query/execute",
             "params": {
                 "connection": _clickhouse_connection(),
-                "sql": "use robotisation;",
+                "sql": "use app_db;",
             },
         }
     )
@@ -70,4 +70,4 @@ def test_use_then_select_on_same_driver(mock_get_driver: MagicMock) -> None:
 
     from sql_studio.drivers.registry import get_session_database
 
-    assert get_session_database("ch-1") == "robotisation"
+    assert get_session_database("ch-1") == "app_db"

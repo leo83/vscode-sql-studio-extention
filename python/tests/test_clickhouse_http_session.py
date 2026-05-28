@@ -38,7 +38,7 @@ def test_use_then_select_reuses_session_database() -> None:
 
         def query(sql: str) -> MagicMock:
             query_databases.append(client.database)
-            if client.database != "robotisation":
+            if client.database != "app_db":
                 raise RuntimeError(
                     "Unknown table expression identifier 'messages' in scope "
                     + sql
@@ -71,7 +71,7 @@ def test_use_then_select_reuses_session_database() -> None:
                 "method": "query/execute",
                 "params": {
                     "connection": _clickhouse_connection(),
-                    "sql": "use robotisation;",
+                    "sql": "use app_db;",
                 },
             }
         )
@@ -88,4 +88,4 @@ def test_use_then_select_reuses_session_database() -> None:
 
     assert "error" not in use_response
     assert "error" not in select_response
-    assert query_databases == ["robotisation"]
+    assert query_databases == ["app_db"]

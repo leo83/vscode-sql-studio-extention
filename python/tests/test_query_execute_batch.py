@@ -8,12 +8,12 @@ def test_query_execute_result_serializes_batch() -> None:
         statements=[
             StatementResult(
                 index=1,
-                sql="USE robotisation",
+                sql="USE app_db",
                 columns=[],
                 rows=[],
                 row_count=0,
                 duration_ms=1.2,
-                status_message="Database changed to `robotisation`",
+                status_message="Database changed to `app_db`",
             ),
             StatementResult(
                 index=2,
@@ -30,5 +30,5 @@ def test_query_execute_result_serializes_batch() -> None:
     data = batch.model_dump()
     assert len(data["statements"]) == 2
     assert data["statements"][0]["index"] == 1
-    assert data["statements"][0]["sql"] == "USE robotisation"
+    assert data["statements"][0]["sql"] == "USE app_db"
     assert data["total_duration_ms"] == 4.6
