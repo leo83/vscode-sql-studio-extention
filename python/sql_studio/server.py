@@ -11,6 +11,10 @@ from typing import Any, Callable
 from pydantic import ValidationError
 
 from sql_studio.dialect import sqlglot_service
+from sql_studio.dialect.query_analysis import (
+    LARGE_TABLE_ROW_THRESHOLD,
+    get_unbounded_select_tables,
+)
 from sql_studio.drivers.registry import (
     cancel_query,
     disconnect,
@@ -20,17 +24,24 @@ from sql_studio.drivers.registry import (
     test_connection,
 )
 from sql_studio.drivers.clickhouse_session import parse_use_database
+from sql_studio.drivers.table_stats import (
+    estimate_table_row_count,
+    format_qualified_table,
+    resolve_table_schema,
+)
 from sql_studio.export.csv_export import export_csv
 from sql_studio.export.excel_export import export_xlsx
 from sql_studio.query_cancel import QueryCancelledError, is_query_cancelled_error
 from sql_studio.models import (
     ConnectionConfig,
+    CheckUnboundedSelectResult,
     ExportResult,
     QueryExecuteResult,
     QueryResult,
     ObjectDescription,
     SchemaNode,
     StatementResult,
+    LargeTableWarning,
 )
 
 
@@ -51,6 +62,7 @@ class JsonRpcServer:
             "schema/getObjectDescription": self._schema_get_object_description,
             "sql/format": self._sql_format,
             "sql/split": self._sql_split,
+            "sql/checkUnboundedSelect": self._sql_check_unbounded_select,
             "export/csv": self._export_csv,
             "export/xlsx": self._export_xlsx,
         }
@@ -199,6 +211,61 @@ class JsonRpcServer:
         sql = params["sql"]
         dialect = params.get("dialect", "postgres")
         return {"statements": sqlglot_service.split_statements(sql, dialect)}
+
+    def _sql_check_unbounded_select(self, params: dict[str, Any]) -> dict[str, Any]:
+        config = ConnectionConfig.model_validate(params["connection"])
+        sql = params["sql"]
+        threshold = int(params.get("threshold", LARGE_TABLE_ROW_THRESHOLD))
+        dialect = config.dialect
+        statements = sqlglot_service.split_statements(sql, dialect)
+        driver = get_driver(config)
+        active_database = get_session_database(config.id)
+        if active_database:
+            setter = getattr(driver, "set_active_database", None)
+            if callable(setter):
+                setter(active_database)
+
+        warnings: list[LargeTableWarning] = []
+        seen_tables: set[str] = set()
+        for statement in statements:
+            if sqlglot_service.is_session_statement(statement):
+                database = parse_use_database(statement)
+                if database:
+                    active_database = database
+                    setter = getattr(driver, "set_active_database", None)
+                    if callable(setter):
+                        setter(database)
+                continue
+
+            tables = get_unbounded_select_tables(statement, dialect)
+            for table_ref in tables:
+                schema = resolve_table_schema(
+                    dialect,
+                    table_ref.schema,
+                    config=config,
+                    active_database=active_database,
+                )
+                qualified = format_qualified_table(dialect, schema, table_ref.name)
+                if qualified in seen_tables:
+                    continue
+                seen_tables.add(qualified)
+
+                estimate = estimate_table_row_count(driver, dialect, schema, table_ref.name)
+                if estimate is None or estimate <= threshold:
+                    continue
+
+                warnings.append(
+                    LargeTableWarning(
+                        table=qualified,
+                        row_estimate=estimate,
+                        message=(
+                            f"{qualified} (~{estimate:,} rows) may scan a large table. "
+                            "Consider adding LIMIT."
+                        ),
+                    )
+                )
+
+        return CheckUnboundedSelectResult(warnings=warnings).model_dump()
 
     def _export_csv(self, params: dict[str, Any]) -> dict[str, Any]:
         path = params["path"]

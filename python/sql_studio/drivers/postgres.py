@@ -100,6 +100,25 @@ class PostgresDriver:
                 truncated=truncated,
             )
 
+    def estimate_table_row_count(self, schema: str, table: str) -> int | None:
+        if self._conn is None:
+            raise RuntimeError("Not connected")
+        with self._conn.cursor() as cur:
+            cur.execute(
+                """
+                SELECT c.reltuples::bigint AS row_estimate
+                FROM pg_class c
+                JOIN pg_namespace n ON n.oid = c.relnamespace
+                WHERE n.nspname = %s AND c.relname = %s
+                """,
+                (schema, table),
+            )
+            row = cur.fetchone() or {}
+            estimate = row.get("row_estimate")
+            if estimate is None:
+                return None
+            return int(estimate)
+
     def list_schema_children(self, path: list[str]) -> list[SchemaNode]:
         if self._conn is None:
             raise RuntimeError("Not connected")

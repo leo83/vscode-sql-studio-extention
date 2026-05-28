@@ -217,6 +217,10 @@ export class ConnectionManager {
     }
   }
 
+  refreshAccentStyles(): void {
+    this.dialog?.refreshAccentStyles();
+  }
+
   private getDialog(): ConnectionDialog {
     if (!this.dialog) {
       this.dialog = new ConnectionDialog(this.context, this.python);

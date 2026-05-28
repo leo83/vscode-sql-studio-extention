@@ -104,6 +104,21 @@ class ClickHouseHttpDriver:
             status_for_empty=status_for_empty,
         )
 
+    def estimate_table_row_count(self, schema: str, table: str) -> int | None:
+        if self._client is None:
+            raise RuntimeError("Not connected")
+        rows = self._client.query(
+            """
+            SELECT total_rows
+            FROM system.tables
+            WHERE database = {db:String} AND name = {tbl:String}
+            """,
+            parameters={"db": schema, "tbl": table},
+        ).result_rows or []
+        if not rows or rows[0][0] is None:
+            return None
+        return int(rows[0][0])
+
     def list_schema_children(self, path: list[str]) -> list[SchemaNode]:
         if self._client is None:
             raise RuntimeError("Not connected")

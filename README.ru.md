@@ -242,6 +242,10 @@ npx vsce package --no-dependencies --no-rewrite-relative-links
 | `sqlStudio.uvPath` | `uv` | Путь к uv |
 | `sqlStudio.previewRowLimit` | `1000` | Строк при preview |
 | `sqlStudio.defaultRowLimit` | `10000` | Лимит SQL-запросов |
+| `sqlStudio.warnOnLargeUnboundedSelect` | `true` | Предупреждать перед unbounded SELECT по большим таблицам |
+| `sqlStudio.largeTableRowThreshold` | `5000` | Порог оценки строк для предупреждения |
+| `sqlStudio.accentColor` | _(пусто)_ | Основной акцент SQL Studio webview (hex) |
+| `sqlStudio.chartAccentColors` | `[]` | Цвета серий графиков (массив hex) |
 | `sqlStudio.defaultDialect` | `postgres` | Dialect по умолчанию |
 | `sqlStudio.autoAssociateSqlFiles` | `true` | `.sql` в режиме SQL Studio |
 | `sqlStudio.promptForConnectionOnRun` | `false` | Спрашивать connection перед run |

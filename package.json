@@ -504,6 +504,30 @@
           "default": 1000,
           "description": "Number of rows loaded when previewing a table from Database Explorer."
         },
+        "sqlStudio.warnOnLargeUnboundedSelect": {
+          "type": "boolean",
+          "default": true,
+          "description": "Before running a simple SELECT without WHERE, LIMIT, or aggregation, warn when referenced tables exceed the large-table row threshold."
+        },
+        "sqlStudio.largeTableRowThreshold": {
+          "type": "number",
+          "default": 5000,
+          "minimum": 1,
+          "description": "Estimated row count above which unbounded SELECT statements trigger a warning. Set sqlStudio.warnOnLargeUnboundedSelect to false to disable checks."
+        },
+        "sqlStudio.accentColor": {
+          "type": "string",
+          "default": "",
+          "markdownDescription": "Primary accent color for SQL Studio webviews (hex, e.g. `#0e639c`). Empty uses the editor theme."
+        },
+        "sqlStudio.chartAccentColors": {
+          "type": "array",
+          "default": [],
+          "items": {
+            "type": "string"
+          },
+          "markdownDescription": "Chart series colors (hex). Empty uses the editor theme chart colors. Example: `[\"#3794ff\", \"#89d185\", \"#d18616\"]`."
+        },
         "sqlStudio.defaultDialect": {
           "type": "string",
           "enum": ["postgres", "clickhouse", "mssql", "mysql", "sqlite"],

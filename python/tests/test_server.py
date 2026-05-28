@@ -237,6 +237,55 @@ def test_sql_split(server: JsonRpcServer) -> None:
     assert len(response["result"]["statements"]) == 2
 
 
+@patch("sql_studio.server.get_driver")
+def test_sql_check_unbounded_select_warns_on_large_tables(
+    mock_get_driver: MagicMock,
+    server: JsonRpcServer,
+) -> None:
+    mock_driver = MagicMock()
+    mock_driver.estimate_table_row_count.return_value = 12_345
+    mock_get_driver.return_value = mock_driver
+
+    response = server._handle(
+        {
+            "id": 14,
+            "method": "sql/checkUnboundedSelect",
+            "params": {
+                "connection": _connection(),
+                "sql": "SELECT * FROM users",
+            },
+        }
+    )
+
+    warnings = response["result"]["warnings"]
+    assert len(warnings) == 1
+    assert warnings[0]["table"] == "public.users"
+    assert warnings[0]["row_estimate"] == 12_345
+    mock_driver.estimate_table_row_count.assert_called_once_with("public", "users")
+
+
+@patch("sql_studio.server.get_driver")
+def test_sql_check_unbounded_select_skips_bounded_query(
+    mock_get_driver: MagicMock,
+    server: JsonRpcServer,
+) -> None:
+    mock_get_driver.return_value = MagicMock()
+
+    response = server._handle(
+        {
+            "id": 15,
+            "method": "sql/checkUnboundedSelect",
+            "params": {
+                "connection": _connection(),
+                "sql": "SELECT * FROM users WHERE id = 1",
+            },
+        }
+    )
+
+    assert response["result"]["warnings"] == []
+    mock_get_driver.return_value.estimate_table_row_count.assert_not_called()
+
+
 def test_export_csv(tmp_path, server: JsonRpcServer) -> None:
     out = tmp_path / "out.csv"
     response = server._handle(

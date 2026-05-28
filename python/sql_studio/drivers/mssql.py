@@ -112,6 +112,25 @@ class MssqlDriver:
                 truncated=truncated,
             )
 
+    def estimate_table_row_count(self, schema: str, table: str) -> int | None:
+        if self._conn is None:
+            raise RuntimeError("Not connected")
+        with self._conn.cursor() as cur:
+            cur.execute(
+                """
+                SELECT SUM(p.rows) AS row_estimate
+                FROM sys.partitions p
+                INNER JOIN sys.objects o ON p.object_id = o.object_id
+                INNER JOIN sys.schemas s ON o.schema_id = s.schema_id
+                WHERE s.name = ? AND o.name = ? AND p.index_id IN (0, 1)
+                """,
+                (schema, table),
+            )
+            row = cur.fetchone()
+            if not row or row[0] is None:
+                return None
+            return int(row[0])
+
     def list_schema_children(self, path: list[str]) -> list[SchemaNode]:
         if self._conn is None:
             raise RuntimeError("Not connected")

@@ -12,6 +12,7 @@ import {
   toRpcConnection,
 } from "../types";
 import { ConnectionTag, normalizeTags } from "../connectionTags";
+import { buildAccentColorStyleElement } from "../accentColors";
 
 export interface ConnectionFormPayload {
   id?: string;
@@ -30,6 +31,7 @@ export interface ConnectionFormPayload {
 
 export class ConnectionDialog {
   private panel: vscode.WebviewPanel | undefined;
+  private editingProfile: ConnectionProfile | undefined;
   private pending: {
     resolve: (value: ConnectionWithSecret | undefined) => void;
   } | undefined;
@@ -47,6 +49,7 @@ export class ConnectionDialog {
 
     return new Promise((resolve) => {
       this.pending = { resolve };
+      this.editingProfile = existing;
 
       const title = existing ? `Edit: ${existing.name}` : "New connection";
       this.panel = vscode.window.createWebviewPanel(
@@ -101,7 +104,14 @@ export class ConnectionDialog {
     const pending = this.pending;
     this.pending = undefined;
     this.panel = undefined;
+    this.editingProfile = undefined;
     pending?.resolve(value);
+  }
+
+  refreshAccentStyles(): void {
+    if (this.panel) {
+      this.panel.webview.html = this.getHtml(this.panel.webview, this.editingProfile);
+    }
   }
 
   private async buildConnectionFromPayload(
@@ -215,6 +225,7 @@ export class ConnectionDialog {
   <meta charset="UTF-8" />
   <meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src ${webview.cspSource} data:; style-src ${webview.cspSource} 'unsafe-inline'; script-src 'nonce-${nonce}';">
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  ${buildAccentColorStyleElement()}
   <link rel="stylesheet" href="${styleUri}">
   <title>Connection</title>
 </head>

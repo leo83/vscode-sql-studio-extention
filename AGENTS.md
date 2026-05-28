@@ -95,6 +95,7 @@ cd python && uv sync --all-groups && uv run pytest
 | `schema/listChildren` | Узлы explorer (lazy) |
 | `schema/getTableDDL` | DDL таблицы |
 | `sql/format` | Форматирование через sqlglot |
+| `sql/checkUnboundedSelect` | Предупреждение о больших таблицах в unbounded SELECT |
 | `export/csv`, `export/xlsx` | Экспорт результатов |
 
 ## Правила разработки
@@ -142,6 +143,8 @@ cd python && uv sync --all-groups && uv run pytest
 - Parse/format/split — **sqlglot** (`read=postgres|clickhouse|tsql` для `mssql`).
 - Preview таблицы: `sqlStudio.previewRowLimit` (default 1000). MSSQL: `SELECT TOP N`.
 - SQL-запросы: `sqlStudio.defaultRowLimit` (default 10000).
+- Unbounded SELECT warning: `sqlStudio.warnOnLargeUnboundedSelect` (default true), порог `sqlStudio.largeTableRowThreshold` (default 5000).
+- Акценты webview: `sqlStudio.accentColor`, `sqlStudio.chartAccentColors`.
 
 ### Connections
 

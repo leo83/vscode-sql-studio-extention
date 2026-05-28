@@ -86,3 +86,13 @@ class QueryExecuteResult(BaseModel):
 class ExportResult(BaseModel):
     path: str
     row_count: int
+
+
+class LargeTableWarning(BaseModel):
+    table: str
+    row_estimate: int
+    message: str
+
+
+class CheckUnboundedSelectResult(BaseModel):
+    warnings: list[LargeTableWarning] = Field(default_factory=list)

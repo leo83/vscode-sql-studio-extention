@@ -48,6 +48,16 @@ export interface QueryExecutePayload {
   total_duration_ms: number;
 }
 
+export interface LargeTableWarningPayload {
+  table: string;
+  row_estimate: number;
+  message: string;
+}
+
+export interface CheckUnboundedSelectPayload {
+  warnings: LargeTableWarningPayload[];
+}
+
 export function batchHasError(batch: QueryExecutePayload): boolean {
   return batch.statements.some((s) => Boolean(s.error));
 }

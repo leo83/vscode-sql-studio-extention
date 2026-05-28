@@ -6,6 +6,8 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
+- Warning before running unbounded `SELECT` (no `WHERE`, no `LIMIT`/`TOP`, non-aggregating): checks referenced tables with >5,000 estimated rows and recommends adding `LIMIT` (configurable via `sqlStudio.warnOnLargeUnboundedSelect` and `sqlStudio.largeTableRowThreshold`)
+- Configurable accent colors for SQL Studio webviews: `sqlStudio.accentColor` and `sqlStudio.chartAccentColors`
 - Webview unit tests for pie chart layout and gesture helpers (`cd webview-ui && npm run test`)
 
 ### Changed

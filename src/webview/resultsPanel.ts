@@ -1,5 +1,6 @@
 import * as vscode from "vscode";
 import * as path from "path";
+import { buildAccentColorStyleElement } from "../accentColors";
 import { PythonClient } from "../pythonClient";
 import { lastExportableStatement, QueryExecutePayload } from "../types";
 
@@ -63,6 +64,12 @@ export class ResultsPanel implements vscode.WebviewViewProvider {
     return this.lastResult;
   }
 
+  refreshAccentStyles(): void {
+    if (this.view && this.lastResult) {
+      this.view.webview.html = this.getHtml(this.view.webview, this.lastResult);
+    }
+  }
+
   private async handleExport(kind: "csv" | "xlsx"): Promise<void> {
     if (!this.lastResult) {
       return;
@@ -112,6 +119,7 @@ export class ResultsPanel implements vscode.WebviewViewProvider {
   <meta charset="UTF-8" />
   <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src ${webview.cspSource} 'unsafe-inline'; script-src 'nonce-${nonce}';">
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  ${buildAccentColorStyleElement()}
   <link rel="stylesheet" href="${styleUri}">
   <title>SQL Results</title>
 </head>

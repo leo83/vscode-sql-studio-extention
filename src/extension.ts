@@ -1,4 +1,5 @@
 import * as vscode from "vscode";
+import { accentColorsAffectConfiguration } from "./accentColors";
 import { ConnectionManager } from "./connectionManager";
 import { PythonClient } from "./pythonClient";
 import { QueryRunner } from "./queryRunner";
@@ -120,6 +121,12 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   context.subscriptions.push(
     pythonClient,
     connectionStatusBar,
+    vscode.workspace.onDidChangeConfiguration((event) => {
+      if (accentColorsAffectConfiguration(event)) {
+        resultsPanel.refreshAccentStyles();
+        connectionManager.refreshAccentStyles();
+      }
+    }),
     vscode.workspace.onDidOpenTextDocument((doc) => {
       if (isSqlFileDocument(doc)) {
         void ensureSqlStudioLanguage(doc);

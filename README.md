@@ -129,6 +129,10 @@ T-SQL files use extension `.tsql` and language **SQL (Microsoft SQL Server)**. T
 | `sqlStudio.uvPath` | `uv` | Path to the `uv` executable |
 | `sqlStudio.previewRowLimit` | `1000` | Rows when previewing a table from Explorer |
 | `sqlStudio.defaultRowLimit` | `10000` | Max rows per SQL query |
+| `sqlStudio.warnOnLargeUnboundedSelect` | `true` | Warn before unbounded SELECT on large tables |
+| `sqlStudio.largeTableRowThreshold` | `5000` | Estimated row count that triggers the warning |
+| `sqlStudio.accentColor` | _(empty)_ | Primary accent for SQL Studio webviews (hex) |
+| `sqlStudio.chartAccentColors` | `[]` | Chart series colors (hex array) |
 | `sqlStudio.defaultDialect` | `postgres` | Default dialect for new files |
 | `sqlStudio.autoAssociateSqlFiles` | `true` | Open `.sql` in SQL Studio language mode |
 | `sqlStudio.promptForConnectionOnRun` | `false` | Ask for connection before each run |

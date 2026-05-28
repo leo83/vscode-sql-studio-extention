@@ -111,24 +111,38 @@ interface ThemeColors {
   palette: string[];
 }
 
+function readCustomChartPalette(style: CSSStyleDeclaration): string[] {
+  const palette: string[] = [];
+  for (let index = 1; index <= 12; index += 1) {
+    const color = style.getPropertyValue(`--sql-studio-chart-${index}`).trim();
+    if (color) {
+      palette.push(color);
+    }
+  }
+  return palette;
+}
+
 function readThemeColors(): ThemeColors {
   const style = getComputedStyle(document.documentElement);
   const read = (name: string, fallback: string) =>
     style.getPropertyValue(name).trim() || fallback;
 
+  const customPalette = readCustomChartPalette(style);
+  const defaultPalette = [
+    read("--vscode-charts-blue", "#3794ff"),
+    read("--vscode-charts-green", "#89d185"),
+    read("--vscode-charts-orange", "#d18616"),
+    read("--vscode-charts-red", "#f48771"),
+    read("--vscode-charts-purple", "#b180d7"),
+    read("--vscode-charts-yellow", "#cca700"),
+    read("--vscode-charts-foreground", "#cccccc"),
+  ];
+
   return {
     text: read("--vscode-foreground", "#cccccc"),
     background: read("--vscode-editor-background", "#1e1e1e"),
     border: read("--vscode-panel-border", "#444444"),
-    palette: [
-      read("--vscode-charts-blue", "#3794ff"),
-      read("--vscode-charts-green", "#89d185"),
-      read("--vscode-charts-orange", "#d18616"),
-      read("--vscode-charts-red", "#f48771"),
-      read("--vscode-charts-purple", "#b180d7"),
-      read("--vscode-charts-yellow", "#cca700"),
-      read("--vscode-charts-foreground", "#cccccc"),
-    ],
+    palette: customPalette.length > 0 ? customPalette : defaultPalette,
   };
 }
 

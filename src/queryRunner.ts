@@ -4,8 +4,10 @@ import { PythonClient } from "./pythonClient";
 import { ResultsPanel } from "./webview/resultsPanel";
 import {
   buildPreviewSql,
+  getLargeTableRowThreshold,
   getPreviewRowLimit,
   getQueryRowLimit,
+  isLargeUnboundedSelectWarningEnabled,
   getSessionStatementsBeforeOffset,
   getStatementAtPosition,
   getStatementStartOffset,
@@ -14,6 +16,7 @@ import {
 } from "./sqlUtils";
 import {
   ConnectionWithSecret,
+  CheckUnboundedSelectPayload,
   QueryExecutePayload,
   toRpcConnection,
 } from "./types";
@@ -224,6 +227,11 @@ export class QueryRunner {
     showResults = true,
     leadingSessionCount = 0
   ): Promise<QueryExecutePayload | undefined> {
+    const shouldRun = await this.confirmUnboundedLargeTableScan(conn, sql);
+    if (!shouldRun) {
+      return undefined;
+    }
+
     let result: QueryExecutePayload | undefined;
     let cancelled = false;
     this.runningConnectionId = conn.id;
@@ -300,5 +308,39 @@ export class QueryRunner {
   private isCancelledError(err: unknown): boolean {
     const message = err instanceof Error ? err.message : String(err);
     return /cancel/i.test(message);
+  }
+
+  private async confirmUnboundedLargeTableScan(
+    conn: ConnectionWithSecret,
+    sql: string
+  ): Promise<boolean> {
+    if (!isLargeUnboundedSelectWarningEnabled()) {
+      return true;
+    }
+
+    try {
+      const check = await this.python.request<CheckUnboundedSelectPayload>(
+        "sql/checkUnboundedSelect",
+        {
+          connection: toRpcConnection(conn),
+          sql,
+          threshold: getLargeTableRowThreshold(),
+        }
+      );
+      if (check.warnings.length === 0) {
+        return true;
+      }
+
+      const detail = check.warnings.map((warning) => warning.message).join("\n");
+      const picked = await vscode.window.showWarningMessage(
+        `Unbounded SELECT without WHERE may scan large tables:\n${detail}`,
+        { modal: true },
+        "Run anyway",
+        "Cancel"
+      );
+      return picked === "Run anyway";
+    } catch {
+      return true;
+    }
   }
 }

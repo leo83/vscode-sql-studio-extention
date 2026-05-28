@@ -85,6 +85,14 @@ class ClickHouseDriver:
             raise RuntimeError("Not connected")
         return self._impl.execute(sql, limit=limit)
 
+    def estimate_table_row_count(self, schema: str, table: str) -> int | None:
+        if self._impl is None:
+            raise RuntimeError("Not connected")
+        estimator = getattr(self._impl, "estimate_table_row_count", None)
+        if not callable(estimator):
+            return None
+        return estimator(schema, table)
+
     def list_schema_children(self, path: list[str]) -> list[SchemaNode]:
         if self._impl is None:
             raise RuntimeError("Not connected")

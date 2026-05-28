@@ -42,6 +42,18 @@ export function getQueryRowLimit(): number {
     .get<number>("defaultRowLimit", 10000);
 }
 
+export function isLargeUnboundedSelectWarningEnabled(): boolean {
+  return vscode.workspace
+    .getConfiguration("sqlStudio")
+    .get<boolean>("warnOnLargeUnboundedSelect", true);
+}
+
+export function getLargeTableRowThreshold(): number {
+  return vscode.workspace
+    .getConfiguration("sqlStudio")
+    .get<number>("largeTableRowThreshold", 5000);
+}
+
 export interface StatementRange {
   start: number;
   end: number;
