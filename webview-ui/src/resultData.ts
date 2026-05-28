@@ -125,4 +125,38 @@ export function formatAxisLabel(value: unknown): string {
   return String(value);
 }
 
+export const ROW_NUM_COLUMN_WIDTH = 40;
+const MIN_COLUMN_WIDTH = 48;
+const MAX_COLUMN_WIDTH = 280;
+const COLUMN_PADDING = 24;
+const CHAR_WIDTH = 8;
+const SIZE_SAMPLE_ROWS = 100;
+
+function cellDisplayLength(value: unknown): number {
+  if (value === null || value === undefined) {
+    return 4;
+  }
+  return String(value).length;
+}
+
+/** Estimate column widths from header + cell text, capped at MAX_COLUMN_WIDTH. */
+export function computeColumnSizes(
+  columnNames: string[],
+  data: Record<string, unknown>[]
+): Record<string, number> {
+  const sample = data.slice(0, SIZE_SAMPLE_ROWS);
+  const sizes: Record<string, number> = {};
+
+  for (const name of columnNames) {
+    let maxChars = name.length;
+    for (const row of sample) {
+      maxChars = Math.max(maxChars, cellDisplayLength(row[name]));
+    }
+    const estimated = maxChars * CHAR_WIDTH + COLUMN_PADDING;
+    sizes[name] = Math.min(MAX_COLUMN_WIDTH, Math.max(MIN_COLUMN_WIDTH, estimated));
+  }
+
+  return sizes;
+}
+
 export { toNumber };

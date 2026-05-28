@@ -6,11 +6,12 @@ import {
   getSortedRowModel,
   useReactTable,
   type ColumnDef,
+  type ColumnSizingState,
   type Row,
   type SortingState,
 } from "@tanstack/react-table";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { analyzeColumns } from "./resultData";
+import { analyzeColumns, computeColumnSizes, ROW_NUM_COLUMN_WIDTH } from "./resultData";
 import type { QueryResult } from "./types";
 import { getVsCodeApi } from "./vscodeApi";
 
@@ -41,6 +42,7 @@ interface ContextMenuState {
 export function ResultsTable({ result, embedded = false, showToolbar = true }: Props) {
   const [globalFilter, setGlobalFilter] = useState("");
   const [sorting, setSorting] = useState<SortingState>([]);
+  const [columnSizing, setColumnSizing] = useState<ColumnSizingState>({});
   const [selectedRowId, setSelectedRowId] = useState<string | null>(null);
   const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(null);
   const tableWrapRef = useRef<HTMLDivElement>(null);
@@ -71,12 +73,21 @@ export function ResultsTable({ result, embedded = false, showToolbar = true }: P
     return new Set(analyzed.filter((col) => col.kind === "numeric").map((col) => col.name));
   }, [data, result.columns]);
 
+  const defaultColumnSizing = useMemo(
+    () => computeColumnSizes(columnNames, data),
+    [columnNames, data]
+  );
+
   const columns = useMemo<ColumnDef<Record<string, unknown>>[]>(
     () =>
       columnNames.map((name) => ({
         id: name,
         accessorKey: name,
         header: name,
+        size: defaultColumnSizing[name] ?? 120,
+        minSize: 48,
+        maxSize: 600,
+        enableResizing: true,
         cell: (info) => {
           const v = info.getValue();
           if (v === null || v === undefined) {
@@ -85,15 +96,22 @@ export function ResultsTable({ result, embedded = false, showToolbar = true }: P
           return String(v);
         },
       })),
-    [columnNames]
+    [columnNames, defaultColumnSizing]
   );
 
   const table = useReactTable({
     data,
     columns,
-    state: { globalFilter, sorting },
+    state: { globalFilter, sorting, columnSizing },
     onGlobalFilterChange: setGlobalFilter,
     onSortingChange: setSorting,
+    onColumnSizingChange: setColumnSizing,
+    columnResizeMode: "onChange",
+    enableColumnResizing: true,
+    defaultColumn: {
+      minSize: 48,
+      maxSize: 600,
+    },
     getCoreRowModel: getCoreRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
     getSortedRowModel: getSortedRowModel(),
@@ -106,6 +124,7 @@ export function ResultsTable({ result, embedded = false, showToolbar = true }: P
 
   useEffect(() => {
     setSelectedRowId(null);
+    setColumnSizing({});
   }, [result]);
 
   useEffect(() => {
@@ -252,11 +271,15 @@ export function ResultsTable({ result, embedded = false, showToolbar = true }: P
         onKeyDown={handleTableKeyDown}
         onContextMenu={(event) => event.preventDefault()}
       >
-        <table>
+        <table style={{ width: table.getTotalSize() + ROW_NUM_COLUMN_WIDTH }}>
           <thead>
             {table.getHeaderGroups().map((hg) => (
               <tr key={hg.id}>
-                <th className="row-num" scope="col">
+                <th
+                  className="row-num"
+                  scope="col"
+                  style={{ width: ROW_NUM_COLUMN_WIDTH }}
+                >
                   #
                 </th>
                 {hg.headers.map((header) => {
@@ -270,11 +293,20 @@ export function ResultsTable({ result, embedded = false, showToolbar = true }: P
                   return (
                     <th
                       key={header.id}
+                      style={{ width: header.getSize() }}
                       onClick={header.column.getToggleSortingHandler()}
                       className={classes}
                     >
-                      {flexRender(header.column.columnDef.header, header.getContext())}
-                      {{ asc: " ▲", desc: " ▼" }[header.column.getIsSorted() as string] ?? ""}
+                      <span className="th-label">
+                        {flexRender(header.column.columnDef.header, header.getContext())}
+                        {{ asc: " ▲", desc: " ▼" }[header.column.getIsSorted() as string] ?? ""}
+                      </span>
+                      <div
+                        className={`col-resizer${header.column.getIsResizing() ? " is-resizing" : ""}`}
+                        onMouseDown={header.getResizeHandler()}
+                        onTouchStart={header.getResizeHandler()}
+                        onClick={(event) => event.stopPropagation()}
+                      />
                     </th>
                   );
                 })}
@@ -294,6 +326,7 @@ export function ResultsTable({ result, embedded = false, showToolbar = true }: P
                 {row.getVisibleCells().map((cell) => (
                   <td
                     key={cell.id}
+                    style={{ width: cell.column.getSize() }}
                     className={numericColumnNames.has(cell.column.id) ? "cell-numeric" : "cell-text"}
                   >
                     {flexRender(cell.column.columnDef.cell, cell.getContext())}

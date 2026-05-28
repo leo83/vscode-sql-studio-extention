@@ -236,8 +236,7 @@ button:disabled {
 
 table {
   border-collapse: collapse;
-  table-layout: auto;
-  width: 100%;
+  table-layout: fixed;
 }
 
 th,
@@ -246,6 +245,8 @@ td {
   padding: 4px 8px;
   text-align: left;
   white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 th.cell-numeric,
@@ -264,6 +265,29 @@ th {
   background: var(--vscode-editor-inactiveSelectionBackground, #264f78);
   cursor: pointer;
   user-select: none;
+}
+
+th .th-label {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  padding-right: 6px;
+}
+
+th .col-resizer {
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 5px;
+  height: 100%;
+  cursor: col-resize;
+  touch-action: none;
+  user-select: none;
+}
+
+th .col-resizer:hover,
+th .col-resizer.is-resizing {
+  background: var(--vscode-focusBorder, #007fd4);
 }
 
 th.sorted {
