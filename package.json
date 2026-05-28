@@ -434,14 +434,14 @@
         {
           "id": "sql-studio",
           "title": "SQL Studio",
-          "icon": "resources/icons/sql-studio-extension.png"
+          "icon": "resources/icons/sql-studio-toolbar.svg"
         }
       ],
       "panel": [
         {
           "id": "sql-studio-results",
           "title": "SQL Results",
-          "icon": "resources/icons/sql-studio-extension.png"
+          "icon": "resources/icons/sql-studio-toolbar.svg"
         }
       ]
     },
