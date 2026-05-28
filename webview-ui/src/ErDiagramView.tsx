@@ -4,7 +4,7 @@ import {
   attachErDiagramGestures,
   computeAutofitTransform,
   ER_DIAGRAM_FIT_PADDING,
-  ER_DIAGRAM_STAGE_PADDING,
+  measureDiagramContent,
   type DiagramTransform,
   transformsEqual,
 } from "./erDiagramGestures";
@@ -17,18 +17,6 @@ interface Props {
 
 const INITIAL_TRANSFORM: DiagramTransform = { scale: 1, x: ER_DIAGRAM_FIT_PADDING, y: ER_DIAGRAM_FIT_PADDING };
 
-function measureDiagramContent(canvas: HTMLElement): { width: number; height: number } {
-  const svg = canvas.querySelector("svg");
-  if (!svg) {
-    return { width: 0, height: 0 };
-  }
-  const bbox = svg.getBBox();
-  return {
-    width: bbox.width + ER_DIAGRAM_STAGE_PADDING * 2,
-    height: bbox.height + ER_DIAGRAM_STAGE_PADDING * 2,
-  };
-}
-
 function measureAutofitTransform(
   viewport: HTMLElement,
   canvas: HTMLElement
@@ -37,6 +25,18 @@ function measureAutofitTransform(
     { width: viewport.clientWidth, height: viewport.clientHeight },
     measureDiagramContent(canvas)
   );
+}
+
+function scheduleAutofit(callback: () => void): () => void {
+  let frame1 = 0;
+  let frame2 = 0;
+  frame1 = requestAnimationFrame(() => {
+    frame2 = requestAnimationFrame(callback);
+  });
+  return () => {
+    cancelAnimationFrame(frame1);
+    cancelAnimationFrame(frame2);
+  };
 }
 
 export function ErDiagramView({ init }: Props) {
@@ -85,7 +85,13 @@ export function ErDiagramView({ init }: Props) {
           startOnLoad: false,
           securityLevel: "strict",
           theme: "dark",
-          er: { useMaxWidth: false },
+          layout: "dagre",
+          er: {
+            useMaxWidth: false,
+            layoutDirection: "TB",
+            nodeSpacing: 140,
+            rankSpacing: 100,
+          },
         });
         const { svg } = await mermaid.render(`er-${diagramId}`, init.mermaid);
         if (!cancelled) {
@@ -115,23 +121,25 @@ export function ErDiagramView({ init }: Props) {
       return;
     }
 
-    const applyAutofit = (): void => {
+    let cancelAutofit = scheduleAutofit(() => {
       const fit = measureAutofitTransform(viewport, canvas);
       fitTransformRef.current = fit;
       updateTransform(fit);
-    };
-
-    applyAutofit();
+    });
 
     const observer = new ResizeObserver(() => {
-      const previousFit = fitTransformRef.current;
-      const fit = measureAutofitTransform(viewport, canvas);
-      fitTransformRef.current = fit;
-      if (transformsEqual(transformRef.current, previousFit)) {
-        updateTransform(fit);
-      }
+      cancelAutofit();
+      cancelAutofit = scheduleAutofit(() => {
+        const previousFit = fitTransformRef.current;
+        const fit = measureAutofitTransform(viewport, canvas);
+        fitTransformRef.current = fit;
+        if (transformsEqual(transformRef.current, previousFit)) {
+          updateTransform(fit);
+        }
+      });
     });
     observer.observe(viewport);
+    observer.observe(canvas);
 
     const handlers = attachErDiagramGestures(
       viewport,
@@ -139,6 +147,7 @@ export function ErDiagramView({ init }: Props) {
       updateTransform
     );
     return () => {
+      cancelAutofit();
       observer.disconnect();
       handlers.dispose();
     };
@@ -163,7 +172,7 @@ export function ErDiagramView({ init }: Props) {
           <h1>ER diagram — {init.scope}</h1>
           <p className="er-diagram__meta">
             {init.table_count} tables · {init.relationship_count} relationships ·{" "}
-            scroll to pan · pinch or Ctrl+scroll to zoom
+            scroll to pan · pinch or Ctrl+scroll to zoom · autofit on open
             {!isFitView ? ` · ${zoomPercent}%` : ""}
           </p>
         </div>

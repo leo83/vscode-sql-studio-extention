@@ -58,15 +58,15 @@ describe("computeAutofitTransform", () => {
     expect(fit.y).toBeCloseTo(162);
   });
 
-  it("keeps small diagrams at 100% and centers them", () => {
+  it("scales up small diagrams to fill the viewport", () => {
     const fit = computeAutofitTransform(
       { width: 1000, height: 800 },
       { width: 100, height: 100 },
       24
     );
-    expect(fit.scale).toBe(1);
-    expect(fit.x).toBeCloseTo(450);
-    expect(fit.y).toBeCloseTo(350);
+    expect(fit.scale).toBe(4);
+    expect(fit.x).toBeCloseTo(300);
+    expect(fit.y).toBeCloseTo(200);
   });
 });
 

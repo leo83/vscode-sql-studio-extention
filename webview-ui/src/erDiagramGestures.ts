@@ -63,6 +63,30 @@ export function panTransformFromWheel(
   };
 }
 
+export function measureDiagramContent(
+  canvas: HTMLElement,
+  stagePadding = ER_DIAGRAM_STAGE_PADDING
+): Size {
+  const svg = canvas.querySelector("svg");
+  if (!svg) {
+    return { width: 0, height: 0 };
+  }
+
+  const viewBox = svg.viewBox?.baseVal;
+  if (viewBox && viewBox.width > 0 && viewBox.height > 0) {
+    return {
+      width: viewBox.width + stagePadding * 2,
+      height: viewBox.height + stagePadding * 2,
+    };
+  }
+
+  const bbox = svg.getBBox();
+  return {
+    width: bbox.width + stagePadding * 2,
+    height: bbox.height + stagePadding * 2,
+  };
+}
+
 export function computeAutofitTransform(
   viewport: Size,
   content: Size,
@@ -80,7 +104,7 @@ export function computeAutofitTransform(
   const availableWidth = Math.max(0, viewport.width - padding * 2);
   const availableHeight = Math.max(0, viewport.height - padding * 2);
   const scale = clampErScale(
-    Math.min(availableWidth / content.width, availableHeight / content.height, 1)
+    Math.min(availableWidth / content.width, availableHeight / content.height)
   );
 
   return {

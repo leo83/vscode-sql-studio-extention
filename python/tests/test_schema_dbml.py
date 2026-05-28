@@ -97,6 +97,41 @@ def test_render_mermaid_sanitizes_postgres_character_varying() -> None:
     assert "character varying" not in mermaid
 
 
+def test_render_mermaid_orders_parent_tables_before_children() -> None:
+    tables = [
+        TableDef(
+            schema="public",
+            name="orders",
+            columns=[
+                ColumnDef(name="id", data_type="int", is_pk=True),
+                ColumnDef(name="user_id", data_type="int"),
+            ],
+        ),
+        TableDef(
+            schema="public",
+            name="users",
+            columns=[ColumnDef(name="id", data_type="int", is_pk=True)],
+        ),
+    ]
+    refs = [
+        RefDef(
+            from_schema="public",
+            from_table="orders",
+            from_column="user_id",
+            to_schema="public",
+            to_table="users",
+            to_column="id",
+        )
+    ]
+    mermaid = render_mermaid_er("public", tables, refs)
+    users_pos = mermaid.index("public_users {")
+    orders_pos = mermaid.index("public_orders {")
+    assert users_pos != -1
+    assert orders_pos != -1
+    assert users_pos < orders_pos
+    assert "direction TB" in mermaid
+
+
 def test_build_schema_dbml_result_counts() -> None:
     tables = [
         TableDef(

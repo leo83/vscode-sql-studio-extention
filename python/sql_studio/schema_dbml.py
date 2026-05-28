@@ -166,13 +166,55 @@ def _mermaid_relationship_label(value: str) -> str:
     return value.replace("\\", "\\\\").replace('"', '\\"')
 
 
+def _sort_tables_for_er_layout(
+    tables: list[TableDef],
+    refs: list[RefDef],
+) -> list[TableDef]:
+    """Order tables so referenced (PK) entities appear before dependents for dagre."""
+    if not tables:
+        return []
+    if not refs:
+        return sorted(tables, key=lambda t: t.qualified)
+
+    table_by_qualified = {table.qualified: table for table in tables}
+    successors: dict[str, set[str]] = {table.qualified: set() for table in tables}
+    in_degree: dict[str, int] = {table.qualified: 0 for table in tables}
+
+    for ref in refs:
+        parent = ref.to_qualified
+        child = ref.from_qualified
+        if parent not in in_degree or child not in in_degree or parent == child:
+            continue
+        if child in successors[parent]:
+            continue
+        successors[parent].add(child)
+        in_degree[child] += 1
+
+    queue = sorted(name for name, degree in in_degree.items() if degree == 0)
+    ordered: list[str] = []
+    while queue:
+        current = queue.pop(0)
+        ordered.append(current)
+        for child in sorted(successors[current]):
+            in_degree[child] -= 1
+            if in_degree[child] == 0:
+                queue.append(child)
+                queue.sort()
+
+    remaining = sorted(
+        table.qualified for table in tables if table.qualified not in ordered
+    )
+    ordered.extend(remaining)
+    return [table_by_qualified[name] for name in ordered if name in table_by_qualified]
+
+
 def render_mermaid_er(
     scope_label: str,
     tables: list[TableDef],
     refs: list[RefDef],
 ) -> str:
-    lines = ["erDiagram", f"  %% scope: {scope_label}"]
-    for table in sorted(tables, key=lambda t: t.qualified):
+    lines = ["erDiagram", "  direction TB", f"  %% scope: {scope_label}"]
+    for table in _sort_tables_for_er_layout(tables, refs):
         entity = _mermaid_id(table.qualified)
         lines.append(f"  {entity} {{")
         seen_attrs: set[str] = set()
