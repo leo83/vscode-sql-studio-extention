@@ -73,8 +73,7 @@ def test_render_mermaid_sanitizes_special_types_and_names() -> None:
         )
     ]
     mermaid = render_mermaid_er("robotisation", tables, [])
-    assert "Nullable_UInt32" in mermaid
-    assert "list_conversation_intent" in mermaid
+    assert "list_conversation_intent Nullable_UInt32" in mermaid
     assert "Nullable(UInt32)" not in mermaid
 
 
@@ -93,7 +92,8 @@ def test_render_mermaid_sanitizes_postgres_character_varying() -> None:
         )
     ]
     mermaid = render_mermaid_er("public", tables, [])
-    assert "character_varying version_num PK" in mermaid
+    assert "version_num character_varying PK" in mermaid
+    assert 'public_schema_version["public.schema_version"]' in mermaid
     assert "character varying" not in mermaid
 
 
@@ -124,12 +124,26 @@ def test_render_mermaid_orders_parent_tables_before_children() -> None:
         )
     ]
     mermaid = render_mermaid_er("public", tables, refs)
-    users_pos = mermaid.index("public_users {")
-    orders_pos = mermaid.index("public_orders {")
+    users_pos = mermaid.index('public_users["public.users"] {')
+    orders_pos = mermaid.index('public_orders["public.orders"] {')
     assert users_pos != -1
     assert orders_pos != -1
     assert users_pos < orders_pos
     assert "direction TB" in mermaid
+    assert "user_id int" in mermaid
+
+
+def test_render_mermaid_uses_schema_dot_table_alias() -> None:
+    tables = [
+        TableDef(
+            schema="public",
+            name="message",
+            columns=[ColumnDef(name="message_pk", data_type="integer", is_pk=True)],
+        )
+    ]
+    mermaid = render_mermaid_er("public", tables, [])
+    assert 'public_message["public.message"]' in mermaid
+    assert "message_pk integer PK" in mermaid
 
 
 def test_build_schema_dbml_result_counts() -> None:

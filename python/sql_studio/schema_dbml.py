@@ -166,6 +166,21 @@ def _mermaid_relationship_label(value: str) -> str:
     return value.replace("\\", "\\\\").replace('"', '\\"')
 
 
+def _mermaid_entity_label(table: TableDef) -> str:
+    if table.schema:
+        return f"{table.schema}.{table.name}"
+    return table.name
+
+
+def _mermaid_entity_header(table: TableDef) -> str:
+    entity_id = _mermaid_id(table.qualified)
+    label = _mermaid_entity_label(table)
+    if label == entity_id:
+        return entity_id
+    escaped = label.replace("\\", "\\\\").replace('"', '\\"')
+    return f'{entity_id}["{escaped}"]'
+
+
 def _sort_tables_for_er_layout(
     tables: list[TableDef],
     refs: list[RefDef],
@@ -215,7 +230,7 @@ def render_mermaid_er(
 ) -> str:
     lines = ["erDiagram", "  direction TB", f"  %% scope: {scope_label}"]
     for table in _sort_tables_for_er_layout(tables, refs):
-        entity = _mermaid_id(table.qualified)
+        entity = _mermaid_entity_header(table)
         lines.append(f"  {entity} {{")
         seen_attrs: set[str] = set()
         for col in table.columns:
@@ -231,7 +246,7 @@ def render_mermaid_er(
                 attr_name = _mermaid_attribute_part(dedupe_key, fallback="column")
             seen_attrs.add(dedupe_key)
             pk = " PK" if col.is_pk else ""
-            lines.append(f"    {attr_type} {attr_name}{pk}")
+            lines.append(f"    {attr_name} {attr_type}{pk}")
         lines.append("  }")
     for ref in refs:
         left = _mermaid_id(ref.from_qualified)
