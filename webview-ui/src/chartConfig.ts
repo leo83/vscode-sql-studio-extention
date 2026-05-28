@@ -3,6 +3,7 @@ import { formatAxisLabel, toNumber, type ColumnInfo } from "./resultData";
 
 export type ChartType = "line" | "bar" | "scatter" | "area" | "pie" | "heatmap";
 export type Aggregation = "none" | "count" | "sum" | "avg" | "min" | "max";
+export type BarLayout = "columns" | "horizontal-scroll";
 
 export interface ChartSettings {
   chartType: ChartType;
@@ -12,6 +13,7 @@ export interface ChartSettings {
   heatmapYColumn: string;
   valueColumn: string;
   aggregation: Aggregation;
+  barLayout: BarLayout;
 }
 
 export const CHART_TYPE_OPTIONS: { value: ChartType; label: string }[] = [
@@ -22,6 +24,14 @@ export const CHART_TYPE_OPTIONS: { value: ChartType; label: string }[] = [
   { value: "pie", label: "Pie" },
   { value: "heatmap", label: "Heatmap" },
 ];
+
+export const BAR_LAYOUT_OPTIONS: { value: BarLayout; label: string }[] = [
+  { value: "columns", label: "Columns" },
+  { value: "horizontal-scroll", label: "Horizontal (scroll)" },
+];
+
+const HORIZONTAL_SCROLL_VISIBLE_CATEGORIES = 30;
+const MANY_CATEGORIES_THRESHOLD = 40;
 
 export const AGGREGATION_OPTIONS: { value: Aggregation; label: string }[] = [
   { value: "none", label: "None" },
@@ -54,6 +64,7 @@ export function defaultChartSettings(columns: ColumnInfo[]): ChartSettings {
     heatmapYColumn,
     valueColumn: yColumn,
     aggregation: "sum",
+    barLayout: "columns",
   };
 }
 
@@ -128,6 +139,58 @@ function baseOption(theme: ThemeColors): EChartsOption {
   };
 }
 
+function horizontalBarDataZoom(categoryCount: number): NonNullable<EChartsOption["dataZoom"]> {
+  const endPercent =
+    categoryCount <= HORIZONTAL_SCROLL_VISIBLE_CATEGORIES
+      ? 100
+      : (HORIZONTAL_SCROLL_VISIBLE_CATEGORIES / categoryCount) * 100;
+
+  return [
+    {
+      type: "slider",
+      yAxisIndex: 0,
+      filterMode: "none",
+      start: 0,
+      end: endPercent,
+      width: 16,
+      right: 8,
+    },
+    {
+      type: "inside",
+      yAxisIndex: 0,
+      filterMode: "none",
+    },
+  ];
+}
+
+function sortCategoryLabels(
+  labels: string[],
+  valueForLabel: (label: string) => number
+): string[] {
+  return [...labels].sort((left, right) => valueForLabel(right) - valueForLabel(left));
+}
+
+function buildHorizontalBarOption(
+  theme: ThemeColors,
+  categoryLabels: string[],
+  series: NonNullable<EChartsOption["series"]>
+): EChartsOption {
+  return {
+    ...baseOption(theme),
+    color: theme.palette,
+    grid: { left: 48, right: 40, top: 40, bottom: 24, containLabel: true },
+    dataZoom: horizontalBarDataZoom(categoryLabels.length),
+    xAxis: { type: "value", axisLabel: { color: theme.text } },
+    yAxis: {
+      type: "category",
+      data: categoryLabels,
+      inverse: true,
+      axisLabel: { color: theme.text },
+    },
+    series,
+  };
+}
+
 function buildGroupedSeries(
   records: Record<string, unknown>[],
   settings: ChartSettings,
@@ -164,20 +227,54 @@ function buildGroupedSeries(
     settings.chartType === "bar" ? "bar" : "line";
   const smooth = settings.chartType === "line" || settings.chartType === "area";
   const areaStyle = settings.chartType === "area" ? {} : undefined;
+  const useHorizontalScroll =
+    settings.chartType === "bar" && settings.barLayout === "horizontal-scroll";
+
+  const valueForLabel = (label: string, seriesName = "__default__") => {
+    const values = grouped.get(label)?.get(seriesName) ?? [];
+    return useAggregation
+      ? aggregateValues(values, aggregation === "none" ? "sum" : aggregation)
+      : toNumber(values[0]) ?? 0;
+  };
+
+  const orderedLabels = useHorizontalScroll
+    ? sortCategoryLabels(xLabels, (label) => {
+        if (seriesNames.length === 0) {
+          return valueForLabel(label);
+        }
+        return seriesNames.reduce((sum, name) => sum + valueForLabel(label, name), 0);
+      })
+    : xLabels;
+
+  const manyCategoriesHint =
+    settings.chartType === "bar" &&
+    settings.barLayout === "columns" &&
+    orderedLabels.length > MANY_CATEGORIES_THRESHOLD
+      ? `${orderedLabels.length} categories — switch to Horizontal (scroll) for readable bars.`
+      : undefined;
 
   if (seriesNames.length === 0) {
-    const data = xLabels.map((label) => {
-      const values = grouped.get(label)?.get("__default__") ?? [];
-      return useAggregation ? aggregateValues(values, aggregation === "none" ? "sum" : aggregation) : toNumber(values[0]) ?? 0;
-    });
+    const data = orderedLabels.map((label) => valueForLabel(label));
+
+    if (useHorizontalScroll) {
+      return {
+        option: buildHorizontalBarOption(theme, orderedLabels, [
+          {
+            type: "bar",
+            data,
+          },
+        ]),
+        warning: manyCategoriesHint,
+      };
+    }
 
     const option: EChartsOption = {
       ...baseOption(theme),
       color: theme.palette,
       xAxis: {
         type: "category",
-        data: xLabels,
-        axisLabel: { color: theme.text, rotate: xLabels.length > 12 ? 35 : 0 },
+        data: orderedLabels,
+        axisLabel: { color: theme.text, rotate: orderedLabels.length > 12 ? 35 : 0 },
       },
       yAxis: { type: "value", axisLabel: { color: theme.text } },
       series: [
@@ -189,21 +286,23 @@ function buildGroupedSeries(
         },
       ] as EChartsOption["series"],
     };
-    return { option };
+    return { option, warning: manyCategoriesHint };
   }
 
   const series = seriesNames.map((name) => ({
     name,
     type: seriesType,
-    data: xLabels.map((label) => {
-      const values = grouped.get(label)?.get(name) ?? [];
-      return useAggregation
-        ? aggregateValues(values, aggregation === "none" ? "sum" : aggregation)
-        : toNumber(values[0]) ?? 0;
-    }),
+    data: orderedLabels.map((label) => valueForLabel(label, name)),
     areaStyle,
     smooth,
   }));
+
+  if (useHorizontalScroll) {
+    return {
+      option: buildHorizontalBarOption(theme, orderedLabels, series),
+      warning: manyCategoriesHint,
+    };
+  }
 
   return {
     option: {
@@ -211,12 +310,13 @@ function buildGroupedSeries(
       color: theme.palette,
       xAxis: {
         type: "category",
-        data: xLabels,
-        axisLabel: { color: theme.text, rotate: xLabels.length > 12 ? 35 : 0 },
+        data: orderedLabels,
+        axisLabel: { color: theme.text, rotate: orderedLabels.length > 12 ? 35 : 0 },
       },
       yAxis: { type: "value", axisLabel: { color: theme.text } },
       series,
     },
+    warning: manyCategoriesHint,
   };
 }
 
@@ -434,8 +534,11 @@ export function buildChartOption(
       return { ...buildHeatmap(data, settings, theme), warning };
     case "line":
     case "bar":
-    case "area":
-      return { ...buildGroupedSeries(data, settings, theme), warning };
+    case "area": {
+      const result = buildGroupedSeries(data, settings, theme);
+      const mergedWarning = [warning, result.warning].filter(Boolean).join(" ");
+      return { ...result, warning: mergedWarning || undefined };
+    }
     default:
       return { option: null, warning: "Unsupported chart type." };
   }

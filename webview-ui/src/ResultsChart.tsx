@@ -2,10 +2,12 @@ import ReactECharts from "echarts-for-react";
 import { useEffect, useMemo, useState } from "react";
 import {
   AGGREGATION_OPTIONS,
+  BAR_LAYOUT_OPTIONS,
   CHART_TYPE_OPTIONS,
   aggregationOptionsForChart,
   buildChartOption,
   defaultChartSettings,
+  type BarLayout,
   type ChartSettings,
   type ChartType,
 } from "./chartConfig";
@@ -107,6 +109,7 @@ export function ResultsChart({ records, columns }: Props) {
   const isHeatmap = settings.chartType === "heatmap";
   const isPie = settings.chartType === "pie";
   const isScatter = settings.chartType === "scatter";
+  const isBar = settings.chartType === "bar";
 
   return (
     <div className="chart-panel">
@@ -117,6 +120,15 @@ export function ResultsChart({ records, columns }: Props) {
           options={CHART_TYPE_OPTIONS}
           onChange={(value) => onChartTypeChange(value as ChartType)}
         />
+
+        {isBar ? (
+          <FieldSelect
+            label="Bar layout"
+            value={settings.barLayout}
+            options={BAR_LAYOUT_OPTIONS}
+            onChange={(value) => update({ barLayout: value as BarLayout })}
+          />
+        ) : null}
 
         {isPie ? (
           <>
