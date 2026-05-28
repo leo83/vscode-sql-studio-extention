@@ -20,6 +20,7 @@ import {
   sampleObjectData,
   showObjectDescription,
 } from "./commands/objectCommands";
+import { getSchemaDbml, showSchemaDiagram } from "./commands/schemaCommands";
 import { ConnectionStatusBar } from "./connectionStatusBar";
 import { maybePromptConnectionForDocument } from "./sqlConnectionPrompt";
 import { buildPreviewSql } from "./sqlUtils";
@@ -426,7 +427,17 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     vscode.commands.registerCommand("sqlStudio.askAgentExplain", () =>
       askAgentExplain(connectionManager, pythonClient)
     ),
-    vscode.commands.registerCommand("sqlStudio.askAgentFix", askAgentFix)
+    vscode.commands.registerCommand("sqlStudio.askAgentFix", askAgentFix),
+    vscode.commands.registerCommand(
+      "sqlStudio.showSchemaDiagram",
+      (item: ExplorerTreeItem) =>
+        showSchemaDiagram(context, connectionManager, pythonClient, item)
+    ),
+    vscode.commands.registerCommand(
+      "sqlStudio.getSchemaDbml",
+      (item: ExplorerTreeItem) =>
+        getSchemaDbml(connectionManager, pythonClient, item)
+    )
   );
 
   log.appendLine("SQL Studio activated.");

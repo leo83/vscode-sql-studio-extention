@@ -97,3 +97,11 @@ class LargeTableWarning(BaseModel):
 
 class CheckUnboundedSelectResult(BaseModel):
     warnings: list[LargeTableWarning] = Field(default_factory=list)
+
+
+class SchemaDbmlResult(BaseModel):
+    scope: str
+    dbml: str
+    mermaid: str
+    table_count: int = 0
+    relationship_count: int = 0

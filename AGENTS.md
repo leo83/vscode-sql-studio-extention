@@ -47,6 +47,9 @@ grammars/             TextMate grammars (SQL подсветка)
 | `src/webview/connectionDialog.ts` | Webview-диалог создания/редактирования connection |
 | `src/queryRunner.ts` | Выполнение SQL и preview таблиц; ошибки → Results panel |
 | `src/schemaExplorer/treeProvider.ts` | Database Explorer TreeView (корень **Connections**) |
+| `src/commands/schemaCommands.ts` | ER diagram + DBML из контекстного меню schema/database |
+| `src/webview/erDiagramPanel.ts` | Webview panel ER-диаграммы (Mermaid) |
+| `python/sql_studio/schema_dbml.py` | Сбор метаданных схемы, генерация DBML/Mermaid |
 | `src/webview/resultsPanel.ts` | Webview panel результатов |
 | `src/sqlUtils.ts` | buildPreviewSql, лимиты строк |
 | `webview-ui/src/ConnectionDialog.tsx` | Форма подключения (поля по диалекту) |
@@ -95,6 +98,7 @@ cd python && uv sync --all-groups && uv run pytest
 | `query/explain` | План выполнения (EXPLAIN) для SELECT/WITH |
 | `schema/listChildren` | Узлы explorer (lazy) |
 | `schema/getTableDDL` | DDL таблицы |
+| `schema/getDbml` | DBML + Mermaid ER для схемы/базы (контекстное меню explorer) |
 | `sql/format` | Форматирование через sqlglot |
 | `sql/checkUnboundedSelect` | Предупреждение о больших таблицах в unbounded SELECT |
 | `export/csv`, `export/xlsx` | Экспорт результатов |

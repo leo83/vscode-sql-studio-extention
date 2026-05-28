@@ -1,10 +1,15 @@
 import { BatchResults } from "./BatchResults";
 import { ConnectionDialog } from "./ConnectionDialog";
+import { ErDiagramView } from "./ErDiagramView";
 import { ExplainPlanView } from "./ExplainPlanView";
 import { QueryError } from "./QueryError";
 import { QueryStatus } from "./QueryStatus";
 import { ResultsView } from "./ResultsView";
-import type { ConnectionDialogInit, QueryExecuteResult } from "./types";
+import type {
+  ConnectionDialogInit,
+  QueryExecuteResult,
+  SchemaDiagramInit,
+} from "./types";
 
 export function App() {
   const mode = window.__SQL_STUDIO_MODE__ ?? "results";
@@ -15,6 +20,14 @@ export function App() {
       return <div className="empty">Connection dialog not initialized.</div>;
     }
     return <ConnectionDialog init={init} />;
+  }
+
+  if (mode === "diagram") {
+    const init = window.__SQL_STUDIO_DIAGRAM__ as SchemaDiagramInit | undefined;
+    if (!init) {
+      return <div className="empty">Diagram not initialized.</div>;
+    }
+    return <ErDiagramView init={init} />;
   }
 
   const batch = window.__SQL_STUDIO_RESULT__ as QueryExecuteResult | undefined;

@@ -16,8 +16,10 @@ from sql_studio.models import (
     ObjectDescriptionSection,
     QueryColumn,
     QueryResult,
+    SchemaDbmlResult,
     SchemaNode,
 )
+from sql_studio.schema_dbml import get_schema_dbml_for_path
 
 _SYSTEM_SCHEMAS = ("information_schema", "mysql", "performance_schema", "sys")
 
@@ -430,3 +432,9 @@ class MySQLDriver:
                 )
             ],
         )
+
+    def get_schema_dbml(self, path: list[str]) -> SchemaDbmlResult:
+        if self._conn is None:
+            raise RuntimeError("Not connected")
+        with self._conn.cursor() as cur:
+            return get_schema_dbml_for_path("mysql", path, mysql_cursor=cur)

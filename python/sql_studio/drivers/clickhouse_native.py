@@ -12,7 +12,14 @@ from sql_studio.drivers.clickhouse_query import build_query_result
 from sql_studio.drivers.clickhouse_session import apply_use_database, set_client_database
 from sql_studio.execution_status import clickhouse_status, is_result_set_query
 from sql_studio.drivers.clickhouse_object import get_clickhouse_object_description
-from sql_studio.models import ConnectionConfig, ObjectDescription, QueryResult, SchemaNode
+from sql_studio.models import (
+    ConnectionConfig,
+    ObjectDescription,
+    QueryResult,
+    SchemaDbmlResult,
+    SchemaNode,
+)
+from sql_studio.schema_dbml import get_schema_dbml_for_path
 
 
 class ClickHouseNativeDriver:
@@ -212,6 +219,15 @@ class ClickHouseNativeDriver:
             _NativeQueryAdapter(self._client),
             path,
             execute=lambda sql: self._client.execute(sql),
+        )
+
+    def get_schema_dbml(self, path: list[str]) -> SchemaDbmlResult:
+        if self._client is None:
+            raise RuntimeError("Not connected")
+        return get_schema_dbml_for_path(
+            "clickhouse",
+            path,
+            clickhouse_client=_NativeQueryAdapter(self._client),
         )
 
 

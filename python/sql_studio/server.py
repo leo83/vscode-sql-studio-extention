@@ -44,6 +44,7 @@ from sql_studio.models import (
     QueryExecuteResult,
     QueryResult,
     ObjectDescription,
+    SchemaDbmlResult,
     SchemaNode,
     StatementResult,
     LargeTableWarning,
@@ -66,6 +67,7 @@ class JsonRpcServer:
             "schema/listChildren": self._schema_list_children,
             "schema/getTableDDL": self._schema_get_table_ddl,
             "schema/getObjectDescription": self._schema_get_object_description,
+            "schema/getDbml": self._schema_get_dbml,
             "sql/format": self._sql_format,
             "sql/split": self._sql_split,
             "sql/checkUnboundedSelect": self._sql_check_unbounded_select,
@@ -282,6 +284,13 @@ class JsonRpcServer:
         driver = get_driver(config)
         description: ObjectDescription = driver.get_object_description(path)
         return description.model_dump()
+
+    def _schema_get_dbml(self, params: dict[str, Any]) -> dict[str, Any]:
+        config = ConnectionConfig.model_validate(params["connection"])
+        path = params.get("path") or []
+        driver = get_driver(config)
+        result: SchemaDbmlResult = driver.get_schema_dbml(path)
+        return result.model_dump()
 
     def _sql_format(self, params: dict[str, Any]) -> dict[str, str]:
         sql = params["sql"]

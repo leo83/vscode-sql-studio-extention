@@ -15,8 +15,10 @@ from sql_studio.models import (
     ObjectDescriptionSection,
     QueryColumn,
     QueryResult,
+    SchemaDbmlResult,
     SchemaNode,
 )
+from sql_studio.schema_dbml import get_schema_dbml_for_path
 
 _ODBC_DRIVERS = (
     "ODBC Driver 18 for SQL Server",
@@ -539,6 +541,12 @@ class MssqlDriver:
             ddl=ddl or row[4],
             sections=sections,
         )
+
+    def get_schema_dbml(self, path: list[str]) -> SchemaDbmlResult:
+        if self._conn is None:
+            raise RuntimeError("Not connected")
+        with self._conn.cursor() as cur:
+            return get_schema_dbml_for_path("mssql", path, mssql_cursor=cur)
 
 
 def _connection_string(config: ConnectionConfig, driver_name: str) -> str:

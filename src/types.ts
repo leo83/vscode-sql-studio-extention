@@ -108,6 +108,14 @@ export interface ObjectDescriptionPayload {
   sections: ObjectDescriptionSection[];
 }
 
+export interface SchemaDbmlPayload {
+  scope: string;
+  dbml: string;
+  mermaid: string;
+  table_count: number;
+  relationship_count: number;
+}
+
 export function secretKeyForConnection(connectionId: string): string {
   return `sql-studio.connection.${connectionId}.password`;
 }

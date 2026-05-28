@@ -295,6 +295,16 @@
         "command": "sqlStudio.askAgentFix",
         "title": "Ask Agent to Fix/Optimize Query",
         "category": "SQL Studio"
+      },
+      {
+        "command": "sqlStudio.showSchemaDiagram",
+        "title": "View ER Diagram",
+        "category": "SQL Studio"
+      },
+      {
+        "command": "sqlStudio.getSchemaDbml",
+        "title": "Get DBML",
+        "category": "SQL Studio"
       }
     ],
     "menus": {
@@ -380,6 +390,16 @@
           "command": "sqlStudio.disconnectConnection",
           "when": "view == sqlStudio.explorer && viewItem == connection",
           "group": "1_actions@6"
+        },
+        {
+          "command": "sqlStudio.showSchemaDiagram",
+          "when": "view == sqlStudio.explorer && viewItem =~ /^(schema|database)$/",
+          "group": "2_schema@1"
+        },
+        {
+          "command": "sqlStudio.getSchemaDbml",
+          "when": "view == sqlStudio.explorer && viewItem =~ /^(schema|database)$/",
+          "group": "2_schema@2"
         }
       ],
       "editor/title": [

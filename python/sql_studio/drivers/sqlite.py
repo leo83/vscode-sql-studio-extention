@@ -14,8 +14,10 @@ from sql_studio.models import (
     ObjectDescriptionSection,
     QueryColumn,
     QueryResult,
+    SchemaDbmlResult,
     SchemaNode,
 )
+from sql_studio.schema_dbml import get_schema_dbml_for_path
 
 _MAIN_SCHEMA = "main"
 
@@ -267,6 +269,11 @@ class SqliteDriver:
                 )
             ],
         )
+
+    def get_schema_dbml(self, path: list[str]) -> SchemaDbmlResult:
+        if self._conn is None:
+            raise RuntimeError("Not connected")
+        return get_schema_dbml_for_path("sqlite", path, sqlite_conn=self._conn)
 
     @staticmethod
     def _quote_ident(name: str) -> str:

@@ -4,7 +4,14 @@ from __future__ import annotations
 
 from typing import Protocol
 
-from sql_studio.models import ClickHouseInterface, ConnectionConfig, ObjectDescription, QueryResult, SchemaNode
+from sql_studio.models import (
+    ClickHouseInterface,
+    ConnectionConfig,
+    ObjectDescription,
+    QueryResult,
+    SchemaDbmlResult,
+    SchemaNode,
+)
 
 from sql_studio.drivers.clickhouse_http import ClickHouseHttpDriver
 from sql_studio.drivers.clickhouse_native import ClickHouseNativeDriver
@@ -107,3 +114,8 @@ class ClickHouseDriver:
         if self._impl is None:
             raise RuntimeError("Not connected")
         return self._impl.get_object_description(path)
+
+    def get_schema_dbml(self, path: list[str]) -> SchemaDbmlResult:
+        if self._impl is None:
+            raise RuntimeError("Not connected")
+        return self._impl.get_schema_dbml(path)

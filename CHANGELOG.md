@@ -6,6 +6,7 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
+- **Schema ER diagram & DBML** — context menu on schema (PostgreSQL, MSSQL, MySQL, SQLite) or database (ClickHouse): `View ER Diagram`, `Get DBML`; RPC `schema/getDbml`
 - **Show Execution Plan** (`sqlStudio.showExecutionPlan`, Shift+Cmd+E / Shift+Ctrl+E): `query/explain` RPC, dialect-specific EXPLAIN (PostgreSQL text/ANALYZE, ClickHouse, MSSQL SHOWPLAN, MySQL, SQLite), monospace plan view in Results panel
 - Setting `sqlStudio.explainAnalyze` (PostgreSQL `EXPLAIN ANALYZE`, executes the query)
 - Warning before running unbounded `SELECT` (no `WHERE`, no `LIMIT`/`TOP`, non-aggregating): checks referenced tables with >5,000 estimated rows and recommends adding `LIMIT` (configurable via `sqlStudio.warnOnLargeUnboundedSelect` and `sqlStudio.largeTableRowThreshold`)

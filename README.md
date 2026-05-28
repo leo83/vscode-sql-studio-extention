@@ -11,7 +11,7 @@ Write SQL, explore database schemas, run queries, and browse results in **VS Cod
 ## Features
 
 - SQL syntax highlighting for PostgreSQL, ClickHouse, T-SQL, MySQL, SQLite, and generic `.sql`
-- **Database Explorer** — lazy schema tree (schemas/databases → tables, views, functions → columns)
+- **Database Explorer** — lazy schema tree (schemas/databases → tables, views, functions → columns); right-click a schema or database for **ER diagram** (Mermaid) and **DBML** export
 - Context menu on schema objects: Object Description, Sample Data, Export Data, Create SQL Query
 - Click a table or view to preview data in the same results UI as query output
 - **Create SQL Query** — new editor from Command Palette or connection context menu

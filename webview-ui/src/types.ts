@@ -24,7 +24,15 @@ export interface QueryExecuteResult {
   total_duration_ms: number;
 }
 
-export type WebviewMode = "results" | "connection";
+export type WebviewMode = "results" | "connection" | "diagram";
+
+export interface SchemaDiagramInit {
+  scope: string;
+  dbml: string;
+  mermaid: string;
+  table_count: number;
+  relationship_count: number;
+}
 
 export type ClickHouseInterface = "http" | "native";
 

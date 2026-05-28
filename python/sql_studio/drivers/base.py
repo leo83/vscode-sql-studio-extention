@@ -9,6 +9,7 @@ from sql_studio.models import (
     ConnectionConfig,
     ObjectDescription,
     QueryResult,
+    SchemaDbmlResult,
     SchemaNode,
 )
 
@@ -27,3 +28,5 @@ class DatabaseDriver(Protocol):
     def get_table_ddl(self, path: list[str]) -> str: ...
 
     def get_object_description(self, path: list[str]) -> ObjectDescription: ...
+
+    def get_schema_dbml(self, path: list[str]) -> SchemaDbmlResult: ...

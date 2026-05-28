@@ -6,7 +6,13 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from sql_studio.models import ConnectionConfig, QueryColumn, QueryResult, SchemaNode
+from sql_studio.models import (
+    ConnectionConfig,
+    QueryColumn,
+    QueryResult,
+    SchemaDbmlResult,
+    SchemaNode,
+)
 from sql_studio.server import JsonRpcServer
 
 
@@ -213,6 +219,34 @@ def test_schema_get_table_ddl(mock_get_driver: MagicMock, server: JsonRpcServer)
     )
 
     assert response["result"]["ddl"] == "CREATE TABLE t (x Int32)"
+
+
+@patch("sql_studio.server.get_driver")
+def test_schema_get_dbml(mock_get_driver: MagicMock, server: JsonRpcServer) -> None:
+    mock_driver = MagicMock()
+    mock_driver.get_schema_dbml.return_value = SchemaDbmlResult(
+        scope="public",
+        dbml="Table public.users { id int [pk] }",
+        mermaid="erDiagram\n  public_users { int id PK }",
+        table_count=1,
+        relationship_count=0,
+    )
+    mock_get_driver.return_value = mock_driver
+
+    response = server._handle(
+        {
+            "id": 14,
+            "method": "schema/getDbml",
+            "params": {
+                "connection": _connection(),
+                "path": ["schemas", "public"],
+            },
+        }
+    )
+
+    assert response["result"]["scope"] == "public"
+    assert "public.users" in response["result"]["dbml"]
+    assert response["result"]["table_count"] == 1
 
 
 def test_sql_format(server: JsonRpcServer) -> None:

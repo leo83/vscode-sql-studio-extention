@@ -13,7 +13,7 @@
 ## Возможности
 
 - Подсветка SQL (PostgreSQL / ClickHouse / T-SQL / MySQL / SQLite / generic `.sql`)
-- **Database Explorer** — schemas → tables / views / functions → columns
+- **Database Explorer** — schemas → tables / views / functions → columns; контекстное меню схемы/базы: **ER-диаграмма** и **DBML**
 - ПКМ на объект схемы: **Object Description**, **Sample Data**, **Export Data**, **Create SQL Query**
 - Клик по таблице / view → preview данных (тот же UI, что и для SQL)
 - **Create SQL Query** — новый редактор запроса из Command Palette или ПКМ на connection

@@ -8,6 +8,7 @@ declare global {
     __SQL_STUDIO_MODE__?: import("./types").WebviewMode;
     __SQL_STUDIO_RESULT__?: import("./types").QueryExecuteResult;
     __SQL_STUDIO_CONNECTION__?: import("./types").ConnectionDialogInit;
+    __SQL_STUDIO_DIAGRAM__?: import("./types").SchemaDiagramInit;
     acquireVsCodeApi?: () => { postMessage: (msg: unknown) => void };
   }
 }
