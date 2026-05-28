@@ -22,7 +22,7 @@ webview-ui/index.html
 AGENTS.md
 CONTRIBUTING.md
 README.ru.md
-docs/**
+docs/images/README.md
 TODO.md
 justfile
 resources/icons/sql-studio-source.jpeg

@@ -24,6 +24,16 @@ Write SQL, explore database schemas, run queries, and browse results in **VS Cod
 - Microsoft SQL Server via **ODBC** (pyodbc)
 - Cursor Agent integration (rules template, MCP stub)
 
+## Screenshots
+
+**Query results (table)** — sort, filter, pagination, export:
+
+![Query results table](docs/images/results-table.png)
+
+**Query results (chart)** — pie, bar, scatter, heatmap from result columns:
+
+![Query results chart](docs/images/results-chart.png)
+
 ## Supported databases
 
 | Database | Status | Notes |
@@ -174,10 +184,6 @@ just package   # builds .vsix
 Press **F5** in VS Code/Cursor for Extension Development Host.
 
 Details: [CONTRIBUTING.md](CONTRIBUTING.md), [python/README.md](python/README.md), [AGENTS.md](AGENTS.md).
-
-## Screenshots
-
-Add screenshots to [`docs/images/`](docs/images/) before publishing to Marketplace (Explorer, Results panel, Connection dialog). See [docs/images/README.md](docs/images/README.md).
 
 ## Support
 

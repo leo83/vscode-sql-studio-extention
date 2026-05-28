@@ -2,13 +2,13 @@
 
 Add PNG or GIF files here before publishing to the VS Code Marketplace. Recommended captures:
 
-| File | Content | Suggested size |
-|------|---------|----------------|
-| `explorer.png` | Database Explorer with expanded schema | 1280×720 or wider |
-| `results.png` | Query Results panel with sort/filter | 1280×720 |
-| `connection-dialog.png` | Add Connection webview | 1280×720 |
-| `sql-editor.png` | SQL editor with run button and status bar connection | 1280×720 |
-| `chart.png` | Results chart view (if highlighting charts) | 1280×720 |
+| File | Content | Status |
+|------|---------|--------|
+| `results-table.png` | SQL Results panel — table view | added |
+| `results-chart.png` | SQL Results panel — chart view | added |
+| `explorer.png` | Database Explorer with expanded schema | optional |
+| `connection-dialog.png` | Add Connection webview | optional |
+| `sql-editor.png` | SQL editor with run button and status bar connection | optional |
 
 ## Usage in README
 
