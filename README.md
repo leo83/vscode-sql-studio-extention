@@ -1,5 +1,6 @@
 # SQL Studio
 
+[![CI](https://github.com/levragulin/cursor-sql-studio/actions/workflows/ci.yml/badge.svg)](https://github.com/levragulin/cursor-sql-studio/actions/workflows/ci.yml)
 [![License: Beerware](https://img.shields.io/badge/License-Beerware-blue.svg)](LICENSE)
 [![VS Code](https://img.shields.io/badge/VS%20Code-1.85%2B-blue)](https://code.visualstudio.com/)
 
@@ -144,8 +145,18 @@ Copy `sql-agent.mdc` into your project's `.cursor/rules/` to enable agent-aware 
 | Layer | Stack | Role |
 |-------|-------|------|
 | Extension | TypeScript | UI, explorer, webviews, SecretStorage |
-| Backend | Python + uv | JSON-RPC: queries, schema, export |
+| Backend | Python + uv | JSON-RPC: queries, schema, export (`python/sql_studio/`) |
 | Webview | React + Vite | Results table, connection dialog |
+
+Backend layout (flat package under `python/`):
+
+```
+python/
+├── sql_studio/          # Python package (server, drivers, dialect, export)
+├── tests/               # pytest
+├── pyproject.toml
+└── uv.lock
+```
 
 Backend command (spawned automatically):
 
@@ -175,7 +186,7 @@ Add screenshots to [`docs/images/`](docs/images/) before publishing to Marketpla
 
 ## Author
 
-**lev** — [lev.ragulin@gmail.com](mailto:lev.ragulin@gmail.com)
+**Lev Ragulin** — [leo@levragulin.ru](mailto:leo@levragulin.ru)
 
 ## Disclaimer
 

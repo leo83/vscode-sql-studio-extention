@@ -65,7 +65,8 @@ echo '{"jsonrpc":"2.0","id":1,"method":"health","params":{}}' | uv run --directo
 |------|---------|
 | `src/` | Extension host (TypeScript) |
 | `webview-ui/` | React results table and connection dialog |
-| `python/src/sql_studio/` | JSON-RPC server and database drivers |
+| `python/sql_studio/` | JSON-RPC server and database drivers |
+| `python/tests/` | pytest suite |
 | `grammars/` | TextMate SQL grammars |
 | `.cursor/` | Agent rules and MCP template |
 

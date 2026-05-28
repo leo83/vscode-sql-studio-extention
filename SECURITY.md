@@ -12,7 +12,7 @@ Security fixes are applied to the latest release on the `master` branch.
 
 **Please do not open public GitHub issues for security vulnerabilities.**
 
-Email **lev.ragulin@gmail.com** with:
+Email **leo@levragulin.ru** with:
 
 - Description of the issue and potential impact
 - Steps to reproduce (if applicable)

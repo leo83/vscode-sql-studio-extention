@@ -2,6 +2,18 @@
 
 Backend запускается **только через [uv](https://docs.astral.sh/uv/)**. Зависимости и venv управляются из `pyproject.toml` + `uv.lock`.
 
+## Структура проекта
+
+```
+python/
+├── sql_studio/          # пакет backend (server, drivers, dialect, export)
+├── tests/               # pytest
+├── pyproject.toml       # зависимости и [tool.uv.build-backend] (flat layout)
+└── uv.lock
+```
+
+Пакет собирается через **uv_build** с `module-root = ""` (flat layout, без `src/`).
+
 ## Быстрый старт
 
 ```bash
@@ -56,7 +68,7 @@ curl -LsSf https://astral.sh/uv/install.sh | sh
 
 ### Microsoft SQL Server (ODBC)
 
-Драйвер `MssqlDriver` (`python/src/sql_studio/drivers/mssql.py`) подключается через **pyodbc** и перебирает ODBC-драйверы:
+Драйвер `MssqlDriver` (`python/sql_studio/drivers/mssql.py`) подключается через **pyodbc** и перебирает ODBC-драйверы:
 
 1. ODBC Driver 18 for SQL Server
 2. ODBC Driver 17 for SQL Server
@@ -84,6 +96,8 @@ odbcinst -q -d   # проверка
 Parse/format/split для T-SQL: **sqlglot** с `read=tsql` (`dialect_read("mssql")`).
 
 ## Драйверы (файлы)
+
+Пути относительно `python/sql_studio/`:
 
 | Файл | СУБД |
 |------|------|

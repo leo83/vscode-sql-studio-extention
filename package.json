@@ -5,7 +5,7 @@
   "version": "0.1.0",
   "publisher": "sql-studio",
   "license": "Beerware-1.0",
-  "author": "lev <lev.ragulin@gmail.com>",
+  "author": "Lev Ragulin <leo@levragulin.ru>",
   "repository": {
     "type": "git",
     "url": "https://github.com/levragulin/cursor-sql-studio.git"

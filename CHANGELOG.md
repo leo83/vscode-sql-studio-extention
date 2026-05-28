@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Changed
+
+- Python backend: flat package layout (`python/sql_studio/` instead of `python/src/sql_studio/`)
+- Author contact: Lev Ragulin — leo@levragulin.ru
+- CI status badge in README files
+
 ### Added
 
 - Public repository documentation: English `README.md`, Russian `README.ru.md`

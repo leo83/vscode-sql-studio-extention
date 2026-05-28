@@ -56,7 +56,7 @@ def test_validate_sql_invalid() -> None:
 
 
 def test_format_returns_original_on_parse_error() -> None:
-    broken = "SELECT @@broken"
+    broken = "SELECT @@"
     assert format_sql(broken, "postgres") == broken
 
 

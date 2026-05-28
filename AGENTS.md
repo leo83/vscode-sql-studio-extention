@@ -14,11 +14,13 @@
 ## Архитектура
 
 ```
-src/              TypeScript — extension host (VS Code API)
-webview-ui/       React + Vite — UI результатов и диалога подключений
-python/           Python backend (uv) — JSON-RPC over stdio
-grammars/         TextMate grammars (SQL подсветка)
-.cursor/          Rules и MCP-шаблон для Cursor
+src/                  TypeScript — extension host (VS Code API)
+webview-ui/           React + Vite — UI результатов и диалога подключений
+python/
+  sql_studio/         Python package — JSON-RPC server, drivers, export
+  tests/              pytest
+grammars/             TextMate grammars (SQL подсветка)
+.cursor/              Rules и MCP-шаблон для Cursor
 ```
 
 **Связь TS ↔ Python:** extension spawn'ит `uv run --directory python sql-studio-server`, обмен — JSON-RPC построчно через stdin/stdout.
@@ -52,9 +54,9 @@ grammars/         TextMate grammars (SQL подсветка)
 | `webview-ui/src/vscodeApi.ts` | Singleton `acquireVsCodeApi()` (один вызов на webview) |
 | `webview-ui/src/QueryError.tsx` | Форматированный вывод ошибок запроса |
 | `webview-ui/src/parseQueryError.ts` | Парсинг ClickHouse/Postgres error + stack trace |
-| `python/src/sql_studio/server.py` | JSON-RPC server |
-| `python/src/sql_studio/drivers/` | postgres, clickhouse (фасад), clickhouse_http, clickhouse_native, mssql |
-| `python/src/sql_studio/dialect/sqlglot_service.py` | format / split SQL |
+| `python/sql_studio/server.py` | JSON-RPC server |
+| `python/sql_studio/drivers/` | postgres, clickhouse (фасад), clickhouse_http, clickhouse_native, mssql |
+| `python/sql_studio/dialect/sqlglot_service.py` | format / split SQL |
 | `package.json` | Manifest расширения, contributes, settings |
 
 ## Команды
@@ -184,7 +186,7 @@ cd python && uv sync --all-groups && uv run pytest
 
 ### MCP
 
-Шаблон в `.cursor/mcp.json` запускает `uv run sql-studio-mcp`. MCP пока stub — расширять в `python/src/sql_studio/mcp_server.py`.
+Шаблон в `.cursor/mcp.json` запускает `uv run sql-studio-mcp`. MCP пока stub — расширять в `python/sql_studio/mcp_server.py`.
 
 Команды редактора для агента:
 

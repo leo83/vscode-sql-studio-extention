@@ -3,7 +3,7 @@ name = "sql-studio"
 version = "0.1.0"
 description = "SQL Studio backend — query execution, schema introspection, export"
 readme = "README.md"
-authors = [{ name = "lev", email = "lev.ragulin@gmail.com" }]
+authors = [{ name = "Lev Ragulin", email = "leo@levragulin.ru" }]
 license = { text = "The Beerware License (Revision 42)" }
 requires-python = ">=3.11"
 dependencies = [
@@ -33,6 +33,10 @@ build-backend = "uv_build"
 
 [tool.uv]
 package = true
+
+[tool.uv.build-backend]
+module-name = "sql_studio"
+module-root = ""
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
