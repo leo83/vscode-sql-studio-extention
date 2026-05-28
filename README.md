@@ -1,390 +1,186 @@
 # SQL Studio
 
-Расширение для **Cursor** и **VS Code**: написание SQL, просмотр схемы базы в sidebar, выполнение запросов и интерактивный просмотр результатов. Поддерживаются **PostgreSQL**, **ClickHouse** и **Microsoft SQL Server**.
+[![License: Beerware](https://img.shields.io/badge/License-Beerware-blue.svg)](LICENSE)
+[![VS Code](https://img.shields.io/badge/VS%20Code-1.85%2B-blue)](https://code.visualstudio.com/)
 
-## Возможности
+Write SQL, explore database schemas, run queries, and browse results in **VS Code** and **Cursor**.
 
-- Подсветка SQL (PostgreSQL / ClickHouse / T-SQL / generic `.sql`)
-- **Database Explorer** — schemas → tables / views / functions → columns
-- ПКМ на объект схемы: **Object Description**, **Sample Data**, **Export Data**, **Create SQL Query**
-- Клик по таблице / view → preview данных (тот же UI, что и для SQL)
-- **Create SQL Query** — новый редактор запроса из Command Palette или ПКМ на connection
-- Выполнение запросов: **Cmd+Enter** / **Ctrl+Enter** (работает и при фокусе вне редактора, если открыт один SQL-файл)
-- Таблица результатов: сортировка, фильтр, пагинация, экспорт CSV/Excel
-- **Ошибки запросов** — краткое сообщение, код ClickHouse, stack trace в свёрнутом блоке
-- Пароли connections хранятся **зашифрованно** (OS keychain через VS Code SecretStorage)
-- **Диалог подключения** (webview): создание и редактирование в одном окне, поля зависят от диалекта
-- **ClickHouse Native (TCP, порт 9000)** и **HTTP (8123)** — как Native Driver / HTTP в TablePlus
-- **Microsoft SQL Server** — подключение через ODBC (pyodbc), Schema Explorer, T-SQL (`.tsql`)
-- Интеграция с агентами Cursor (rules, MCP-шаблон)
+> **Русская документация:** [README.ru.md](README.ru.md)
 
-## Архитектура
+## Features
 
-| Слой | Стек | Назначение |
-|------|------|------------|
-| Extension | TypeScript | UI, explorer, webview, SecretStorage |
-| Backend | Python + **uv** | JSON-RPC: запросы, схема, export |
-| Webview UI | React + Vite | Таблица результатов и диалог подключений |
+- SQL syntax highlighting for PostgreSQL, ClickHouse, T-SQL, MySQL, SQLite, and generic `.sql`
+- **Database Explorer** — lazy schema tree (schemas/databases → tables, views, functions → columns)
+- Context menu on schema objects: Object Description, Sample Data, Export Data, Create SQL Query
+- Click a table or view to preview data in the same results UI as query output
+- **Create SQL Query** — new editor from Command Palette or connection context menu
+- Run queries: **Cmd+Enter** / **Ctrl+Enter** (works when focus is outside the editor if one SQL file is open)
+- Results panel: sort, filter, pagination, charts, CSV/Excel export
+- Formatted query errors (summary, database error code, collapsible stack trace)
+- Connection passwords stored encrypted via VS Code **SecretStorage** (OS keychain)
+- Connection dialog (webview) with dialect-specific fields
+- ClickHouse **Native (TCP, 9000)** and **HTTP (8123)** drivers
+- Microsoft SQL Server via **ODBC** (pyodbc)
+- Cursor Agent integration (rules template, MCP stub)
 
-Backend запускается автоматически:
+## Supported databases
+
+| Database | Status | Notes |
+|----------|--------|-------|
+| PostgreSQL | Supported | Default dialect |
+| ClickHouse | Supported | Native TCP or HTTP |
+| Microsoft SQL Server | Supported | Requires [ODBC Driver for SQL Server](#microsoft-sql-server) on the host OS |
+| MySQL | Supported | Via `pymysql` |
+| SQLite | Supported | Local `.sqlite` / `.db` file path |
+
+## Requirements
+
+- **VS Code 1.85+** or **Cursor 0.40+**
+- **[Node.js](https://nodejs.org/) 18+** — only for building from source
+- **[uv](https://docs.astral.sh/uv/)** — **required at runtime**; the extension spawns the Python backend with `uv run`
+
+```bash
+# Install uv (macOS/Linux)
+curl -LsSf https://astral.sh/uv/install.sh | sh
+
+uv --version
+```
+
+If the backend fails to start, set **SQL Studio: Uv Path** in settings to the full path from `which uv`.
+
+## Installation
+
+### From VS Code Marketplace
+
+1. Open **Extensions** (`Cmd+Shift+X` / `Ctrl+Shift+X`)
+2. Search for **SQL Studio**
+3. Click **Install**
+4. Ensure `uv` is installed (see [Requirements](#requirements))
+5. Reload the window if prompted
+
+### From a `.vsix` file
+
+```bash
+git clone https://github.com/levragulin/cursor-sql-studio.git
+cd cursor-sql-studio
+just install && just package
+# Install cursor-sql-studio-0.1.0.vsix via Extensions → ⋯ → Install from VSIX…
+```
+
+See [README.ru.md](README.ru.md) for detailed Cursor-specific install notes (drag & drop, CLI).
+
+## Quick start
+
+1. Open the **SQL Studio** activity bar → **Database Explorer**
+2. Click **+** (Add Connection) or run **`SQL Studio: Add Connection`**
+3. Choose database type, fill host/port/credentials, click **Test connection**, then **Save**
+4. Right-click the connection → **Set Active Connection**
+5. Open or create a `.sql` file, pick the connection in the status bar
+6. Press **Cmd+Enter** / **Ctrl+Enter** to run the query at the cursor
+
+## Connection fields by dialect
+
+| Field | PostgreSQL | ClickHouse | SQL Server | MySQL | SQLite |
+|-------|------------|------------|------------|-------|--------|
+| Host / Port | yes | yes | yes | yes | — |
+| Username / Password | yes | yes | yes | yes | optional |
+| Database | required | optional | required | required | file path |
+| Default port | 5432 | 9000 / 8123 | 1433 | 3306 | — |
+| Extra | SSL, read-only | Native vs HTTP driver | TLS, read-only | SSL, read-only | read-only flag |
+
+### ClickHouse: Native vs HTTP
+
+| Mode | Port | Use when |
+|------|------|----------|
+| **Native (TCP)** | 9000 (9440 + TLS) | Internal network, same as TablePlus Native |
+| **HTTP** | 8123 (8443 + TLS) | ClickHouse Cloud, HTTP-only access |
+
+> Port **9000** does not work with the HTTP driver — select **Native** in the Driver field.
+
+### Microsoft SQL Server
+
+Connections use **pyodbc** and a **system ODBC driver**. Without it, test and queries fail with *Install Microsoft ODBC Driver for SQL Server*.
+
+| OS | Install |
+|----|---------|
+| macOS | `brew tap microsoft/mssql-release https://github.com/Microsoft/homebrew-mssql-release && brew install msodbcsql18` |
+| Windows | [ODBC Driver 18 for SQL Server](https://learn.microsoft.com/en-us/sql/connect/odbc/download-odbc-driver-for-sql-server) |
+| Linux | [Microsoft docs](https://learn.microsoft.com/en-us/sql/connect/odbc/linux-mac/installing-the-microsoft-odbc-driver-for-sql-server) — package `msodbcsql18` |
+
+Verify: `odbcinst -q -d` should list `ODBC Driver 18 for SQL Server` (or 17/13).
+
+T-SQL files use extension `.tsql` and language **SQL (Microsoft SQL Server)**. Table preview uses `SELECT TOP N`.
+
+## Settings
+
+| Setting | Default | Description |
+|---------|---------|-------------|
+| `sqlStudio.uvPath` | `uv` | Path to the `uv` executable |
+| `sqlStudio.previewRowLimit` | `1000` | Rows when previewing a table from Explorer |
+| `sqlStudio.defaultRowLimit` | `10000` | Max rows per SQL query |
+| `sqlStudio.defaultDialect` | `postgres` | Default dialect for new files |
+| `sqlStudio.autoAssociateSqlFiles` | `true` | Open `.sql` in SQL Studio language mode |
+| `sqlStudio.promptForConnectionOnRun` | `false` | Ask for connection before each run |
+| `sqlStudio.promptForConnectionOnOpen` | `true` | Ask for connection when opening `.sql` without a per-file binding |
+
+## Privacy and security
+
+- **No telemetry** — the extension does not send usage data to the author or third parties.
+- **Credentials** — passwords are stored only in VS Code **SecretStorage** (encrypted by the OS). They are not written to settings, logs, or MCP responses.
+- **Queries** — SQL runs directly between your machine and the database you configure. The Python backend runs locally via `uv`.
+- Use **read-only** connections when exploring production data.
+
+## Cursor Agent
+
+Templates in the repository:
+
+- [`.cursor/rules/sql-agent.mdc`](.cursor/rules/sql-agent.mdc) — rules for `.sql` files in your workspace
+- [`.cursor/mcp.json`](.cursor/mcp.json) — MCP server template (`sql-studio-mcp`, stub)
+
+Copy `sql-agent.mdc` into your project's `.cursor/rules/` to enable agent-aware SQL editing.
+
+## Architecture
+
+| Layer | Stack | Role |
+|-------|-------|------|
+| Extension | TypeScript | UI, explorer, webviews, SecretStorage |
+| Backend | Python + uv | JSON-RPC: queries, schema, export |
+| Webview | React + Vite | Results table, connection dialog |
+
+Backend command (spawned automatically):
 
 ```bash
 uv run --directory python sql-studio-server
 ```
 
----
-
-## Локальная установка (без Marketplace)
-
-Расширение **пока не опубликовано** в Marketplace Cursor/VS Code. Установка только локально — двумя способами:
-
-| Способ | Когда использовать |
-|--------|-------------------|
-| **[A. Extension Development Host (F5)](#a-режим-разработки-f5)** | Разработка, быстрая итерация, отладка |
-| **[B. Установка из `.vsix`](#b-установка-из-vsix)** | Постоянное использование в основном окне Cursor |
-
-### Требования
-
-- [Cursor](https://cursor.com/) 0.40+ (или VS Code 1.85+)
-- [Node.js](https://nodejs.org/) 18+
-- [uv](https://docs.astral.sh/uv/) — Python backend и зависимости
-- (опционально) [just](https://github.com/casey/just) — shortcuts из `justfile`
-- **Microsoft SQL Server:** установленный **ODBC Driver for SQL Server** на машине, где запускается расширение (см. [Microsoft SQL Server](#microsoft-sql-server))
+## Development
 
 ```bash
-# uv
-curl -LsSf https://astral.sh/uv/install.sh | sh
-
-# проверка
-node --version
-uv --version
+just install && just build && just test
+just package   # builds .vsix
 ```
 
----
+Press **F5** in VS Code/Cursor for Extension Development Host.
 
-### A. Режим разработки (F5)
+Details: [CONTRIBUTING.md](CONTRIBUTING.md), [python/README.md](python/README.md), [AGENTS.md](AGENTS.md).
 
-Подходит, если вы клонировали репозиторий и хотите запускать расширение из исходников.
+## Screenshots
 
-**1. Клонировать и открыть проект**
+Add screenshots to [`docs/images/`](docs/images/) before publishing to Marketplace (Explorer, Results panel, Connection dialog). See [docs/images/README.md](docs/images/README.md).
 
-```bash
-git clone <url-репозитория> cursor-sql-studio
-cd cursor-sql-studio
-cursor .    # или File → Open Folder в Cursor
-```
+## Support
 
-**2. Собрать проект**
+- [GitHub Issues](https://github.com/levragulin/cursor-sql-studio/issues) — bugs and feature requests
+- [Security reports](SECURITY.md) — do not open public issues for vulnerabilities
 
-```bash
-just install && just build
-```
-
-Без `just`:
-
-```bash
-npm install
-cd webview-ui && npm install && cd ..
-cd python && uv sync --all-groups && cd ..
-npm run build
-```
-
-**3. Запустить Extension Development Host**
-
-- Откройте панель **Run and Debug** (иконка play с жуком слева)
-- Выберите конфигурацию **Run Extension**
-- Нажмите **F5** (или Run → Start Debugging)
-
-Откроется **второе окно Cursor** с пометкой **`[Extension Development Host]`** — работать с SQL Studio нужно **в этом окне**.
-
-**4. Проверить установку**
-
-- Слева в Activity Bar — иконка **SQL Studio**
-- `Cmd+Shift+P` → `SQL Studio: Add Connection` — команда должна находиться
-
-**5. Если backend не стартует**
-
-Cursor может не видеть `uv` в PATH. Укажите полный путь:
-
-- **Cursor Settings** → `SQL Studio: Uv Path`
-- macOS (типично): `/Users/<user>/.local/bin/uv` или `which uv` в терминале
-
-После изменений в коде:
-
-```bash
-just build
-# в Extension Development Host: Cmd+Shift+P → Developer: Reload Window
-```
-
----
-
-### B. Установка из `.vsix` (постоянная)
-
-Подходит для **ежедневного использования** в обычном окне Cursor (не Dev Host).
-
-#### 1. Собрать `.vsix`
-
-```bash
-cd cursor-sql-studio
-just install && just package
-```
-
-Или по шагам:
-
-```bash
-npm install
-cd webview-ui && npm install && cd ..
-cd python && uv sync --all-groups && cd ..
-npm run build
-npx vsce package --no-dependencies --allow-missing-repository --no-rewrite-relative-links
-```
-
-В корне появится файл вида `cursor-sql-studio-0.1.0.vsix`.
-
-> Команда `just package` уже включает нужные флаги `vsce`. Без `--no-rewrite-relative-links` сборка может упасть из‑за относительных ссылок в README.
-
-#### 2. Установить в Cursor
-
-В Cursor команда **`Extensions: Install from VSIX...`** иногда **не находится** в Command Palette. Используйте любой из способов ниже.
-
-| Способ | Как |
-|--------|-----|
-| **Drag & drop** (рекомендуется) | `Cmd+Shift+X` → панель Extensions → перетащите `.vsix` в панель → подтвердите установку |
-| **Меню Extensions** | Панель Extensions → **⋯** (три точки) → **Install from VSIX...** / **Install Extension from VSIX...** |
-| **Command Palette** | `Cmd+Shift+P` → введите **`vsix`** или **`install vsix`** (не обязательно полное имя команды) |
-| **Терминал** | Сначала: **Cursor → Install 'cursor' command in PATH**, затем: `cursor --install-extension /полный/путь/cursor-sql-studio-0.1.0.vsix` |
-
-После установки: `Cmd+Shift+P` → **Developer: Reload Window**.
-
-#### 3. Проверить
-
-- Activity Bar → иконка **SQL Studio**
-- **Extensions** (`Cmd+Shift+X`) → в **Installed** должно быть **SQL Studio**
-- `Cmd+Shift+P` → **`SQL Studio: Add Connection`** — команда находится
-
-#### 4. Зависимости runtime
-
-Расширение при работе вызывает:
-
-```bash
-uv run --directory <путь-к-расширению>/python sql-studio-server
-```
-
-Нужно:
-
-- **`uv` в PATH** (или настройка **`SQL Studio: Uv Path`** в Cursor Settings)
-- при первом запуске uv создаст venv внутри `python/` установленного расширения
-
-Проверка:
-
-```bash
-which uv
-uv --version
-```
-
-Если backend не стартует — укажите полный путь к `uv`, например `/Users/<user>/.local/bin/uv`.
-
-#### 5. Обновление после изменений в коде
-
-```bash
-just package
-# переустановите .vsix (drag & drop или cursor --install-extension)
-# Developer: Reload Window
-```
-
-#### 6. Удаление
-
-- Extensions → SQL Studio → **Uninstall**
-- (опционально) сохранённые connections лежат в global state Cursor
-
----
-
-## Подключение плагина в Cursor
-
-> См. раздел [Локальная установка](#локальная-установка-без-marketplace) выше. Marketplace **не используется**.
-
-### Первое подключение к базе
-
-1. Откройте sidebar **SQL Studio** → **Database Explorer**
-2. Нажмите **+** (Add Connection) или Command Palette → **`SQL Studio: Add Connection`**
-3. В модальном окне заполните поля (набор зависит от типа БД):
-
-   | Поле | PostgreSQL | ClickHouse | Microsoft SQL Server |
-   |------|------------|------------|----------------------|
-   | Connection name | да | да | да |
-   | Database type | PostgreSQL | ClickHouse | Microsoft SQL Server |
-   | Driver | — | **Native (TCP, 9000)** или **HTTP (8123)** | — (ODBC, см. ниже) |
-   | Host, Port, Username, Password | да | да | да |
-   | Database | обязательно (`postgres`) | опционально (`default`) | обязательно (`master`) |
-   | Port (по умолчанию) | 5432 | 9000 / 8123 | 1433 |
-   | SSL / Read-only | да | да | да (TLS / `ApplicationIntent=ReadOnly`) |
-
-4. **Test connection** — проверка без сохранения (таймаут ~20 с)
-5. **Save** — пароль сохранится в **зашифрованном виде** (Keychain на macOS)
-6. В Explorer: разверните **Connections** → ПКМ на connection → **Set Active Connection**
-
-#### ClickHouse: Native vs HTTP
-
-| Режим | Порт | Когда использовать |
-|-------|------|-------------------|
-| **Native (TCP)** | 9000 (9440 + TLS) | Как TablePlus «Native Driver», внутренняя сеть |
-| **HTTP** | 8123 (8443 + TLS) | ClickHouse Cloud, прокси, только HTTP |
-
-> Порт **9000** с драйвером HTTP не работает — выберите **Native** в поле Driver.
-
-#### Microsoft SQL Server
-
-Подключение к SQL Server идёт через Python-библиотеку **pyodbc**, которая использует **системный ODBC-драйвер**. Без него **Test connection** и запросы завершатся ошибкой вида *Could not connect to SQL Server. Install Microsoft ODBC Driver for SQL Server*.
-
-| Компонент | Где ставится | Зачем |
-|-----------|--------------|-------|
-| **pyodbc** | автоматически через `uv sync` в `python/` | Python-обёртка над ODBC |
-| **ODBC Driver for SQL Server** | **на вашей ОС** (не в npm/uv) | реальное TCP-подключение к SQL Server |
-
-**Установка ODBC Driver for SQL Server**
-
-| ОС | Как установить |
-|----|----------------|
-| **macOS** | `brew tap microsoft/mssql-release https://github.com/Microsoft/homebrew-mssql-release && brew install msodbcsql18` |
-| **Windows** | [Microsoft ODBC Driver 18 for SQL Server](https://learn.microsoft.com/en-us/sql/connect/odbc/download-odbc-driver-for-sql-server) (обычно уже есть) |
-| **Linux (Debian/Ubuntu)** | [инструкция Microsoft](https://learn.microsoft.com/en-us/sql/connect/odbc/linux-mac/installing-the-microsoft-odbc-driver-for-sql-server) — пакет `msodbcsql18` |
-
-Backend пробует драйверы в порядке: **ODBC Driver 18 → 17 → 13 → SQL Server** (legacy).
-
-**Проверка, что ODBC виден в системе**
-
-```bash
-# macOS / Linux (unixODBC)
-odbcinst -q -d
-
-# должны быть строки вроде:
-# [ODBC Driver 18 for SQL Server]
-```
-
-**Параметры connection в SQL Studio**
-
-| Опция | Поведение |
-|-------|-----------|
-| **Database** | начальная база (часто `master` или ваша рабочая БД) |
-| **Use encrypted connection (TLS)** | `Encrypt=yes` в строке ODBC |
-| **Read-only connection** | `ApplicationIntent=ReadOnly` |
-| **USE database** в SQL | поддерживается; сессия запоминается для следующих запросов |
-
-**Язык редактора и файлы**
-
-- dialect `mssql` → язык **`SQL (Microsoft SQL Server)`** / `sql-studio-mssql`
-- расширение файла **`.tsql`** автоматически ассоциируется с T-SQL
-- подсветка: TextMate-грамматика T-SQL (`TOP`, `EXEC`, `@@variables`, и т.д.)
-
-**Schema Explorer**
-
-Структура как у PostgreSQL: **Schemas → tables / views / functions / procedures → columns**. Квалифицированные имена: `schema.table`. Preview использует `SELECT TOP N * FROM [schema].[table]`.
-
-**Типичные проблемы**
-
-| Симптом | Что проверить |
-|---------|----------------|
-| *Install Microsoft ODBC Driver* | установлен ли `msodbcsql18` / Driver 17; `odbcinst -q -d` |
-| SSL / certificate errors | для dev без валидного сертификата отключите TLS в connection или настройте trust на стороне SQL Server |
-| Login failed | логин/пароль, разрешён ли SQL auth, firewall на порту 1433 |
-| `LIMIT` не работает | в T-SQL используйте **`TOP`** или `OFFSET/FETCH`, не `LIMIT` |
-
-Редактирование: ПКМ на connection → **Edit Connection** (тот же диалог).
-
-#### Когда реально подключается к базе
-
-| Вопрос | Ответ |
-|--------|--------|
-| Все сохранённые connections подключаются при старте Cursor? | **Нет** — в Explorer видны только профили |
-| Когда создаётся TCP/DB-соединение? | При первом использовании: раскрыли connection, preview, SQL, export, object description |
-| Одновременно подключены все connections? | **Нет** — только тот, с которым вы работаете (кэш на backend) |
-| PostgreSQL: одна база или все на сервере? | **Одна** — поле Database в профиле connection |
-| Microsoft SQL Server: одна база или все? | **Одна** в профиле; `USE db` в SQL переключает сессию |
-| ClickHouse: все databases? | **Да**, но только после раскрытия connection в Explorer (`SHOW DATABASES`) |
-
-Отключить активное соединение: ПКМ на connection → **Disconnect**.
-
----
-
-### Работа с данными
-
-| Действие | Как |
-|----------|-----|
-| Preview / sample data | Клик по table/view в Explorer или ПКМ → **Sample Data** |
-| Описание объекта | ПКМ на table / view / function / procedure / column → **Object Description** |
-| Экспорт данных таблицы | ПКМ → **Export Data…** (CSV, до `defaultRowLimit` строк) |
-| Новый SQL из объекта | ПКМ → **Create SQL Query** (шаблон SELECT / CALL) |
-| Новый SQL (connection) | Command Palette → **`SQL Studio: Create SQL Query`** или ПКМ на connection |
-| SQL-запрос | Открыть `.sql`, connection в status bar, **Cmd+Enter** |
-| Connection для файла | Status bar `$(database) …` или **SQL Studio: Select Connection for File** |
-| Формат SQL | Command Palette → `SQL Studio: Format SQL` |
-| Экспорт результатов запроса | Кнопки в панели **SQL Results** |
-| Ошибка запроса | Панель **SQL Results**: краткий текст, Code/тип, stack trace, **Copy error** |
-| Спросить агента | `SQL Studio: Ask Agent to Explain Query` |
-
-### Настройки (Cursor Settings → SQL Studio)
-
-| Параметр | По умолчанию | Описание |
-|----------|--------------|----------|
-| `sqlStudio.uvPath` | `uv` | Путь к uv |
-| `sqlStudio.previewRowLimit` | `1000` | Строк при preview таблицы |
-| `sqlStudio.defaultRowLimit` | `10000` | Лимит для SQL-запросов |
-| `sqlStudio.defaultDialect` | `postgres` | Dialect по умолчанию (`postgres`, `clickhouse`, `mssql`) |
-| `sqlStudio.autoAssociateSqlFiles` | `true` | Открывать `.sql` в режиме SQL Studio |
-| `sqlStudio.promptForConnectionOnRun` | `false` | Спрашивать connection перед каждым запуском |
-| `sqlStudio.promptForConnectionOnOpen` | `true` | Спрашивать connection при открытии `.sql` без привязки к файлу |
-
----
-
-### Интеграция с Cursor Agent
-
-В репозитории уже есть шаблоны:
-
-- [`.cursor/rules/sql-agent.mdc`](.cursor/rules/sql-agent.mdc) — правила для `.sql` файлов
-- [`.cursor/mcp.json`](.cursor/mcp.json) — шаблон MCP-сервера
-
-Чтобы агент видел правила в **вашем** проекте с SQL, скопируйте `sql-agent.mdc` в `.cursor/rules/` workspace, где вы пишете запросы.
-
----
-
-## Разработка
-
-```bash
-just install      # npm + uv sync
-just build        # extension + webview
-just test         # pytest + tsc
-just uv-server    # backend вручную (stdio)
-just package      # .vsix
-```
-
-Подробнее про Python backend: [python/README.md](python/README.md).
-
-Инструкции для AI-агентов: [AGENTS.md](AGENTS.md).
-
----
-
-## Автор
+## Author
 
 **lev** — [lev.ragulin@gmail.com](mailto:lev.ragulin@gmail.com)
 
-## Отказ от ответственности
+## Disclaimer
 
-Проект распространяется **«как есть»**, без каких‑либо явных или подразумеваемых гарантий. Автор **не несёт ответственности** за возможные сбои, потерю данных, некорректные результаты запросов или любой другой ущерб, связанный с использованием расширения.
+This software is provided **as is**, without warranty. You use SQL Studio at your own risk, including when connecting to production databases or running data-modifying statements.
 
-Вы используете SQL Studio **на свой страх и риск**, в том числе при подключении к production-базам и выполнении запросов, меняющих данные.
+## License
 
-## Поддерживаемые СУБД
-
-- **PostgreSQL**
-- **ClickHouse** (Native TCP и HTTP)
-- **Microsoft SQL Server** (T-SQL, через ODBC Driver 18/17/13)
-
-Другие СУБД (MySQL, SQLite, Oracle и т.д.) **не поддерживаются**.
-
-## Лицензия
-
-Проект распространяется под лицензией [**The Beerware License (Revision 42)**](LICENSE) («Buy Me A Beer»):
-
-> As long as you retain this notice you can do whatever you want with this stuff. If we meet some day, and you think this stuff is worth it, you can buy me a beer in return.
-
-Полный текст — в файле [LICENSE](LICENSE).
+[The Beerware License (Revision 42)](LICENSE) — retain the notice; optional beer if we meet in person.

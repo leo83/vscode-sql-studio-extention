@@ -6,6 +6,20 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
+- Public repository documentation: English `README.md`, Russian `README.ru.md`
+- `CONTRIBUTING.md`, `SECURITY.md`, GitHub issue/PR templates, CI workflow
+- Marketplace metadata in `package.json` (`repository`, `keywords`, `galleryBanner`)
+- Screenshot placeholder guide in `docs/images/README.md`
+
+### Changed
+
+- README lists all supported databases (PostgreSQL, ClickHouse, MSSQL, MySQL, SQLite)
+- `.vscodeignore` excludes dev artifacts (`__pycache__`, `.pytest_cache`, internal docs) from `.vsix`
+
+## [0.1.0]
+
+### Added
+
 - **Microsoft SQL Server** support: `mssql` dialect, `MssqlDriver` (pyodbc), connection dialog, Schema Explorer, T-SQL language mode (`.tsql`)
 - ODBC requirement documented in README and `python/README.md`
 - Database Explorer context menu: Object Description, Sample Data, Export Data, Create SQL Query

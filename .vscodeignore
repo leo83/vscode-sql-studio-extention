@@ -6,6 +6,8 @@ node_modules/**
 webview-ui/node_modules/**
 python/.venv/**
 python/tests/**
+.git/**
+.github/**
 .gitignore
 .esbuild.mjs
 tsconfig.json
@@ -14,4 +16,13 @@ webview-ui/vite.config.ts
 webview-ui/index.html
 **/*.map
 **/.DS_Store
+**/__pycache__/**
+**/*.pyc
+**/.pytest_cache/**
+AGENTS.md
+CONTRIBUTING.md
+README.ru.md
+docs/**
+TODO.md
+justfile
 resources/icons/sql-studio-source.jpeg

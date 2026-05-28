@@ -1,0 +1,11 @@
+---
+name: Config
+description: Issue template chooser
+blank_issues_enabled: true
+contact_links:
+  - name: Security vulnerability
+    url: https://github.com/levragulin/cursor-sql-studio/blob/master/SECURITY.md
+    about: Report security issues privately — do not open a public issue
+  - name: Questions / discussions
+    url: https://github.com/levragulin/cursor-sql-studio/discussions
+    about: Ask questions or share ideas (enable Discussions in repo settings if needed)

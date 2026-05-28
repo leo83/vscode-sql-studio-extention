@@ -6,6 +6,32 @@
   "publisher": "sql-studio",
   "license": "Beerware-1.0",
   "author": "lev <lev.ragulin@gmail.com>",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/levragulin/cursor-sql-studio.git"
+  },
+  "homepage": "https://github.com/levragulin/cursor-sql-studio#readme",
+  "bugs": {
+    "url": "https://github.com/levragulin/cursor-sql-studio/issues"
+  },
+  "keywords": [
+    "sql",
+    "database",
+    "postgresql",
+    "postgres",
+    "clickhouse",
+    "mssql",
+    "sql-server",
+    "mysql",
+    "sqlite",
+    "query",
+    "explorer",
+    "cursor"
+  ],
+  "galleryBanner": {
+    "color": "#1e1e1e",
+    "theme": "dark"
+  },
   "engines": {
     "vscode": "^1.85.0"
   },

@@ -106,7 +106,10 @@ cd python && uv sync --all-groups && uv run pytest
 
 | Файл | Что отражать |
 |------|----------------|
-| **[README.md](README.md)** | Возможности для пользователя, установка, первое подключение, таблицы настроек, типичные сценарии |
+| **[README.md](README.md)** | User-facing docs (English): features, install, settings, Marketplace |
+| **[README.ru.md](README.ru.md)** | Russian user docs (Cursor install details, `.vsix`) |
+| **[CONTRIBUTING.md](CONTRIBUTING.md)** | Contributor setup, PR checklist |
+| **[SECURITY.md](SECURITY.md)** | Vulnerability reporting, security model |
 | **[AGENTS.md](AGENTS.md)** | Структура файлов, стек, JSON-RPC, правила разработки, чеклисты тестирования, частые ошибки |
 | **[CHANGELOG.md](CHANGELOG.md)** | Краткая запись в Unreleased/версии (если файл ведётся) |
 
@@ -232,6 +235,9 @@ echo '{"jsonrpc":"2.0","id":1,"method":"health","params":{}}' | uv run sql-studi
 
 ## Связанная документация
 
-- [README.md](README.md) — установка в Cursor, первое подключение
+- [README.md](README.md) — user install and features (English)
+- [README.ru.md](README.ru.md) — установка в Cursor (русский)
+- [CONTRIBUTING.md](CONTRIBUTING.md) — contributor workflow
+- [SECURITY.md](SECURITY.md) — security policy
 - [python/README.md](python/README.md) — uv workflow для backend
 - [CHANGELOG.md](CHANGELOG.md) — история изменений
