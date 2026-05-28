@@ -10,6 +10,7 @@ import {
   type SortingState,
 } from "@tanstack/react-table";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { analyzeColumns } from "./resultData";
 import type { QueryResult } from "./types";
 import { getVsCodeApi } from "./vscodeApi";
 
@@ -37,9 +38,27 @@ export function ResultsTable({ result, embedded = false, showToolbar = true }: P
     return Array.from({ length: width }, (_, index) => `column_${index + 1}`);
   }, [result.columns, result.rows]);
 
+  const data = useMemo(
+    () =>
+      result.rows.map((row) => {
+        const obj: Record<string, unknown> = {};
+        columnNames.forEach((name, i) => {
+          obj[name] = row[i];
+        });
+        return obj;
+      }),
+    [result.rows, columnNames]
+  );
+
+  const numericColumnNames = useMemo(() => {
+    const analyzed = analyzeColumns(data, result.columns);
+    return new Set(analyzed.filter((col) => col.kind === "numeric").map((col) => col.name));
+  }, [data, result.columns]);
+
   const columns = useMemo<ColumnDef<Record<string, unknown>>[]>(
     () =>
       columnNames.map((name) => ({
+        id: name,
         accessorKey: name,
         header: name,
         cell: (info) => {
@@ -51,18 +70,6 @@ export function ResultsTable({ result, embedded = false, showToolbar = true }: P
         },
       })),
     [columnNames]
-  );
-
-  const data = useMemo(
-    () =>
-      result.rows.map((row) => {
-        const obj: Record<string, unknown> = {};
-        columnNames.forEach((name, i) => {
-          obj[name] = row[i];
-        });
-        return obj;
-      }),
-    [result.rows, columnNames]
   );
 
   const table = useReactTable({
@@ -195,16 +202,25 @@ export function ResultsTable({ result, embedded = false, showToolbar = true }: P
                 <th className="row-num" scope="col">
                   #
                 </th>
-                {hg.headers.map((header) => (
-                  <th
-                    key={header.id}
-                    onClick={header.column.getToggleSortingHandler()}
-                    className={header.column.getIsSorted() ? "sorted" : ""}
-                  >
-                    {flexRender(header.column.columnDef.header, header.getContext())}
-                    {{ asc: " ▲", desc: " ▼" }[header.column.getIsSorted() as string] ?? ""}
-                  </th>
-                ))}
+                {hg.headers.map((header) => {
+                  const isNumeric = numericColumnNames.has(header.column.id);
+                  const classes = [
+                    header.column.getIsSorted() ? "sorted" : "",
+                    isNumeric ? "cell-numeric" : "cell-text",
+                  ]
+                    .filter(Boolean)
+                    .join(" ");
+                  return (
+                    <th
+                      key={header.id}
+                      onClick={header.column.getToggleSortingHandler()}
+                      className={classes}
+                    >
+                      {flexRender(header.column.columnDef.header, header.getContext())}
+                      {{ asc: " ▲", desc: " ▼" }[header.column.getIsSorted() as string] ?? ""}
+                    </th>
+                  );
+                })}
               </tr>
             ))}
           </thead>
@@ -218,7 +234,12 @@ export function ResultsTable({ result, embedded = false, showToolbar = true }: P
               >
                 <td className="row-num">{pageIndex * pageSize + row.index + 1}</td>
                 {row.getVisibleCells().map((cell) => (
-                  <td key={cell.id}>{flexRender(cell.column.columnDef.cell, cell.getContext())}</td>
+                  <td
+                    key={cell.id}
+                    className={numericColumnNames.has(cell.column.id) ? "cell-numeric" : "cell-text"}
+                  >
+                    {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                  </td>
                 ))}
               </tr>
             ))}

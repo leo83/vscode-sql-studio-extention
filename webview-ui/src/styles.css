@@ -97,6 +97,7 @@ body {
   background: var(--vscode-dropdown-background, #3c3c3c);
   color: var(--vscode-dropdown-foreground, #ccc);
   border: 1px solid var(--vscode-dropdown-border, #555);
+  border-radius: 3px;
   padding: 4px 8px;
 }
 
@@ -170,6 +171,7 @@ select {
   background: var(--vscode-button-background, #0e639c);
   color: var(--vscode-button-foreground, #fff);
   border: none;
+  border-radius: 3px;
   padding: 4px 10px;
   cursor: pointer;
 }
@@ -192,6 +194,7 @@ button:disabled {
 
 table {
   border-collapse: collapse;
+  table-layout: auto;
   width: 100%;
 }
 
@@ -201,6 +204,16 @@ td {
   padding: 4px 8px;
   text-align: left;
   white-space: nowrap;
+}
+
+th.cell-numeric,
+td.cell-numeric {
+  text-align: right;
+}
+
+th.cell-text,
+td.cell-text {
+  text-align: left;
 }
 
 th {
