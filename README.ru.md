@@ -18,6 +18,7 @@
 - Клик по таблице / view → preview данных (тот же UI, что и для SQL)
 - **Create SQL Query** — новый редактор запроса из Command Palette или ПКМ на connection
 - Выполнение запросов: **Cmd+Enter** / **Ctrl+Enter** (работает и при фокусе вне редактора, если открыт один SQL-файл)
+- **План выполнения**: **Shift+Cmd+E** / **Shift+Ctrl+E** (команда *Show Execution Plan*; для PostgreSQL опционально `sqlStudio.explainAnalyze`)
 - Таблица результатов: сортировка, фильтр, пагинация, графики, экспорт CSV/Excel
 - **Ошибки запросов** — краткое сообщение, код ошибки СУБД, stack trace в свёрнутом блоке
 - Пароли connections хранятся **зашифрованно** (OS keychain через VS Code SecretStorage)

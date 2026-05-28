@@ -16,6 +16,7 @@ export interface QueryResult {
 export interface StatementResult extends QueryResult {
   index: number;
   sql: string;
+  plan_text?: string | null;
 }
 
 export interface QueryExecuteResult {

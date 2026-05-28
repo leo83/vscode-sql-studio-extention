@@ -41,6 +41,7 @@ export interface QueryResultPayload {
 export interface StatementResultPayload extends QueryResultPayload {
   index: number;
   sql: string;
+  plan_text?: string | null;
 }
 
 export interface QueryExecutePayload {

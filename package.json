@@ -165,6 +165,12 @@
         "icon": "$(play)"
       },
       {
+        "command": "sqlStudio.showExecutionPlan",
+        "title": "Show Execution Plan",
+        "category": "SQL Studio",
+        "icon": "$(list-tree)"
+      },
+      {
         "command": "sqlStudio.runSelection",
         "title": "Run Selection",
         "category": "SQL Studio"
@@ -415,19 +421,24 @@
           "group": "sqlStudio@2"
         },
         {
-          "command": "sqlStudio.runAllInFile",
+          "command": "sqlStudio.showExecutionPlan",
           "when": "editorLangId =~ /sql-studio/",
           "group": "sqlStudio@3"
         },
         {
-          "command": "sqlStudio.runSelection",
+          "command": "sqlStudio.runAllInFile",
           "when": "editorLangId =~ /sql-studio/",
           "group": "sqlStudio@4"
         },
         {
-          "command": "sqlStudio.askAgentExplain",
+          "command": "sqlStudio.runSelection",
           "when": "editorLangId =~ /sql-studio/",
           "group": "sqlStudio@5"
+        },
+        {
+          "command": "sqlStudio.askAgentExplain",
+          "when": "editorLangId =~ /sql-studio/",
+          "group": "sqlStudio@6"
         }
       ]
     },
@@ -438,6 +449,14 @@
         "mac": "cmd+enter",
         "win": "ctrl+enter",
         "linux": "ctrl+enter",
+        "when": "editorLangId =~ /sql-studio/"
+      },
+      {
+        "command": "sqlStudio.showExecutionPlan",
+        "key": "shift+cmd+e",
+        "mac": "shift+cmd+e",
+        "win": "shift+ctrl+e",
+        "linux": "shift+ctrl+e",
         "when": "editorLangId =~ /sql-studio/"
       },
       {
@@ -547,6 +566,11 @@
           "type": "boolean",
           "default": true,
           "description": "When you open or focus a .sql file that has no per-file connection yet, show the connection picker."
+        },
+        "sqlStudio.explainAnalyze": {
+          "type": "boolean",
+          "default": false,
+          "description": "PostgreSQL only: run EXPLAIN ANALYZE (executes the query and includes actual timings). Other dialects ignore this setting."
         }
       }
     }

@@ -11,6 +11,11 @@ from typing import Any, Callable
 from pydantic import ValidationError
 
 from sql_studio.dialect import sqlglot_service
+from sql_studio.dialect.explain import (
+    attach_plan_text,
+    build_explain_sql,
+    is_explainable,
+)
 from sql_studio.dialect.query_analysis import (
     LARGE_TABLE_ROW_THRESHOLD,
     get_unbounded_select_tables,
@@ -56,6 +61,7 @@ class JsonRpcServer:
             "connection/test": self._connection_test,
             "connection/disconnect": self._connection_disconnect,
             "query/execute": self._query_execute,
+            "query/explain": self._query_explain,
             "query/cancel": self._query_cancel,
             "schema/listChildren": self._schema_list_children,
             "schema/getTableDDL": self._schema_get_table_ddl,
@@ -78,7 +84,7 @@ class JsonRpcServer:
                 self._write(self._error(None, -32700, f"Parse error: {exc}"))
                 continue
 
-            if request.get("method") == "query/execute":
+            if request.get("method") in ("query/execute", "query/explain"):
                 threading.Thread(
                     target=self._respond,
                     args=(request,),
@@ -179,6 +185,81 @@ class JsonRpcServer:
                 break
         return QueryExecuteResult(
             statements=batch,
+            total_duration_ms=total_duration_ms,
+        ).model_dump()
+
+    def _query_explain(self, params: dict[str, Any]) -> dict[str, Any]:
+        config = ConnectionConfig.model_validate(params["connection"])
+        sql = params["sql"]
+        limit = params.get("limit", 10_000)
+        analyze = bool(params.get("analyze", False))
+        dialect = config.dialect
+        statements = sqlglot_service.split_statements(sql, dialect)
+        if not statements:
+            raise ValueError(
+                "No executable SQL found. Move the cursor into a SELECT/WITH statement or select SQL text."
+            )
+
+        target_index: int | None = None
+        for index in range(len(statements) - 1, -1, -1):
+            statement = statements[index]
+            if sqlglot_service.is_session_statement(statement):
+                continue
+            if is_explainable(statement, dialect):
+                target_index = index
+                break
+        if target_index is None:
+            raise ValueError(
+                "Execution plan is only available for SELECT, WITH, or EXPLAIN queries."
+            )
+
+        driver = get_driver(config)
+        total_duration_ms = 0.0
+        target_sql = statements[target_index]
+
+        for index, statement in enumerate(statements):
+            if index >= target_index:
+                break
+            active_database = get_session_database(config.id)
+            if active_database:
+                setter = getattr(driver, "set_active_database", None)
+                if callable(setter):
+                    setter(active_database)
+            result = driver.execute(statement, limit=limit)
+            total_duration_ms += result.duration_ms
+            database = parse_use_database(statement)
+            if database and not result.error:
+                set_session_database(config.id, database)
+            if result.error:
+                return QueryExecuteResult(
+                    statements=[
+                        StatementResult(
+                            index=1,
+                            sql=target_sql,
+                            **result.model_dump(),
+                        )
+                    ],
+                    total_duration_ms=total_duration_ms,
+                ).model_dump()
+
+        active_database = get_session_database(config.id)
+        if active_database:
+            setter = getattr(driver, "set_active_database", None)
+            if callable(setter):
+                setter(active_database)
+
+        explain_sql = build_explain_sql(target_sql, dialect, analyze=analyze)
+        result = driver.execute(explain_sql, limit=limit)
+        total_duration_ms += result.duration_ms
+        stmt = attach_plan_text(
+            StatementResult(
+                index=1,
+                sql=target_sql,
+                **result.model_dump(),
+            )
+        )
+        return QueryExecuteResult(
+            statements=[stmt],
             total_duration_ms=total_duration_ms,
         ).model_dump()
 

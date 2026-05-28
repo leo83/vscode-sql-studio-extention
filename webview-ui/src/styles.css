@@ -584,6 +584,50 @@ tbody tr:hover:not(.row-selected) td.row-num {
   gap: 8px;
 }
 
+.explain-plan {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px;
+  height: 100%;
+  box-sizing: border-box;
+}
+
+.explain-plan-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.explain-plan-title {
+  font-size: 1.05em;
+  font-weight: 600;
+  color: var(--sql-studio-accent, var(--vscode-textLink-foreground, #3794ff));
+}
+
+.explain-plan-meta {
+  opacity: 0.85;
+  white-space: nowrap;
+}
+
+.explain-plan-text {
+  flex: 1;
+  min-height: 0;
+  margin: 0;
+  padding: 12px 14px;
+  overflow: auto;
+  border-radius: 4px;
+  border: 1px solid var(--vscode-panel-border, #444);
+  background: var(--vscode-textCodeBlock-background, rgba(0, 0, 0, 0.2));
+  color: var(--vscode-foreground, #ccc);
+  font-family: var(--vscode-editor-font-family, monospace);
+  font-size: var(--vscode-editor-font-size, 12px);
+  line-height: 1.45;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
 .query-error-compact {
   height: auto;
   padding: 0;

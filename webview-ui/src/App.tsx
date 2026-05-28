@@ -1,5 +1,6 @@
 import { BatchResults } from "./BatchResults";
 import { ConnectionDialog } from "./ConnectionDialog";
+import { ExplainPlanView } from "./ExplainPlanView";
 import { QueryError } from "./QueryError";
 import { QueryStatus } from "./QueryStatus";
 import { ResultsView } from "./ResultsView";
@@ -28,6 +29,9 @@ export function App() {
   const result = batch.statements[0];
   if (result.error) {
     return <QueryError error={result.error} />;
+  }
+  if (result.plan_text?.trim()) {
+    return <ExplainPlanView result={result} />;
   }
   if (result.rows.length === 0 && !result.columns.length) {
     return <QueryStatus result={result} />;

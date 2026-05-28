@@ -188,6 +188,187 @@ export class QueryRunner {
     );
   }
 
+  async explainAtCursor(editor: vscode.TextEditor): Promise<void> {
+    if (!editor.selection.isEmpty) {
+      const sql = editor.document.getText(editor.selection);
+      if (!sql.trim()) {
+        vscode.window.showWarningMessage("No SQL selected.");
+        return;
+      }
+      await this.explainSqlWithSessionContext(editor, sql, editor.selection.start);
+      return;
+    }
+
+    const position = editor.selection.active;
+    const sql = getStatementAtPosition(editor.document, position);
+    if (!sql) {
+      vscode.window.showWarningMessage(
+        "No SQL at cursor. Move the cursor into a SELECT/WITH statement or select SQL text."
+      );
+      return;
+    }
+
+    const stmtStart = getStatementStartOffset(editor.document, position);
+    const context =
+      stmtStart !== undefined
+        ? getSessionStatementsBeforeOffset(editor.document, stmtStart)
+        : [];
+
+    await this.explainSqlWithSessionContext(
+      editor,
+      sql,
+      stmtStart !== undefined
+        ? editor.document.positionAt(stmtStart)
+        : position,
+      context
+    );
+  }
+
+  private async explainSqlWithSessionContext(
+    editor: vscode.TextEditor,
+    sql: string,
+    anchor: vscode.Position,
+    presetContext?: string[]
+  ): Promise<void> {
+    const trimmed = normalizeStatementSql(sql);
+    if (!trimmed) {
+      vscode.window.showWarningMessage("No SQL to explain.");
+      return;
+    }
+    const context =
+      presetContext ?? getSessionStatementsBeforeOffset(editor.document, anchor);
+
+    if (context.length > 0 && !isSessionStatement(trimmed)) {
+      const batchSql = [...context, trimmed].join(";\n");
+      await this.explainSql(batchSql, editor.document.fileName, {
+        document: editor.document,
+      });
+      return;
+    }
+
+    await this.explainSql(trimmed, editor.document.fileName, {
+      document: editor.document,
+    });
+  }
+
+  async explainSql(
+    sql: string,
+    title?: string,
+    options?: {
+      document?: vscode.TextDocument;
+      connectionId?: string;
+    }
+  ): Promise<QueryExecutePayload | undefined> {
+    let conn: ConnectionWithSecret | undefined;
+    if (options?.connectionId) {
+      conn = await this.connections.getConnectionWithSecret(options.connectionId);
+    } else {
+      const document = options?.document;
+      const promptOnRun = vscode.workspace
+        .getConfiguration("sqlStudio")
+        .get<boolean>("promptForConnectionOnRun", false);
+
+      if (promptOnRun && document) {
+        const profile = await this.connections.promptSelectConnection({
+          forDocumentUri: document.uri,
+          title: "SQL Studio: Explain on connection",
+        });
+        if (!profile) {
+          return undefined;
+        }
+        conn = await this.connections.assignConnectionToDocument(
+          document,
+          profile.id
+        );
+      } else {
+        conn = await this.connections.resolveConnectionForDocument(document, {
+          promptIfMissing: true,
+        });
+      }
+    }
+    if (!conn) {
+      return undefined;
+    }
+
+    const analyze = vscode.workspace
+      .getConfiguration("sqlStudio")
+      .get<boolean>("explainAnalyze", false);
+
+    return this.explainWithConnection(
+      conn,
+      sql,
+      title ?? conn.name,
+      analyze && conn.dialect === "postgres"
+    );
+  }
+
+  private async explainWithConnection(
+    conn: ConnectionWithSecret,
+    sql: string,
+    title: string,
+    analyze: boolean
+  ): Promise<QueryExecutePayload | undefined> {
+    let result: QueryExecutePayload | undefined;
+    let cancelled = false;
+    this.runningConnectionId = conn.id;
+    await vscode.commands.executeCommand("setContext", "sqlStudio.queryRunning", true);
+    try {
+      await vscode.window.withProgress(
+        {
+          location: vscode.ProgressLocation.Notification,
+          title: `Execution plan on ${conn.name}...`,
+          cancellable: true,
+        },
+        async (_progress, token) => {
+          const explainPromise = this.python.request<QueryExecutePayload>("query/explain", {
+            connection: toRpcConnection(conn),
+            sql,
+            limit: getQueryRowLimit(),
+            analyze,
+          });
+
+          token.onCancellationRequested(() => {
+            cancelled = true;
+            void this.python
+              .request("query/cancel", { connectionId: conn.id })
+              .catch(() => undefined);
+          });
+
+          try {
+            result = await explainPromise;
+            await this.results.show(result, `Plan: ${title}`);
+          } catch (err) {
+            if (cancelled || token.isCancellationRequested || this.isCancelledError(err)) {
+              cancelled = true;
+              return;
+            }
+            const message = err instanceof Error ? err.message : String(err);
+            const errorResult: QueryExecutePayload = {
+              statements: [
+                {
+                  index: 1,
+                  sql,
+                  columns: [],
+                  rows: [],
+                  row_count: 0,
+                  duration_ms: 0,
+                  error: message,
+                },
+              ],
+              total_duration_ms: 0,
+            };
+            await this.results.show(errorResult, `Plan: ${title} (error)`);
+            vscode.window.showErrorMessage(`Execution plan failed: ${message}`);
+          }
+        }
+      );
+    } finally {
+      this.runningConnectionId = undefined;
+      await vscode.commands.executeCommand("setContext", "sqlStudio.queryRunning", false);
+    }
+    return result;
+  }
+
   async cancelRunningQuery(): Promise<void> {
     const connectionId = this.runningConnectionId;
     if (!connectionId) {

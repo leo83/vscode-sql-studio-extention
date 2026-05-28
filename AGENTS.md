@@ -92,6 +92,7 @@ cd python && uv sync --all-groups && uv run pytest
 | `health` | Healthcheck |
 | `connection/test` | Проверка подключения |
 | `query/execute` | Выполнить SQL |
+| `query/explain` | План выполнения (EXPLAIN) для SELECT/WITH |
 | `schema/listChildren` | Узлы explorer (lazy) |
 | `schema/getTableDDL` | DDL таблицы |
 | `sql/format` | Форматирование через sqlglot |
@@ -198,6 +199,7 @@ cd python && uv sync --all-groups && uv run pytest
 
 Команды редактора для агента:
 
+- `sqlStudio.showExecutionPlan` — EXPLAIN для запроса под курсором (Shift+Cmd+E)
 - `sqlStudio.askAgentExplain` — prompt в clipboard для Chat
 - `sqlStudio.askAgentFix` — prompt для fix/optimize
 

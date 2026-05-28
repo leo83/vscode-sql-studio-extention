@@ -76,6 +76,7 @@ class StatementResult(QueryResult):
 
     index: int
     sql: str
+    plan_text: str | None = None
 
 
 class QueryExecuteResult(BaseModel):
