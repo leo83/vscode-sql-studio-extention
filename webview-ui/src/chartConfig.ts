@@ -159,6 +159,10 @@ function horizontalBarDataZoom(categoryCount: number): NonNullable<EChartsOption
       type: "inside",
       yAxisIndex: 0,
       filterMode: "none",
+      zoomOnMouseWheel: "ctrl",
+      moveOnMouseWheel: true,
+      moveOnMouseMove: true,
+      preventDefaultMouseMove: true,
     },
   ];
 }
