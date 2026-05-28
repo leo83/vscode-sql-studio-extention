@@ -52,6 +52,7 @@ This runs:
 
 - `cd python && uv run pytest`
 - `npm run lint` (TypeScript `tsc --noEmit`)
+- `cd webview-ui && npm run test` (Vitest: chart layout and pie gesture helpers)
 
 When changing the Python backend, also verify stdio JSON-RPC:
 

@@ -34,6 +34,8 @@ const HORIZONTAL_SCROLL_VISIBLE_CATEGORIES = 30;
 const MANY_CATEGORIES_THRESHOLD = 40;
 const PIE_SCROLL_LEGEND_THRESHOLD = 12;
 const PIE_SLICE_LABEL_THRESHOLD = 20;
+export const PIE_LEGEND_WIDTH = 168;
+export const PIE_LEGEND_TEXT_WIDTH = 124;
 
 export const AGGREGATION_OPTIONS: { value: Aggregation; label: string }[] = [
   { value: "none", label: "None" },
@@ -382,15 +384,27 @@ function scalePercentRadius(value: string, scale: number): string {
   if (!match) {
     return value;
   }
-  return `${Math.min(90, parseFloat(match[1]) * scale).toFixed(1)}%`;
+  return `${Math.min(92, parseFloat(match[1]) * scale).toFixed(1)}%`;
 }
 
-function scalePieRadius(
+export function scalePieRadius(
   inner: string,
   outer: string,
   scale: number
 ): [string, string] {
   return [scalePercentRadius(inner, scale), scalePercentRadius(outer, scale)];
+}
+
+export function pieUsesScrollLegend(categoryCount: number): boolean {
+  return categoryCount > PIE_SCROLL_LEGEND_THRESHOLD;
+}
+
+export function pieBaseRadius(manyCategories: boolean): [string, string] {
+  return manyCategories ? ["46%", "84%"] : ["42%", "76%"];
+}
+
+export function pieCenter(manyCategories: boolean): [string, string] {
+  return manyCategories ? ["38%", "50%"] : ["50%", "52%"];
 }
 
 function buildPie(
@@ -423,11 +437,9 @@ function buildPie(
     }))
     .sort((left, right) => right.value - left.value);
 
-  const manyCategories = data.length > PIE_SCROLL_LEGEND_THRESHOLD;
+  const manyCategories = pieUsesScrollLegend(data.length);
   const showSliceLabels = data.length <= PIE_SLICE_LABEL_THRESHOLD;
-  const baseRadius = manyCategories
-    ? (["28%", "52%"] as [string, string])
-    : (["35%", "65%"] as [string, string]);
+  const baseRadius = pieBaseRadius(manyCategories);
   const scaledRadius = scalePieRadius(baseRadius[0], baseRadius[1], pieScale);
 
   const legend: EChartsOption["legend"] = manyCategories
@@ -435,19 +447,19 @@ function buildPie(
         type: "scroll",
         orient: "vertical",
         right: 8,
-        top: 24,
-        bottom: 24,
-        height: "72%",
-        width: 128,
+        top: 8,
+        bottom: 8,
+        width: PIE_LEGEND_WIDTH,
         textStyle: {
           color: theme.text,
           overflow: "truncate",
-          width: 92,
+          width: PIE_LEGEND_TEXT_WIDTH,
         },
         pageTextStyle: { color: theme.text },
         pageIconColor: theme.text,
         pageIconInactiveColor: theme.border,
         pageIconSize: 12,
+        pageButtonGap: 8,
       }
     : {
         type: "plain",
@@ -465,7 +477,7 @@ function buildPie(
         {
           type: "pie",
           radius: scaledRadius,
-          center: manyCategories ? ["36%", "52%"] : ["50%", "55%"],
+          center: pieCenter(manyCategories),
           data,
           label: { show: showSliceLabels, color: theme.text },
           labelLine: { show: showSliceLabels },

@@ -34,7 +34,7 @@ grammars/             TextMate grammars (SQL подсветка)
 | Extension | TypeScript 5, esbuild, VS Code Extension API |
 | Backend | Python 3.11+, uv, psycopg3, clickhouse-connect, clickhouse-driver, pyodbc, sqlglot, openpyxl |
 | Webview | React 18, Vite, TanStack Table v8 |
-| Тесты | pytest (python), tsc (extension) |
+| Тесты | pytest (python), vitest (webview-ui), tsc (extension) |
 
 ## Структура ключевых файлов
 
@@ -54,6 +54,10 @@ grammars/             TextMate grammars (SQL подсветка)
 | `webview-ui/src/vscodeApi.ts` | Singleton `acquireVsCodeApi()` (один вызов на webview) |
 | `webview-ui/src/QueryError.tsx` | Форматированный вывод ошибок запроса |
 | `webview-ui/src/parseQueryError.ts` | Парсинг ClickHouse/Postgres error + stack trace |
+| `webview-ui/src/ResultsView.tsx` | Переключение Table / Chart в результатах |
+| `webview-ui/src/ResultsChart.tsx` | ECharts: конфигурация и рендер графиков |
+| `webview-ui/src/chartConfig.ts` | Типы графиков, агрегация, ECharts option builder |
+| `webview-ui/src/pieChartGestures.ts` | Pinch-zoom и scroll легенды для pie chart |
 | `python/sql_studio/server.py` | JSON-RPC server |
 | `python/sql_studio/drivers/` | postgres, clickhouse (фасад), clickhouse_http, clickhouse_native, mssql |
 | `python/sql_studio/dialect/sqlglot_service.py` | format / split SQL |
@@ -162,6 +166,7 @@ cd python && uv sync --all-groups && uv run pytest
 - Режимы одного бандла: `window.__SQL_STUDIO_MODE__` = `results` | `connection`.
 - Сообщения extension ↔ webview: `postMessage` (`save`, `cancel`, `test`, `testResult`, `exportCsv`, `exportXlsx`).
 - Ошибки `query/execute`: `QueryResult.error` → компонент `QueryError` (summary + collapsible stack trace), не plain text.
+- Chart view: `ResultsChart` + `chartConfig` (ECharts). Pie с >12 категорий — scroll legend на всю высоту; pinch-zoom (trackpad pinch / Ctrl+Cmd+wheel) на области pie, wheel по легенде — прокрутка. Жесты — `pieChartGestures.ts` (DOM wheel capture, не `containPixel`).
 
 ### Запросы SQL
 

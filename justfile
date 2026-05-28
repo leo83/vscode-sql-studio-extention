@@ -43,6 +43,7 @@ watch:
 test:
     just uv-test
     npm run lint
+    cd webview-ui && npm run test
 
 package:
     npm run build

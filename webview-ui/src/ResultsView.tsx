@@ -62,9 +62,11 @@ export function ResultsView({ result, embedded = false }: Props) {
       {viewMode === "table" ? (
         <ResultsTable result={result} embedded={embedded} showToolbar={false} />
       ) : (
-        <Suspense fallback={<div className="chart-empty">Loading chart…</div>}>
-          <ResultsChart records={records} columns={columns} />
-        </Suspense>
+        <div className="results-body-only results-chart-host">
+          <Suspense fallback={<div className="chart-empty">Loading chart…</div>}>
+            <ResultsChart records={records} columns={columns} />
+          </Suspense>
+        </div>
       )}
     </div>
   );

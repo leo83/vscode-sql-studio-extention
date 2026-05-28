@@ -4,8 +4,14 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added
+
+- Webview unit tests for pie chart layout and gesture helpers (`cd webview-ui && npm run test`)
+
 ### Changed
 
+- Pie charts fill the results panel; scroll legends use the full vertical space
+- Pie chart pinch zoom (trackpad pinch / Ctrl+Cmd + scroll) and legend trackpad scroll use reliable hit regions
 - Python backend: flat package layout (`python/sql_studio/` instead of `python/src/sql_studio/`)
 - Author contact: Lev Ragulin — leo@levragulin.ru
 - CI status badge in README files

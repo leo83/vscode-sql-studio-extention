@@ -16,7 +16,7 @@ Write SQL, explore database schemas, run queries, and browse results in **VS Cod
 - Click a table or view to preview data in the same results UI as query output
 - **Create SQL Query** — new editor from Command Palette or connection context menu
 - Run queries: **Cmd+Enter** / **Ctrl+Enter** (works when focus is outside the editor if one SQL file is open)
-- Results panel: sort, filter, pagination, charts, CSV/Excel export
+- Results panel: sort, filter, pagination, charts (line, bar, scatter, area, pie, heatmap), CSV/Excel export
 - Formatted query errors (summary, database error code, collapsible stack trace)
 - Connection passwords stored encrypted via VS Code **SecretStorage** (OS keychain)
 - Connection dialog (webview) with dialect-specific fields
@@ -30,7 +30,7 @@ Write SQL, explore database schemas, run queries, and browse results in **VS Cod
 
 ![Query results table](docs/images/results-table.png)
 
-**Query results (chart)** — pie, bar, scatter, heatmap from result columns:
+**Query results (chart)** — pie, bar, scatter, heatmap from result columns. Pie charts with many categories use a scrollable legend; pinch-to-zoom (trackpad pinch or Ctrl/Cmd + scroll) on the chart area and trackpad scroll on the legend:
 
 ![Query results chart](docs/images/results-chart.png)
 

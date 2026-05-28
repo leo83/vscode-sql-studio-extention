@@ -54,6 +54,7 @@ export function ResultsChart({ records, columns }: Props) {
   const [settings, setSettings] = useState<ChartSettings>(() => defaultChartSettings(columns));
   const [pieScale, setPieScale] = useState(1);
   const chartRef = useRef<ReactECharts>(null);
+  const canvasWrapRef = useRef<HTMLDivElement>(null);
   const pieScaleRef = useRef(pieScale);
   const pieGesturesRef = useRef<PieGestureHandlers | null>(null);
   pieScaleRef.current = pieScale;
@@ -147,6 +148,20 @@ export function ResultsChart({ records, columns }: Props) {
   }, [attachPieGestures, detachPieGestures, isPie]);
 
   useEffect(() => () => detachPieGestures(), [detachPieGestures]);
+
+  useEffect(() => {
+    const wrap = canvasWrapRef.current;
+    if (!wrap) {
+      return;
+    }
+    const resizeChart = () => {
+      chartRef.current?.getEchartsInstance()?.resize();
+    };
+    resizeChart();
+    const observer = new ResizeObserver(resizeChart);
+    observer.observe(wrap);
+    return () => observer.disconnect();
+  }, [option]);
 
   const update = (patch: Partial<ChartSettings>) => {
     setSettings((prev) => ({ ...prev, ...patch }));
@@ -264,7 +279,7 @@ export function ResultsChart({ records, columns }: Props) {
         ) : null}
       </aside>
 
-      <div className="chart-canvas-wrap">
+      <div className="chart-canvas-wrap" ref={canvasWrapRef}>
         {warning ? <div className="chart-warning">{warning}</div> : null}
         {option ? (
           <ReactECharts
