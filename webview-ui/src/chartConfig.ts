@@ -32,6 +32,8 @@ export const BAR_LAYOUT_OPTIONS: { value: BarLayout; label: string }[] = [
 
 const HORIZONTAL_SCROLL_VISIBLE_CATEGORIES = 30;
 const MANY_CATEGORIES_THRESHOLD = 40;
+const PIE_SCROLL_LEGEND_THRESHOLD = 12;
+const PIE_SLICE_LABEL_THRESHOLD = 20;
 
 export const AGGREGATION_OPTIONS: { value: Aggregation; label: string }[] = [
   { value: "none", label: "None" },
@@ -43,6 +45,10 @@ export const AGGREGATION_OPTIONS: { value: Aggregation; label: string }[] = [
 ];
 
 const MAX_CHART_POINTS = 5000;
+
+export interface ChartViewOptions {
+  pieScale?: number;
+}
 
 export interface ChartBuildResult {
   option: EChartsOption | null;
@@ -371,10 +377,27 @@ function buildScatter(
   };
 }
 
+function scalePercentRadius(value: string, scale: number): string {
+  const match = /^([\d.]+)%$/.exec(value.trim());
+  if (!match) {
+    return value;
+  }
+  return `${Math.min(90, parseFloat(match[1]) * scale).toFixed(1)}%`;
+}
+
+function scalePieRadius(
+  inner: string,
+  outer: string,
+  scale: number
+): [string, string] {
+  return [scalePercentRadius(inner, scale), scalePercentRadius(outer, scale)];
+}
+
 function buildPie(
   records: Record<string, unknown>[],
   settings: ChartSettings,
-  theme: ThemeColors
+  theme: ThemeColors,
+  pieScale = 1
 ): ChartBuildResult {
   const nameColumn = settings.xColumn;
   const valueColumn = settings.valueColumn || settings.yColumn;
@@ -393,23 +416,59 @@ function buildPie(
     grouped.get(name)!.push(row[valueColumn]);
   }
 
-  const data = [...grouped.entries()].map(([name, values]) => ({
-    name,
-    value: aggregateValues(values, aggregation),
-  }));
+  const data = [...grouped.entries()]
+    .map(([name, values]) => ({
+      name,
+      value: aggregateValues(values, aggregation),
+    }))
+    .sort((left, right) => right.value - left.value);
+
+  const manyCategories = data.length > PIE_SCROLL_LEGEND_THRESHOLD;
+  const showSliceLabels = data.length <= PIE_SLICE_LABEL_THRESHOLD;
+  const baseRadius = manyCategories
+    ? (["28%", "52%"] as [string, string])
+    : (["35%", "65%"] as [string, string]);
+  const scaledRadius = scalePieRadius(baseRadius[0], baseRadius[1], pieScale);
+
+  const legend: EChartsOption["legend"] = manyCategories
+    ? {
+        type: "scroll",
+        orient: "vertical",
+        right: 8,
+        top: 24,
+        bottom: 24,
+        height: "72%",
+        width: 128,
+        textStyle: {
+          color: theme.text,
+          overflow: "truncate",
+          width: 92,
+        },
+        pageTextStyle: { color: theme.text },
+        pageIconColor: theme.text,
+        pageIconInactiveColor: theme.border,
+        pageIconSize: 12,
+      }
+    : {
+        type: "plain",
+        textStyle: { color: theme.text },
+        top: 0,
+      };
 
   return {
     option: {
       ...baseOption(theme),
+      legend,
       color: theme.palette,
       tooltip: { trigger: "item", backgroundColor: theme.background, borderColor: theme.border, textStyle: { color: theme.text } },
       series: [
         {
           type: "pie",
-          radius: ["35%", "65%"],
-          center: ["50%", "55%"],
+          radius: scaledRadius,
+          center: manyCategories ? ["36%", "52%"] : ["50%", "55%"],
           data,
-          label: { color: theme.text },
+          label: { show: showSliceLabels, color: theme.text },
+          labelLine: { show: showSliceLabels },
         },
       ],
     },
@@ -514,7 +573,8 @@ function buildHeatmap(
 
 export function buildChartOption(
   records: Record<string, unknown>[],
-  settings: ChartSettings
+  settings: ChartSettings,
+  viewOptions: ChartViewOptions = {}
 ): ChartBuildResult {
   if (records.length === 0) {
     return { option: null, warning: "No rows to chart." };
@@ -533,7 +593,10 @@ export function buildChartOption(
     case "scatter":
       return { ...buildScatter(data, settings, theme), warning };
     case "pie":
-      return { ...buildPie(data, settings, theme), warning };
+      return {
+        ...buildPie(data, settings, theme, viewOptions.pieScale ?? 1),
+        warning,
+      };
     case "heatmap":
       return { ...buildHeatmap(data, settings, theme), warning };
     case "line":

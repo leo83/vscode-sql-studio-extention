@@ -1,9 +1,10 @@
 import ReactECharts from "echarts-for-react";
-import { useEffect, useMemo, useState } from "react";
+import type { EChartsType } from "echarts";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { ChartTypePicker } from "./ChartTypePicker";
 import {
   AGGREGATION_OPTIONS,
   BAR_LAYOUT_OPTIONS,
-  CHART_TYPE_OPTIONS,
   aggregationOptionsForChart,
   buildChartOption,
   defaultChartSettings,
@@ -11,6 +12,7 @@ import {
   type ChartSettings,
   type ChartType,
 } from "./chartConfig";
+import { attachPieChartGestures, type PieGestureHandlers } from "./pieChartGestures";
 import type { ColumnInfo } from "./resultData";
 
 interface Props {
@@ -50,10 +52,24 @@ function FieldSelect({
 
 export function ResultsChart({ records, columns }: Props) {
   const [settings, setSettings] = useState<ChartSettings>(() => defaultChartSettings(columns));
+  const [pieScale, setPieScale] = useState(1);
+  const chartRef = useRef<ReactECharts>(null);
+  const pieScaleRef = useRef(pieScale);
+  const pieGesturesRef = useRef<PieGestureHandlers | null>(null);
+  pieScaleRef.current = pieScale;
 
   useEffect(() => {
     setSettings(defaultChartSettings(columns));
   }, [columns]);
+
+  const isHeatmap = settings.chartType === "heatmap";
+  const isPie = settings.chartType === "pie";
+  const isScatter = settings.chartType === "scatter";
+  const isBar = settings.chartType === "bar";
+
+  useEffect(() => {
+    setPieScale(1);
+  }, [settings.chartType, records]);
 
   const columnOptions = useMemo(
     () =>
@@ -84,15 +100,60 @@ export function ResultsChart({ records, columns }: Props) {
   }, [allowedAggregations, settings.aggregation]);
 
   const { option, warning } = useMemo(
-    () => buildChartOption(records, settings),
-    [records, settings]
+    () =>
+      buildChartOption(records, settings, {
+        pieScale: isPie ? pieScale : undefined,
+      }),
+    [records, settings, isPie, pieScale]
   );
+
+  const detachPieGestures = useCallback(() => {
+    pieGesturesRef.current?.dispose();
+    pieGesturesRef.current = null;
+  }, []);
+
+  const attachPieGestures = useCallback(
+    (chart: EChartsType) => {
+      detachPieGestures();
+      if (!isPie) {
+        return;
+      }
+      pieGesturesRef.current = attachPieChartGestures(
+        chart,
+        () => pieScaleRef.current,
+        setPieScale
+      );
+    },
+    [detachPieGestures, isPie]
+  );
+
+  const onChartReady = useCallback(
+    (chart: EChartsType) => {
+      attachPieGestures(chart);
+    },
+    [attachPieGestures]
+  );
+
+  useEffect(() => {
+    if (!isPie) {
+      detachPieGestures();
+      return;
+    }
+    const chart = chartRef.current?.getEchartsInstance();
+    if (chart) {
+      attachPieGestures(chart);
+    }
+    return detachPieGestures;
+  }, [attachPieGestures, detachPieGestures, isPie]);
+
+  useEffect(() => () => detachPieGestures(), [detachPieGestures]);
 
   const update = (patch: Partial<ChartSettings>) => {
     setSettings((prev) => ({ ...prev, ...patch }));
   };
 
   const onChartTypeChange = (chartType: ChartType) => {
+    setPieScale(1);
     setSettings((prev) => {
       const next: ChartSettings = { ...prev, chartType };
       const aggs = aggregationOptionsForChart(chartType);
@@ -106,20 +167,16 @@ export function ResultsChart({ records, columns }: Props) {
     });
   };
 
-  const isHeatmap = settings.chartType === "heatmap";
-  const isPie = settings.chartType === "pie";
-  const isScatter = settings.chartType === "scatter";
-  const isBar = settings.chartType === "bar";
-
   return (
     <div className="chart-panel">
       <aside className="chart-config">
-        <FieldSelect
-          label="Chart type"
-          value={settings.chartType}
-          options={CHART_TYPE_OPTIONS}
-          onChange={(value) => onChartTypeChange(value as ChartType)}
-        />
+        <label className="chart-field">
+          <span className="chart-field-label">Chart type</span>
+          <ChartTypePicker
+            value={settings.chartType}
+            onChange={onChartTypeChange}
+          />
+        </label>
 
         {isBar ? (
           <FieldSelect
@@ -211,10 +268,12 @@ export function ResultsChart({ records, columns }: Props) {
         {warning ? <div className="chart-warning">{warning}</div> : null}
         {option ? (
           <ReactECharts
+            ref={chartRef}
             className="chart-canvas"
             option={option}
             notMerge
             lazyUpdate
+            onChartReady={onChartReady}
             style={{ height: "100%", width: "100%" }}
           />
         ) : (
