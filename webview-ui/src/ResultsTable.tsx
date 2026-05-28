@@ -24,11 +24,27 @@ function rowToJson(row: Record<string, unknown>): string {
   return JSON.stringify(row, null, 2);
 }
 
+function getCopyShortcutLabel(): string {
+  const platform = navigator.platform;
+  const userAgent = navigator.userAgent;
+  const isMac =
+    /Mac|iPhone|iPad|iPod/.test(platform) || /Mac OS X|Macintosh/.test(userAgent);
+  return isMac ? "⌘+C" : "Ctrl+C";
+}
+
+interface ContextMenuState {
+  x: number;
+  y: number;
+  rowId: string;
+}
+
 export function ResultsTable({ result, embedded = false, showToolbar = true }: Props) {
   const [globalFilter, setGlobalFilter] = useState("");
   const [sorting, setSorting] = useState<SortingState>([]);
   const [selectedRowId, setSelectedRowId] = useState<string | null>(null);
+  const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(null);
   const tableWrapRef = useRef<HTMLDivElement>(null);
+  const copyShortcutLabel = useMemo(() => getCopyShortcutLabel(), []);
 
   const columnNames = useMemo(() => {
     if (result.columns.length > 0) {
@@ -103,13 +119,17 @@ export function ResultsTable({ result, embedded = false, showToolbar = true }: P
     el?.scrollIntoView({ block: "nearest" });
   }, []);
 
+  const copyRow = useCallback(async (row: Row<Record<string, unknown>>) => {
+    await navigator.clipboard.writeText(rowToJson(row.original));
+  }, []);
+
   const copySelectedRow = useCallback(async () => {
     const row = rows.find((item) => item.id === selectedRowId);
     if (!row) {
       return;
     }
-    await navigator.clipboard.writeText(rowToJson(row.original));
-  }, [rows, selectedRowId]);
+    await copyRow(row);
+  }, [rows, selectedRowId, copyRow]);
 
   const selectRow = useCallback(
     (row: Row<Record<string, unknown>>) => {
@@ -140,6 +160,42 @@ export function ResultsTable({ result, embedded = false, showToolbar = true }: P
     },
     [rows, selectedRowId, scrollRowIntoView]
   );
+
+  useEffect(() => {
+    if (!contextMenu) {
+      return;
+    }
+    const closeMenu = () => setContextMenu(null);
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        closeMenu();
+      }
+    };
+    window.addEventListener("click", closeMenu);
+    window.addEventListener("keydown", onKeyDown);
+    return () => {
+      window.removeEventListener("click", closeMenu);
+      window.removeEventListener("keydown", onKeyDown);
+    };
+  }, [contextMenu]);
+
+  const handleRowContextMenu = (
+    event: React.MouseEvent<HTMLTableRowElement>,
+    row: Row<Record<string, unknown>>
+  ) => {
+    event.preventDefault();
+    selectRow(row);
+    setContextMenu({ x: event.clientX, y: event.clientY, rowId: row.id });
+  };
+
+  const handleContextMenuCopy = async () => {
+    const row = rows.find((item) => item.id === contextMenu?.rowId);
+    setContextMenu(null);
+    if (!row) {
+      return;
+    }
+    await copyRow(row);
+  };
 
   const handleTableKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
     if (event.key === "ArrowDown") {
@@ -194,6 +250,7 @@ export function ResultsTable({ result, embedded = false, showToolbar = true }: P
         className="table-wrap"
         tabIndex={0}
         onKeyDown={handleTableKeyDown}
+        onContextMenu={(event) => event.preventDefault()}
       >
         <table>
           <thead>
@@ -231,6 +288,7 @@ export function ResultsTable({ result, embedded = false, showToolbar = true }: P
                 data-row-id={row.id}
                 className={row.id === selectedRowId ? "row-selected" : undefined}
                 onClick={() => selectRow(row)}
+                onContextMenu={(event) => handleRowContextMenu(event, row)}
               >
                 <td className="row-num">{pageIndex * pageSize + row.index + 1}</td>
                 {row.getVisibleCells().map((cell) => (
@@ -245,6 +303,18 @@ export function ResultsTable({ result, embedded = false, showToolbar = true }: P
             ))}
           </tbody>
         </table>
+        {contextMenu ? (
+          <div
+            className="row-context-menu"
+            style={{ top: contextMenu.y, left: contextMenu.x }}
+            onClick={(event) => event.stopPropagation()}
+          >
+            <button type="button" onClick={() => void handleContextMenuCopy()}>
+              <span>Copy</span>
+              <span className="row-context-menu-shortcut">{copyShortcutLabel}</span>
+            </button>
+          </div>
+        ) : null}
       </div>
       <div className="pagination">
         <button type="button" onClick={() => table.previousPage()} disabled={!table.getCanPreviousPage()}>
