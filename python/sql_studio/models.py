@@ -128,6 +128,5 @@ class CheckUnboundedSelectResult(BaseModel):
 class SchemaDbmlResult(BaseModel):
     scope: str
     dbml: str
-    mermaid: str
     table_count: int = 0
     relationship_count: int = 0

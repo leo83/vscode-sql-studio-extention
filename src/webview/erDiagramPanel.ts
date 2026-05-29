@@ -34,6 +34,14 @@ export class ErDiagramPanel {
 
     const panel = this.panel;
     panel.webview.html = this.getHtml(context, panel.webview, payload);
+    panel.webview.onDidReceiveMessage((msg: { type?: string; message?: string; url?: string }) => {
+      if (msg.type === "notify" && msg.message) {
+        void vscode.window.showInformationMessage(msg.message);
+      }
+      if (msg.type === "openExternal" && msg.url) {
+        void vscode.env.openExternal(vscode.Uri.parse(msg.url));
+      }
+    });
     panel.onDidDispose(() => {
       this.panel = undefined;
     });
@@ -55,13 +63,13 @@ export class ErDiagramPanel {
       )
     );
     const nonce = String(Date.now());
-    const init = JSON.stringify(payload);
+    const init = JSON.stringify(payload).replace(/</g, "\\u003c");
 
     return `<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src ${webview.cspSource} 'unsafe-inline'; script-src 'nonce-${nonce}';">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src ${webview.cspSource} 'unsafe-inline'; script-src ${webview.cspSource} 'nonce-${nonce}';">
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   ${buildAccentColorStyleElement()}
   <link rel="stylesheet" href="${styleUri}">

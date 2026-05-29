@@ -14,7 +14,7 @@ Write SQL, explore database schemas, run queries, and browse results in **VS Cod
 - **Database Explorer** — lazy schema tree (schemas/databases → tables, views, functions → columns)
 - **Connection tags** — color-coded labels on connections (edit in the connection dialog or **Manage Tags**); shown in Explorer description and composite icons
 - **Schema object filter** — inline filter on schema/database nodes to search tables, views, and functions by name; **Edit Filter** / **Reset Filter** when active
-- Context menu on schema/database: **View ER Diagram** (Mermaid, pan/zoom/autofit) and **Get DBML** (copy to clipboard)
+- Context menu on schema/database: **View ER Diagram** (DBML, column-level relationships, pan/zoom/autofit) and **Get DBML** (copy to clipboard)
 - Context menu on schema objects: Object Description, Sample Data, Export Data, Create SQL Query, Generate SELECT
 - Click a table or view to preview data in the same results UI as query output
 - **Create SQL Query** — new editor from Command Palette or connection context menu

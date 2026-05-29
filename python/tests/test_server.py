@@ -257,7 +257,6 @@ def test_schema_get_dbml(mock_get_driver: MagicMock, server: JsonRpcServer) -> N
     mock_driver.get_schema_dbml.return_value = SchemaDbmlResult(
         scope="public",
         dbml="Table public.users { id int [pk] }",
-        mermaid="erDiagram\n  public_users { int id PK }",
         table_count=1,
         relationship_count=0,
     )

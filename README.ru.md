@@ -16,7 +16,7 @@
 - **Database Explorer** — schemas → tables / views / functions → columns
 - **Теги подключений** — цветные метки на connections (в диалоге подключения или **Manage Tags**); отображаются в описании и иконке в Explorer
 - **Фильтр объектов схемы** — иконка фильтра на узлах schema/database для поиска таблиц, view и функций по имени; **Edit Filter** / **Reset Filter**
-- ПКМ на schema/database: **View ER Diagram** (Mermaid, pan/zoom/autofit) и **Get DBML** (копирование в буфер)
+- ПКМ на schema/database: **View ER Diagram** (DBML, column-level связи, pan/zoom/autofit) и **Get DBML** (копирование в буфер)
 - ПКМ на объект схемы: **Object Description**, **Sample Data**, **Export Data**, **Create SQL Query**, **Generate SELECT**
 - Клик по таблице / view → preview данных (тот же UI, что и для SQL)
 - **Create SQL Query** — новый редактор запроса из Command Palette или ПКМ на connection

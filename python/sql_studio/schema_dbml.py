@@ -1,4 +1,4 @@
-"""Collect schema metadata and render DBML / Mermaid ER diagrams."""
+"""Collect schema metadata and render DBML ER diagrams."""
 
 from __future__ import annotations
 
@@ -94,6 +94,13 @@ def render_dbml(
     *,
     dialect: Dialect,
 ) -> str:
+    fk_targets: dict[tuple[str, str, str], str] = {}
+    for ref in refs:
+        to_name = _dbml_table_name(TableDef(ref.to_schema, ref.to_table, []))
+        fk_targets[(ref.from_schema, ref.from_table, ref.from_column)] = (
+            f"{to_name}.{_dbml_ident(ref.to_column)}"
+        )
+
     lines = [
         f"// SQL Studio — {dialect} — scope: {scope_label}",
         f"// Tables: {len(tables)}, relationships: {len(refs)}",
@@ -109,6 +116,9 @@ def render_dbml(
                 settings.append("pk")
             if not col.nullable:
                 settings.append("not null")
+            fk_target = fk_targets.get((table.schema, table.name, col.name))
+            if fk_target:
+                settings.append(f"ref: > {fk_target}")
             setting = f" [{', '.join(settings)}]" if settings else ""
             note = f" // {_escape_dbml_note(col.note)}" if col.note else ""
             lines.append(
@@ -117,143 +127,11 @@ def render_dbml(
         lines.append("}")
         lines.append("")
 
-    for ref in refs:
-        from_name = _dbml_table_name(
-            TableDef(ref.from_schema, ref.from_table, [])
-        )
-        to_name = _dbml_table_name(TableDef(ref.to_schema, ref.to_table, []))
-        lines.append(
-            "Ref: "
-            f"{from_name}.{_dbml_ident(ref.from_column)} "
-            f"> {to_name}.{_dbml_ident(ref.to_column)}"
-        )
-
     return "\n".join(lines).rstrip() + "\n"
 
 
 def _escape_dbml_note(value: str) -> str:
     return value.replace("'", "\\'")
-
-
-def _mermaid_id(qualified: str) -> str:
-    return _mermaid_token(qualified, fallback="entity")
-
-
-def _mermaid_token(value: str, *, fallback: str = "field") -> str:
-    """Single Mermaid ER identifier (entity names). No dots or parentheses."""
-    cleaned = re.sub(r"[^A-Za-z0-9_]", "_", value)
-    cleaned = re.sub(r"_+", "_", cleaned).strip("_")
-    if not cleaned:
-        return fallback
-    if cleaned[0].isdigit():
-        return f"f_{cleaned}"
-    return cleaned
-
-
-_MERMAID_ATTRIBUTE_KEYS = frozenset({"pk", "fk", "uk"})
-
-
-def _mermaid_attribute_part(value: str, *, fallback: str) -> str:
-    """Mermaid ER attribute type or name — single token (no spaces). PK/FK/UK are reserved."""
-    text = value.strip() or fallback
-    token = _mermaid_token(text, fallback=fallback)
-    if token.lower() in _MERMAID_ATTRIBUTE_KEYS:
-        return f"col_{token}"
-    return token
-
-
-def _mermaid_relationship_label(value: str) -> str:
-    return value.replace("\\", "\\\\").replace('"', '\\"')
-
-
-def _mermaid_entity_label(table: TableDef) -> str:
-    if table.schema:
-        return f"{table.schema}.{table.name}"
-    return table.name
-
-
-def _mermaid_entity_header(table: TableDef) -> str:
-    entity_id = _mermaid_id(table.qualified)
-    label = _mermaid_entity_label(table)
-    if label == entity_id:
-        return entity_id
-    escaped = label.replace("\\", "\\\\").replace('"', '\\"')
-    return f'{entity_id}["{escaped}"]'
-
-
-def _sort_tables_for_er_layout(
-    tables: list[TableDef],
-    refs: list[RefDef],
-) -> list[TableDef]:
-    """Order tables so referenced (PK) entities appear before dependents for dagre."""
-    if not tables:
-        return []
-    if not refs:
-        return sorted(tables, key=lambda t: t.qualified)
-
-    table_by_qualified = {table.qualified: table for table in tables}
-    successors: dict[str, set[str]] = {table.qualified: set() for table in tables}
-    in_degree: dict[str, int] = {table.qualified: 0 for table in tables}
-
-    for ref in refs:
-        parent = ref.to_qualified
-        child = ref.from_qualified
-        if parent not in in_degree or child not in in_degree or parent == child:
-            continue
-        if child in successors[parent]:
-            continue
-        successors[parent].add(child)
-        in_degree[child] += 1
-
-    queue = sorted(name for name, degree in in_degree.items() if degree == 0)
-    ordered: list[str] = []
-    while queue:
-        current = queue.pop(0)
-        ordered.append(current)
-        for child in sorted(successors[current]):
-            in_degree[child] -= 1
-            if in_degree[child] == 0:
-                queue.append(child)
-                queue.sort()
-
-    remaining = sorted(
-        table.qualified for table in tables if table.qualified not in ordered
-    )
-    ordered.extend(remaining)
-    return [table_by_qualified[name] for name in ordered if name in table_by_qualified]
-
-
-def render_mermaid_er(
-    scope_label: str,
-    tables: list[TableDef],
-    refs: list[RefDef],
-) -> str:
-    lines = ["erDiagram", "  direction TB", f"  %% scope: {scope_label}"]
-    for table in _sort_tables_for_er_layout(tables, refs):
-        entity = _mermaid_entity_header(table)
-        lines.append(f"  {entity} {{")
-        seen_attrs: set[str] = set()
-        for col in table.columns:
-            attr_type = _mermaid_attribute_part(col.data_type, fallback="type")
-            attr_name = _mermaid_attribute_part(col.name, fallback="column")
-            dedupe_key = attr_name
-            if dedupe_key in seen_attrs:
-                suffix = 2
-                base = dedupe_key
-                while dedupe_key in seen_attrs:
-                    dedupe_key = f"{base}_{suffix}"
-                    suffix += 1
-                attr_name = _mermaid_attribute_part(dedupe_key, fallback="column")
-            seen_attrs.add(dedupe_key)
-            pk = " PK" if col.is_pk else ""
-            lines.append(f"    {attr_name} {attr_type}{pk}")
-        lines.append("  }")
-    for ref in refs:
-        left = _mermaid_id(ref.from_qualified)
-        right = _mermaid_id(ref.to_qualified)
-        label = _mermaid_relationship_label(ref.from_column)
-        lines.append(f'  {right} ||--o{{ {left} : "{label}"')
-    return "\n".join(lines)
 
 
 def build_schema_dbml_result(
@@ -263,11 +141,9 @@ def build_schema_dbml_result(
     refs: list[RefDef],
 ) -> SchemaDbmlResult:
     dbml = render_dbml(scope_label, tables, refs, dialect=dialect)
-    mermaid = render_mermaid_er(scope_label, tables, refs)
     return SchemaDbmlResult(
         scope=scope_label,
         dbml=dbml,
-        mermaid=mermaid,
         table_count=len(tables),
         relationship_count=len(refs),
     )

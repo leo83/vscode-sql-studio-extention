@@ -9,7 +9,7 @@ All notable changes to this project will be documented in this file.
 - **Connection tags** — color-coded labels on connections; edit in connection dialog or **Manage Tags**; shown in Explorer description and composite icons
 - **Schema object name filter** — inline filter on schema/database nodes; **Edit Filter** / **Reset Filter** when active
 - **Schema ER diagram & DBML** — context menu on schema (PostgreSQL, MSSQL, MySQL, SQLite) or database (ClickHouse): `View ER Diagram`, `Get DBML`; RPC `schema/getDbml`
-- **ER diagram viewer** — pan (scroll/drag), pinch or Ctrl+scroll zoom, autofit on open, **Fit to view**, **Copy DBML**
+- **ER diagram viewer** — DBML-native renderer with column-level connectors (dbdiagram-style), pan/zoom, draggable tables, autofit on open, **Fit to view**, **Copy DBML**, **Open in dbdiagram.io**
 - **Show Execution Plan** (`sqlStudio.showExecutionPlan`, Shift+Cmd+E / Shift+Ctrl+E): structured EXPLAIN per dialect (JSON/XML/query plan), interactive **Tree** / **Table** / **Raw** views with search, metrics, and copy actions
 - Setting `sqlStudio.explainAnalyze` (PostgreSQL `EXPLAIN ANALYZE`, executes the query)
 - Warning before running unbounded `SELECT` (no `WHERE`, no `LIMIT`/`TOP`, non-aggregating): checks referenced tables with >5,000 estimated rows and recommends adding `LIMIT` (configurable via `sqlStudio.warnOnLargeUnboundedSelect` and `sqlStudio.largeTableRowThreshold`)
@@ -27,7 +27,7 @@ All notable changes to this project will be documented in this file.
 
 - Pie charts fill the results panel; scroll legends use the full vertical space
 - Pie chart pinch zoom (trackpad pinch / Ctrl+Cmd + scroll) and legend trackpad scroll use reliable hit regions
-- ER diagram entity labels use `schema.table` form; column order matches database metadata
+- ER diagram uses local DBML renderer (`@dbml/core` + React Flow) instead of Mermaid; relationships attach to specific columns
 - Connection tags shown as `[name]` in Explorer description
 - Python backend: flat package layout (`python/sql_studio/` instead of `python/src/sql_studio/`)
 - Author contact: Lev Ragulin — leo@levragulin.ru

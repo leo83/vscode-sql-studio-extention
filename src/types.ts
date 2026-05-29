@@ -130,7 +130,6 @@ export interface ObjectDescriptionPayload {
 export interface SchemaDbmlPayload {
   scope: string;
   dbml: string;
-  mermaid: string;
   table_count: number;
   relationship_count: number;
 }

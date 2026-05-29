@@ -113,7 +113,7 @@ Parse/format/split для T-SQL: **sqlglot** с `read=tsql` (`dialect_read("mssq
 | `drivers/registry.py` | пул соединений и фабрика драйверов |
 | `dialect/explain.py` | EXPLAIN SQL builders, `attach_plan()` |
 | `dialect/plan_parsers/` | парсеры structured EXPLAIN → `PlanNode` |
-| `schema_dbml.py` | DBML и Mermaid ER для schema/database |
+| `schema_dbml.py` | DBML ER для schema/database |
 
 ## `query/explain`
 

@@ -48,7 +48,6 @@ export type WebviewMode = "results" | "connection" | "diagram";
 export interface SchemaDiagramInit {
   scope: string;
   dbml: string;
-  mermaid: string;
   table_count: number;
   relationship_count: number;
 }

@@ -50,8 +50,8 @@ grammars/             TextMate grammars (SQL подсветка)
 | `src/schemaExplorer/treeProvider.ts` | Database Explorer TreeView (корень **Connections**) |
 | `src/schemaExplorer/objectNameFilter.ts` | Фильтр имён объектов schema/database |
 | `src/commands/schemaCommands.ts` | ER diagram + DBML из контекстного меню schema/database |
-| `src/webview/erDiagramPanel.ts` | Webview panel ER-диаграммы (Mermaid) |
-| `python/sql_studio/schema_dbml.py` | Сбор метаданных схемы, генерация DBML/Mermaid |
+| `src/webview/erDiagramPanel.ts` | Webview panel ER-диаграммы (DBML renderer) |
+| `python/sql_studio/schema_dbml.py` | Сбор метаданных схемы, генерация DBML |
 | `src/webview/resultsPanel.ts` | Webview panel результатов |
 | `src/sqlUtils.ts` | buildPreviewSql, лимиты строк |
 | `webview-ui/src/ConnectionDialog.tsx` | Форма подключения (поля по диалекту, TagEditor) |
@@ -69,7 +69,7 @@ grammars/             TextMate grammars (SQL подсветка)
 | `webview-ui/src/ResultsChart.tsx` | ECharts: конфигурация и рендер графиков |
 | `webview-ui/src/chartConfig.ts` | Типы графиков, агрегация, horizontal scroll bar, ECharts option builder |
 | `webview-ui/src/pieChartGestures.ts` | Pinch-zoom и scroll легенды для pie chart |
-| `webview-ui/src/ErDiagramView.tsx` | ER diagram webview (Mermaid render + toolbar) |
+| `webview-ui/src/ErDiagramView.tsx` | ER diagram webview (DBML render + toolbar) |
 | `webview-ui/src/erDiagramGestures.ts` | Pan, zoom, autofit для ER diagram |
 | `python/sql_studio/server.py` | JSON-RPC server |
 | `python/sql_studio/drivers/` | postgres, clickhouse (фасад), clickhouse_http, clickhouse_native, mssql, mysql, sqlite |
@@ -110,7 +110,7 @@ cd python && uv sync --all-groups && uv run pytest
 | `query/explain` | Structured EXPLAIN для SELECT/WITH → `plan_tree`, `plan_text`, `plan_format` |
 | `schema/listChildren` | Узлы explorer (lazy) |
 | `schema/getTableDDL` | DDL таблицы |
-| `schema/getDbml` | DBML + Mermaid ER для схемы/базы (контекстное меню explorer) |
+| `schema/getDbml` | DBML ER для схемы/базы (контекстное меню explorer) |
 | `sql/format` | Форматирование через sqlglot |
 | `sql/checkUnboundedSelect` | Предупреждение о больших таблицах в unbounded SELECT |
 | `export/csv`, `export/xlsx` | Экспорт результатов |
