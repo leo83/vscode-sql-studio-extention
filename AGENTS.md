@@ -6,7 +6,7 @@
 
 Расширение Cursor/VS Code для:
 
-- написания и выполнения SQL (PostgreSQL, ClickHouse, Microsoft SQL Server);
+- написания и выполнения SQL (PostgreSQL, ClickHouse, Microsoft SQL Server, MySQL, SQLite);
 - просмотра объектов БД в Database Explorer;
 - отображения результатов в webview (sort / filter / export);
 - интеграции с Cursor Agent (rules, MCP).
@@ -32,7 +32,7 @@ grammars/             TextMate grammars (SQL подсветка)
 | Часть | Технологии |
 |-------|------------|
 | Extension | TypeScript 5, esbuild, VS Code Extension API |
-| Backend | Python 3.11+, uv, psycopg3, clickhouse-connect, clickhouse-driver, pyodbc, sqlglot, openpyxl |
+| Backend | Python 3.11+, uv, psycopg3, clickhouse-connect, clickhouse-driver, pyodbc, pymysql, sqlglot, openpyxl |
 | Webview | React 18, Vite, TanStack Table v8 |
 | Тесты | pytest (python), vitest (webview-ui), tsc (extension) |
 
@@ -42,27 +42,34 @@ grammars/             TextMate grammars (SQL подсветка)
 |------|------------|
 | `src/extension.ts` | Точка входа, регистрация команд и explorer |
 | `src/pythonClient.ts` | Spawn uv + JSON-RPC клиент |
-| `src/connectionManager.ts` | Профили connections + SecretStorage |
+| `src/connectionManager.ts` | Профили connections + SecretStorage + tags + lazy connect |
+| `src/connectionTags.ts` | Теги connections: цвета, pill SVG, Explorer description |
 | `src/commands/createSqlQuery.ts` | Команда Create SQL Query (новый untitled-редактор) |
 | `src/webview/connectionDialog.ts` | Webview-диалог создания/редактирования connection |
-| `src/queryRunner.ts` | Выполнение SQL и preview таблиц; ошибки → Results panel |
+| `src/queryRunner.ts` | Выполнение SQL и preview таблиц; ошибки → Results panel; cancel query |
 | `src/schemaExplorer/treeProvider.ts` | Database Explorer TreeView (корень **Connections**) |
+| `src/schemaExplorer/objectNameFilter.ts` | Фильтр имён объектов schema/database |
 | `src/commands/schemaCommands.ts` | ER diagram + DBML из контекстного меню schema/database |
 | `src/webview/erDiagramPanel.ts` | Webview panel ER-диаграммы (Mermaid) |
 | `python/sql_studio/schema_dbml.py` | Сбор метаданных схемы, генерация DBML/Mermaid |
 | `src/webview/resultsPanel.ts` | Webview panel результатов |
 | `src/sqlUtils.ts` | buildPreviewSql, лимиты строк |
-| `webview-ui/src/ConnectionDialog.tsx` | Форма подключения (поля по диалекту) |
-| `webview-ui/src/connectionFields.ts` | Схема полей PostgreSQL / ClickHouse / MSSQL |
+| `webview-ui/src/ConnectionDialog.tsx` | Форма подключения (поля по диалекту, TagEditor) |
+| `webview-ui/src/connectionFields.ts` | Схема полей postgres / clickhouse / mssql / mysql / sqlite |
+| `webview-ui/src/TagEditor.tsx` | Редактор тегов в диалоге подключения |
+| `webview-ui/src/tagPill.tsx` | SVG pill для тегов (shared с extension) |
 | `webview-ui/src/vscodeApi.ts` | Singleton `acquireVsCodeApi()` (один вызов на webview) |
 | `webview-ui/src/QueryError.tsx` | Форматированный вывод ошибок запроса |
 | `webview-ui/src/parseQueryError.ts` | Парсинг ClickHouse/Postgres error + stack trace |
 | `webview-ui/src/ResultsView.tsx` | Переключение Table / Chart в результатах |
+| `webview-ui/src/ResultsTable.tsx` | TanStack Table: sort, filter, resize columns, copy |
 | `webview-ui/src/ResultsChart.tsx` | ECharts: конфигурация и рендер графиков |
-| `webview-ui/src/chartConfig.ts` | Типы графиков, агрегация, ECharts option builder |
+| `webview-ui/src/chartConfig.ts` | Типы графиков, агрегация, horizontal scroll bar, ECharts option builder |
 | `webview-ui/src/pieChartGestures.ts` | Pinch-zoom и scroll легенды для pie chart |
+| `webview-ui/src/ErDiagramView.tsx` | ER diagram webview (Mermaid render + toolbar) |
+| `webview-ui/src/erDiagramGestures.ts` | Pan, zoom, autofit для ER diagram |
 | `python/sql_studio/server.py` | JSON-RPC server |
-| `python/sql_studio/drivers/` | postgres, clickhouse (фасад), clickhouse_http, clickhouse_native, mssql |
+| `python/sql_studio/drivers/` | postgres, clickhouse (фасад), clickhouse_http, clickhouse_native, mssql, mysql, sqlite |
 | `python/sql_studio/dialect/sqlglot_service.py` | format / split SQL |
 | `package.json` | Manifest расширения, contributes, settings |
 
@@ -145,16 +152,18 @@ cd python && uv sync --all-groups && uv run pytest
 ### SQL и диалекты
 
 - Подсветка — TextMate grammars (`grammars/`), не писать parser с нуля.
-- Parse/format/split — **sqlglot** (`read=postgres|clickhouse|tsql` для `mssql`).
+- Parse/format/split — **sqlglot** (`read=postgres|clickhouse|tsql|mysql|sqlite` по диалекту).
 - Preview таблицы: `sqlStudio.previewRowLimit` (default 1000). MSSQL: `SELECT TOP N`.
 - SQL-запросы: `sqlStudio.defaultRowLimit` (default 10000).
 - Unbounded SELECT warning: `sqlStudio.warnOnLargeUnboundedSelect` (default true), порог `sqlStudio.largeTableRowThreshold` (default 5000).
+- PostgreSQL EXPLAIN ANALYZE: `sqlStudio.explainAnalyze` (default false).
 - Акценты webview: `sqlStudio.accentColor`, `sqlStudio.chartAccentColors`.
 
 ### Connections
 
 - Создание/редактирование — **webview-диалог** (`ConnectionDialog`), не цепочка `showInputBox`.
-- Поля задаются в `webview-ui/src/connectionFields.ts` (разный набор для postgres / clickhouse / mssql).
+- Поля задаются в `webview-ui/src/connectionFields.ts` (разный набор для postgres / clickhouse / mssql / mysql / sqlite).
+- **Теги** — массив `{ name, color }` в профиле connection; цвет — palette id или hex; UI: `TagEditor` в диалоге, команда `sqlStudio.manageConnectionTags`.
 - Пароль: `type="password"` в UI; в профиле не хранится — только SecretStorage.
 - `connection/test` из диалога: таймаут RPC ~20 с; ответ webview — `testResult`.
 - ClickHouse: `clickhouse_interface` = `native` | `http`; Native → `clickhouse-driver` (9000), HTTP → `clickhouse-connect` (8123).
@@ -164,17 +173,21 @@ cd python && uv sync --all-groups && uv run pytest
 ### Explorer
 
 - Lazy load через `schema/listChildren`.
+- **Фильтр имён** на узлах schema/database: `objectNameFilter` в treeProvider; inline-команды `filterSchemaObjects`, `editSchemaObjectFilter`, `clearSchemaObjectFilter`.
 - Клик по table/view → `queryRunner.previewTable()` → тот же ResultsPanel, что для SQL.
-- PostgreSQL / MSSQL: path `schemas/{schema}/{table}`; ClickHouse: `databases/{db}/{table}`.
+- PostgreSQL / MSSQL / MySQL: path `schemas/{schema}/{table}`; ClickHouse: `databases/{db}/{table}`; SQLite: file as database.
+- ER diagram: `showSchemaDiagram` → `ErDiagramPanel` → webview mode `erDiagram`.
 
 ### Webview
 
 - Стили через CSS variables `--vscode-*`.
 - **`acquireVsCodeApi()` — строго один раз** на webview: использовать `webview-ui/src/vscodeApi.ts` (`getVsCodeApi()`).
-- Режимы одного бандла: `window.__SQL_STUDIO_MODE__` = `results` | `connection`.
-- Сообщения extension ↔ webview: `postMessage` (`save`, `cancel`, `test`, `testResult`, `exportCsv`, `exportXlsx`).
+- Режимы одного бандла: `window.__SQL_STUDIO_MODE__` = `results` | `connection` | `erDiagram`.
+- Сообщения extension ↔ webview: `postMessage` (`save`, `cancel`, `test`, `testResult`, `exportCsv`, `exportXlsx`, `notify`).
 - Ошибки `query/execute`: `QueryResult.error` → компонент `QueryError` (summary + collapsible stack trace), не plain text.
-- Chart view: `ResultsChart` + `chartConfig` (ECharts). Pie с >12 категорий — scroll legend на всю высоту; pinch-zoom (trackpad pinch / Ctrl+Cmd+wheel) на области pie, wheel по легенде — прокрутка. Жесты — `pieChartGestures.ts` (DOM wheel capture, не `containPixel`).
+- Results table: resizable columns (`columnSizing`), content-based defaults via `computeColumnSizes`.
+- Chart view: `ResultsChart` + `chartConfig` (ECharts). Bar layout `horizontal-scroll` для многих категорий. Pie с >12 категорий — scroll legend; pinch-zoom — `pieChartGestures.ts`.
+- ER diagram: scroll/drag pan, Ctrl+scroll or pinch zoom, autofit on open — `erDiagramGestures.ts` + `ErDiagramView.tsx`.
 
 ### Запросы SQL
 
@@ -182,6 +195,8 @@ cd python && uv sync --all-groups && uv run pytest
 - `.sql` по умолчанию: `configurationDefaults` + `ensureSqlStudioLanguage()` при открытии.
 - Connection: per-file (`workspaceState`) → active → quick pick; status bar `sqlStudio.selectConnection`.
 - `sqlStudio.runQuery` — `findSqlStudioEditorReady()` после привязки языка.
+- `sqlStudio.runAllInFile` — Cmd+Shift+Enter; `sqlStudio.cancelQuery` — отмена через backend.
+- Перед run: если connection не выбран → warning + **Select Connection**; если не active → **Connect** / Cancel.
 - `split_statements` (sqlglot) отбрасывает пустые/comment-only; при ошибке парсинга — fallback без `--` строк.
 - При исключении backend показывать ошибку и в notification, и в Results panel.
 
@@ -204,6 +219,8 @@ cd python && uv sync --all-groups && uv run pytest
 Команды редактора для агента:
 
 - `sqlStudio.showExecutionPlan` — EXPLAIN для запроса под курсором (Shift+Cmd+E)
+- `sqlStudio.filterSchemaObjects` / `editSchemaObjectFilter` / `clearSchemaObjectFilter` — фильтр объектов в Explorer
+- `sqlStudio.manageConnectionTags` — управление тегами connection
 - `sqlStudio.askAgentExplain` — prompt в clipboard для Chat
 - `sqlStudio.askAgentFix` — prompt для fix/optimize
 
@@ -225,9 +242,10 @@ echo '{"jsonrpc":"2.0","id":1,"method":"health","params":{}}' | uv run sql-studi
 
 Если менялся explorer / query flow — проверить в Extension Development Host (F5):
 
-1. Add Connection → Test Connection
-2. Expand schema → click table → preview 1000 rows
-3. `.sql` file → Cmd+Enter → results panel
+1. Add Connection → Test Connection → tags (optional)
+2. Expand schema → filter objects → click table → preview 1000 rows
+3. Schema/database → View ER Diagram → pan/zoom
+4. `.sql` file → Cmd+Enter → results panel; Shift+Cmd+E → execution plan
 
 ## Частые ошибки
 

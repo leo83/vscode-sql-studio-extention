@@ -6,8 +6,9 @@ Add PNG or GIF files here before publishing to the VS Code Marketplace. Recommen
 |------|---------|--------|
 | `results-table.png` | SQL Results panel — table view | added |
 | `results-chart.png` | SQL Results panel — chart view | added |
-| `explorer.png` | Database Explorer with expanded schema | optional |
-| `connection-dialog.png` | Add Connection webview | optional |
+| `explorer.png` | Database Explorer with expanded schema and connection tags | optional |
+| `er-diagram.png` | ER diagram webview with pan/zoom toolbar | optional |
+| `connection-dialog.png` | Add Connection webview (with tags) | optional |
 | `sql-editor.png` | SQL editor with run button and status bar connection | optional |
 
 ## Usage in README

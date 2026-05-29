@@ -1,6 +1,6 @@
 ---
 description: Rules for SQL files in SQL Studio — safe querying and dialect awareness
-globs: "**/*.{sql,pgsql,psql,chsql}"
+globs: "**/*.{sql,pgsql,psql,chsql,tsql,mysql,db}"
 alwaysApply: false
 ---
 
@@ -8,9 +8,9 @@ alwaysApply: false
 
 When editing or generating SQL in this workspace:
 
-1. Respect the connection dialect (PostgreSQL or ClickHouse). Use dialect-specific functions and syntax.
+1. Respect the connection dialect (PostgreSQL, ClickHouse, Microsoft SQL Server / T-SQL, MySQL, or SQLite). Use dialect-specific functions and syntax.
 2. Prefer read-only `SELECT` queries unless the user explicitly asks for DDL/DML.
-3. Always add a reasonable `LIMIT` for exploratory queries.
+3. Always add a reasonable `LIMIT` (or `TOP` for T-SQL) for exploratory queries.
 4. Use fully qualified table names (`schema.table` or `database.table`) when ambiguous.
 5. Never expose or log connection passwords.
 6. When fixing queries, explain changes briefly and return executable SQL in a fenced code block.

@@ -13,16 +13,22 @@
 ## Возможности
 
 - Подсветка SQL (PostgreSQL / ClickHouse / T-SQL / MySQL / SQLite / generic `.sql`)
-- **Database Explorer** — schemas → tables / views / functions → columns; контекстное меню схемы/базы: **ER-диаграмма** и **DBML**
-- ПКМ на объект схемы: **Object Description**, **Sample Data**, **Export Data**, **Create SQL Query**
+- **Database Explorer** — schemas → tables / views / functions → columns
+- **Теги подключений** — цветные метки на connections (в диалоге подключения или **Manage Tags**); отображаются в описании и иконке в Explorer
+- **Фильтр объектов схемы** — иконка фильтра на узлах schema/database для поиска таблиц, view и функций по имени; **Edit Filter** / **Reset Filter**
+- ПКМ на schema/database: **View ER Diagram** (Mermaid, pan/zoom/autofit) и **Get DBML** (копирование в буфер)
+- ПКМ на объект схемы: **Object Description**, **Sample Data**, **Export Data**, **Create SQL Query**, **Generate SELECT**
 - Клик по таблице / view → preview данных (тот же UI, что и для SQL)
 - **Create SQL Query** — новый редактор запроса из Command Palette или ПКМ на connection
 - Выполнение запросов: **Cmd+Enter** / **Ctrl+Enter** (работает и при фокусе вне редактора, если открыт один SQL-файл)
+- **Run All in File**: **Cmd+Shift+Enter** / **Ctrl+Shift+Enter**; **Cancel Query** в toolbar редактора во время выполнения
 - **План выполнения**: **Shift+Cmd+E** / **Shift+Ctrl+E** (команда *Show Execution Plan*; для PostgreSQL опционально `sqlStudio.explainAnalyze`)
-- Таблица результатов: сортировка, фильтр, пагинация, графики, экспорт CSV/Excel
+- Предупреждение, если connection не выбран или не активен, перед выполнением SQL
+- Таблица результатов: изменяемая ширина колонок, сортировка, фильтр, пагинация, копирование строки/значения
+- Графики: line, bar (колонки или horizontal scroll при многих категориях), scatter, area, pie, heatmap; иконки выбора типа; экспорт CSV/Excel
 - **Ошибки запросов** — краткое сообщение, код ошибки СУБД, stack trace в свёрнутом блоке
 - Пароли connections хранятся **зашифрованно** (OS keychain через VS Code SecretStorage)
-- **Диалог подключения** (webview): создание и редактирование в одном окне, поля зависят от диалекта
+- **Диалог подключения** (webview): создание и редактирование в одном окне, поля зависят от диалекта, опциональные теги
 - **ClickHouse Native (TCP, порт 9000)** и **HTTP (8123)** — как Native Driver / HTTP в TablePlus
 - **Microsoft SQL Server** — подключение через ODBC (pyodbc), Schema Explorer, T-SQL (`.tsql`)
 - **MySQL** — через `pymysql`
@@ -191,6 +197,14 @@ npx vsce package --no-dependencies --no-rewrite-relative-links
 4. **Test connection** → **Save**
 5. ПКМ на connection → **Set Active Connection**
 
+### Горячие клавиши
+
+| Действие | macOS | Windows / Linux |
+|----------|-------|-----------------|
+| Выполнить запрос под курсором | Cmd+Enter | Ctrl+Enter |
+| Выполнить все statements в файле | Cmd+Shift+Enter | Ctrl+Shift+Enter |
+| План выполнения | Shift+Cmd+E | Shift+Ctrl+E |
+
 #### ClickHouse: Native vs HTTP
 
 | Режим | Порт | Когда |
@@ -232,6 +246,9 @@ npx vsce package --no-dependencies --no-rewrite-relative-links
 | Описание объекта | ПКМ → **Object Description** |
 | Экспорт таблицы | ПКМ → **Export Data…** |
 | Новый SQL | ПКМ → **Create SQL Query** |
+| Фильтр объектов | Иконка фильтра на schema/database → ввод подстроки имени |
+| Теги connection | ПКМ → **Manage Tags** или в диалоге подключения |
+| ER-диаграмма | ПКМ на schema/database → **View ER Diagram** |
 | Запрос | `.sql` + connection в status bar + **Cmd+Enter** |
 | Формат SQL | **`SQL Studio: Format SQL`** |
 | Агент | **`SQL Studio: Ask Agent to Explain Query`** |
@@ -251,6 +268,7 @@ npx vsce package --no-dependencies --no-rewrite-relative-links
 | `sqlStudio.autoAssociateSqlFiles` | `true` | `.sql` в режиме SQL Studio |
 | `sqlStudio.promptForConnectionOnRun` | `false` | Спрашивать connection перед run |
 | `sqlStudio.promptForConnectionOnOpen` | `true` | Спрашивать при открытии `.sql` |
+| `sqlStudio.explainAnalyze` | `false` | PostgreSQL: `EXPLAIN ANALYZE` (выполняет запрос) |
 
 ---
 

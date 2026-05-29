@@ -11,16 +11,22 @@ Write SQL, explore database schemas, run queries, and browse results in **VS Cod
 ## Features
 
 - SQL syntax highlighting for PostgreSQL, ClickHouse, T-SQL, MySQL, SQLite, and generic `.sql`
-- **Database Explorer** — lazy schema tree (schemas/databases → tables, views, functions → columns); right-click a schema or database for **ER diagram** (Mermaid) and **DBML** export
-- Context menu on schema objects: Object Description, Sample Data, Export Data, Create SQL Query
+- **Database Explorer** — lazy schema tree (schemas/databases → tables, views, functions → columns)
+- **Connection tags** — color-coded labels on connections (edit in the connection dialog or **Manage Tags**); shown in Explorer description and composite icons
+- **Schema object filter** — inline filter on schema/database nodes to search tables, views, and functions by name; **Edit Filter** / **Reset Filter** when active
+- Context menu on schema/database: **View ER Diagram** (Mermaid, pan/zoom/autofit) and **Get DBML** (copy to clipboard)
+- Context menu on schema objects: Object Description, Sample Data, Export Data, Create SQL Query, Generate SELECT
 - Click a table or view to preview data in the same results UI as query output
 - **Create SQL Query** — new editor from Command Palette or connection context menu
 - Run queries: **Cmd+Enter** / **Ctrl+Enter** (works when focus is outside the editor if one SQL file is open)
+- **Run All in File**: **Cmd+Shift+Enter** / **Ctrl+Shift+Enter**; **Cancel Query** from editor toolbar while a query runs
 - **Show Execution Plan**: **Shift+Cmd+E** / **Shift+Ctrl+E** (`EXPLAIN` per dialect; PostgreSQL optional `sqlStudio.explainAnalyze`)
-- Results panel: sort, filter, pagination, charts (line, bar, scatter, area, pie, heatmap), CSV/Excel export
+- Warns when no connection is selected or the chosen connection is not active before running SQL
+- Results panel: resizable columns (content-based default widths), sort, filter, pagination, copy row/value
+- Charts: line, bar (columns or horizontal scroll for many categories), scatter, area, pie, heatmap; type picker icons; CSV/Excel export
 - Formatted query errors (summary, database error code, collapsible stack trace)
 - Connection passwords stored encrypted via VS Code **SecretStorage** (OS keychain)
-- Connection dialog (webview) with dialect-specific fields
+- Connection dialog (webview) with dialect-specific fields and optional tags
 - ClickHouse **Native (TCP, 9000)** and **HTTP (8123)** drivers
 - Microsoft SQL Server via **ODBC** (pyodbc)
 - Cursor Agent integration (rules template, MCP stub)
@@ -90,6 +96,14 @@ See [README.ru.md](README.ru.md) for detailed Cursor-specific install notes (dra
 5. Open or create a `.sql` file, pick the connection in the status bar
 6. Press **Cmd+Enter** / **Ctrl+Enter** to run the query at the cursor
 
+## Keyboard shortcuts
+
+| Action | macOS | Windows / Linux |
+|--------|-------|-----------------|
+| Run query at cursor | Cmd+Enter | Ctrl+Enter |
+| Run all statements in file | Cmd+Shift+Enter | Ctrl+Shift+Enter |
+| Show execution plan | Shift+Cmd+E | Shift+Ctrl+E |
+
 ## Connection fields by dialect
 
 | Field | PostgreSQL | ClickHouse | SQL Server | MySQL | SQLite |
@@ -123,6 +137,21 @@ Verify: `odbcinst -q -d` should list `ODBC Driver 18 for SQL Server` (or 17/13).
 
 T-SQL files use extension `.tsql` and language **SQL (Microsoft SQL Server)**. Table preview uses `SELECT TOP N`.
 
+## Working with the explorer
+
+| Action | How |
+|--------|-----|
+| Preview / sample data | Click table/view or right-click → **Sample Data** |
+| Object metadata | Right-click → **Object Description** |
+| Export table | Right-click → **Export Data…** |
+| New SQL from object | Right-click → **Create SQL Query** or **Generate SELECT** |
+| Filter objects by name | Filter icon on schema/database node; **Edit Filter** / **Reset Filter** when active |
+| Connection tags | Right-click connection → **Manage Tags**, or edit in the connection dialog |
+| ER diagram | Right-click schema/database → **View ER Diagram** (pan, zoom, **Fit to view**, **Copy DBML**) |
+| Run SQL | Open `.sql`, pick connection in status bar, **Cmd+Enter** / **Ctrl+Enter** |
+| Format SQL | Command Palette → **SQL Studio: Format SQL** |
+| Agent help | **SQL Studio: Ask Agent to Explain Query** |
+
 ## Settings
 
 | Setting | Default | Description |
@@ -138,6 +167,7 @@ T-SQL files use extension `.tsql` and language **SQL (Microsoft SQL Server)**. T
 | `sqlStudio.autoAssociateSqlFiles` | `true` | Open `.sql` in SQL Studio language mode |
 | `sqlStudio.promptForConnectionOnRun` | `false` | Ask for connection before each run |
 | `sqlStudio.promptForConnectionOnOpen` | `true` | Ask for connection when opening `.sql` without a per-file binding |
+| `sqlStudio.explainAnalyze` | `false` | PostgreSQL only: use `EXPLAIN ANALYZE` (executes the query) |
 
 ## Privacy and security
 

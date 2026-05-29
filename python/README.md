@@ -63,6 +63,8 @@ curl -LsSf https://astral.sh/uv/install.sh | sh
 | ClickHouse HTTP | `clickhouse-connect` | — |
 | ClickHouse Native | `clickhouse-driver` | — |
 | Microsoft SQL Server | `pyodbc` | **ODBC Driver for SQL Server** на ОС |
+| MySQL | `pymysql` | — |
+| SQLite | stdlib `sqlite3` | — |
 
 `pyodbc` ставится автоматически при `uv sync`. **ODBC Driver for SQL Server** в venv не попадает — его нужно установить отдельно на машине пользователя.
 
@@ -106,4 +108,7 @@ Parse/format/split для T-SQL: **sqlglot** с `read=tsql` (`dialect_read("mssq
 | `drivers/clickhouse_http.py` | ClickHouse HTTP |
 | `drivers/clickhouse_native.py` | ClickHouse Native TCP |
 | `drivers/mssql.py` | Microsoft SQL Server |
+| `drivers/mysql.py` | MySQL |
+| `drivers/sqlite.py` | SQLite (local file) |
 | `drivers/registry.py` | пул соединений и фабрика драйверов |
+| `schema_dbml.py` | DBML и Mermaid ER для schema/database |

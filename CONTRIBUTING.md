@@ -95,10 +95,12 @@ Update in the same PR when you change:
 
 Before submitting a PR that touches explorer or query flow:
 
-1. Add Connection → Test Connection
-2. Expand schema → click table → preview rows
-3. Open `.sql` → Cmd/Ctrl+Enter → results panel
-4. If MSSQL changed: verify ODBC driver is installed
+1. Add Connection → Test Connection → optional tags
+2. Expand schema → filter objects by name → click table → preview rows
+3. Schema/database → View ER Diagram → pan/zoom → Copy DBML
+4. Open `.sql` → Cmd/Ctrl+Enter → results panel (table + chart)
+5. Shift+Cmd/Ctrl+E → execution plan
+6. If MSSQL changed: verify ODBC driver is installed
 
 ## Pull requests
 
