@@ -15,6 +15,17 @@ Table public.posts {
 }
 `;
 
+const CLICKHOUSE_DBML = `
+Table robotisation.message [note: 'MergeTree'] {
+  message_pk UInt32 [pk]
+  tags Array(Nullable(String))
+}
+
+Table robotisation.".inner_id.uuid" [note: 'MaterializedView'] {
+  "ist.conversation_intent_pk" Nullable(UInt32)
+}
+`;
+
 describe("parseDbml", () => {
   it("parses tables and column-level relationships", () => {
     const schema = parseDbml(SAMPLE_DBML);
@@ -33,6 +44,13 @@ describe("parseDbml", () => {
     const posts = schema.tables.find((table) => table.id === "public.posts");
     const userId = posts?.columns.find((column) => column.name === "user_id");
     expect(userId?.isFk).toBe(true);
+  });
+
+  it("parses clickhouse table notes and dotted identifiers", () => {
+    const schema = parseDbml(CLICKHOUSE_DBML);
+    expect(schema.tables).toHaveLength(2);
+    const message = schema.tables.find((table) => table.id === "robotisation.message");
+    expect(message?.note).toBe("MergeTree");
   });
 });
 

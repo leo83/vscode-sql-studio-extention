@@ -87,6 +87,22 @@ def _dbml_table_name(table: TableDef) -> str:
     return _dbml_ident(table.name)
 
 
+def _dbml_data_type(data_type: str) -> str:
+    """Render SQL type as a single DBML type token (no spaces or hyphens)."""
+    text = data_type.strip() or "unknown"
+    args = ""
+    if "(" in text:
+        base, _, rest = text.partition("(")
+        args = f"({rest}"
+        text = base.strip()
+
+    sanitized = re.sub(r"[\s\-:]+", "_", text)
+    sanitized = re.sub(r"_+", "_", sanitized).strip("_") or "unknown"
+    if sanitized[0].isdigit():
+        sanitized = f"t_{sanitized}"
+    return f"{sanitized}{args}"
+
+
 def render_dbml(
     scope_label: str,
     tables: list[TableDef],
@@ -107,9 +123,10 @@ def render_dbml(
         "",
     ]
     for table in sorted(tables, key=lambda t: t.qualified):
-        lines.append(f"Table {_dbml_table_name(table)} {{")
+        table_line = f"Table {_dbml_table_name(table)}"
         if table.note:
-            lines.append(f"  Note: '{_escape_dbml_note(table.note)}'")
+            table_line += f" [note: '{_escape_dbml_note(table.note)}']"
+        lines.append(f"{table_line} {{")
         for col in table.columns:
             settings: list[str] = []
             if col.is_pk:
@@ -120,9 +137,13 @@ def render_dbml(
             if fk_target:
                 settings.append(f"ref: > {fk_target}")
             setting = f" [{', '.join(settings)}]" if settings else ""
-            note = f" // {_escape_dbml_note(col.note)}" if col.note else ""
+            dbml_type = _dbml_data_type(col.data_type)
+            inline_note = col.note
+            if dbml_type != col.data_type.strip() and not inline_note:
+                inline_note = col.data_type
+            note = f" // {_escape_dbml_note(inline_note)}" if inline_note else ""
             lines.append(
-                f"  {_dbml_ident(col.name)} {col.data_type}{setting}{note}"
+                f"  {_dbml_ident(col.name)} {dbml_type}{setting}{note}"
             )
         lines.append("}")
         lines.append("")

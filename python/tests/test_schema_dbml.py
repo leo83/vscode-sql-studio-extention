@@ -62,6 +62,68 @@ def test_render_dbml_includes_tables_and_refs() -> None:
     assert "Ref:" not in dbml
 
 
+def test_render_dbml_sanitizes_postgres_types_with_spaces() -> None:
+    tables = [
+        TableDef(
+            schema="public",
+            name="users",
+            columns=[
+                ColumnDef(name="id", data_type="integer", is_pk=True),
+                ColumnDef(name="email", data_type="character varying"),
+                ColumnDef(name="created_at", data_type="timestamp without time zone"),
+                ColumnDef(name="kind", data_type="USER-DEFINED"),
+                ColumnDef(name="amount", data_type="double precision"),
+                ColumnDef(name="code", data_type="varchar(255)"),
+            ],
+        )
+    ]
+    dbml = render_dbml("public", tables, [], dialect="postgres")
+    assert "email character_varying" in dbml
+    assert "created_at timestamp_without_time_zone" in dbml
+    assert "kind USER_DEFINED" in dbml
+    assert "amount double_precision" in dbml
+    assert "code varchar(255)" in dbml
+    assert "email character_varying // character varying" in dbml
+
+
+def test_render_dbml_sanitizes_colons_in_types() -> None:
+    tables = [
+        TableDef(
+            schema="public",
+            name="items",
+            columns=[
+                ColumnDef(name="meta", data_type="pg_catalog:regtype"),
+                ColumnDef(name="payload", data_type="json:object"),
+            ],
+        )
+    ]
+    dbml = render_dbml("public", tables, [], dialect="postgres")
+    assert "meta pg_catalog_regtype" in dbml
+    assert "payload json_object" in dbml
+    assert "meta pg_catalog_regtype // pg_catalog:regtype" in dbml
+
+
+def test_render_dbml_table_note_uses_table_settings() -> None:
+    tables = [
+        TableDef(
+            schema="robotisation",
+            name="message",
+            columns=[ColumnDef(name="message_pk", data_type="UInt32", is_pk=True)],
+            note="MergeTree",
+        ),
+        TableDef(
+            schema="public",
+            name="users",
+            columns=[ColumnDef(name="id", data_type="int", is_pk=True)],
+            note="view",
+        ),
+    ]
+    dbml = render_dbml("robotisation", tables, [], dialect="clickhouse")
+    assert "Table robotisation.message [note: 'MergeTree']" in dbml
+    assert "Table public.users [note: 'view']" in dbml
+    assert "Note:" not in dbml
+
+
 def test_build_schema_dbml_result_counts() -> None:
     tables = [
         TableDef(
