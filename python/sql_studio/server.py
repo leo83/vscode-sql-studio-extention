@@ -12,7 +12,7 @@ from pydantic import ValidationError
 
 from sql_studio.dialect import sqlglot_service
 from sql_studio.dialect.explain import (
-    attach_plan_text,
+    attach_plan,
     build_explain_sql,
     is_explainable,
 )
@@ -264,12 +264,13 @@ class JsonRpcServer:
         explain_sql = build_explain_sql(target_sql, dialect, analyze=analyze)
         result = driver.execute(explain_sql, limit=limit)
         total_duration_ms += result.duration_ms
-        stmt = attach_plan_text(
+        stmt = attach_plan(
             StatementResult(
                 index=1,
                 sql=target_sql,
                 **result.model_dump(),
-            )
+            ),
+            dialect,
         )
         return QueryExecuteResult(
             statements=[stmt],

@@ -61,6 +61,30 @@ class QueryColumn(BaseModel):
     data_type: str | None = None
 
 
+PlanFormat = Literal["tree", "table", "text"]
+
+
+class PlanMetric(BaseModel):
+    label: str
+    value: str | int | float
+
+
+class PlanNode(BaseModel):
+    id: str
+    kind: str
+    title: str
+    subtitle: str | None = None
+    metrics: list[PlanMetric] = Field(default_factory=list)
+    tags: list[str] = Field(default_factory=list)
+    children: list[PlanNode] = Field(default_factory=list)
+
+
+class ParsedPlan(BaseModel):
+    plan_tree: list[PlanNode] = Field(default_factory=list)
+    plan_text: str | None = None
+    plan_format: PlanFormat = "text"
+
+
 class QueryResult(BaseModel):
     columns: list[QueryColumn]
     rows: list[list[Any]]
@@ -77,6 +101,8 @@ class StatementResult(QueryResult):
     index: int
     sql: str
     plan_text: str | None = None
+    plan_tree: list[PlanNode] | None = None
+    plan_format: PlanFormat | None = None
 
 
 class QueryExecuteResult(BaseModel):

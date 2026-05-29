@@ -22,7 +22,7 @@
 - **Create SQL Query** — новый редактор запроса из Command Palette или ПКМ на connection
 - Выполнение запросов: **Cmd+Enter** / **Ctrl+Enter** (работает и при фокусе вне редактора, если открыт один SQL-файл)
 - **Run All in File**: **Cmd+Shift+Enter** / **Ctrl+Shift+Enter**; **Cancel Query** в toolbar редактора во время выполнения
-- **План выполнения**: **Shift+Cmd+E** / **Shift+Ctrl+E** (команда *Show Execution Plan*; для PostgreSQL опционально `sqlStudio.explainAnalyze`)
+- **План выполнения**: **Shift+Cmd+E** / **Shift+Ctrl+E** (команда *Show Execution Plan*; для PostgreSQL опционально `sqlStudio.explainAnalyze`); в Results — режимы **Tree**, **Table**, **Raw**, поиск по узлам, метрики и копирование
 - Предупреждение, если connection не выбран или не активен, перед выполнением SQL
 - Таблица результатов: изменяемая ширина колонок, сортировка, фильтр, пагинация, копирование строки/значения
 - Графики: line, bar (колонки или horizontal scroll при многих категориях), scatter, area, pie, heatmap; иконки выбора типа; экспорт CSV/Excel
@@ -268,7 +268,7 @@ npx vsce package --no-dependencies --no-rewrite-relative-links
 | `sqlStudio.autoAssociateSqlFiles` | `true` | `.sql` в режиме SQL Studio |
 | `sqlStudio.promptForConnectionOnRun` | `false` | Спрашивать connection перед run |
 | `sqlStudio.promptForConnectionOnOpen` | `true` | Спрашивать при открытии `.sql` |
-| `sqlStudio.explainAnalyze` | `false` | PostgreSQL: `EXPLAIN ANALYZE` (выполняет запрос) |
+| `sqlStudio.explainAnalyze` | `false` | PostgreSQL: `EXPLAIN ANALYZE` (выполняет запрос). Для остальных диалектов используется structured EXPLAIN (JSON/XML/query plan) с интерактивным деревом, когда поддерживается |
 
 ---
 

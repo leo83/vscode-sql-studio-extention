@@ -691,6 +691,252 @@ tbody tr:hover:not(.row-selected) td.row-num {
   word-break: break-word;
 }
 
+.explain-plan-body {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  border-radius: 4px;
+  border: 1px solid var(--vscode-panel-border, #444);
+  background: var(--vscode-textCodeBlock-background, rgba(0, 0, 0, 0.12));
+}
+
+.explain-plan-toolbar {
+  flex-wrap: wrap;
+}
+
+.explain-plan-sql {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.explain-plan-sql-toggle {
+  align-self: flex-start;
+}
+
+.explain-plan-sql-text {
+  margin: 0;
+  padding: 10px 12px;
+  border-radius: 4px;
+  border: 1px solid var(--vscode-panel-border, #444);
+  background: var(--vscode-textCodeBlock-background, rgba(0, 0, 0, 0.2));
+  font-family: var(--vscode-editor-font-family, monospace);
+  font-size: var(--vscode-editor-font-size, 12px);
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.plan-search-input {
+  min-width: 160px;
+  padding: 4px 8px;
+  border-radius: 4px;
+  border: 1px solid var(--vscode-input-border, #555);
+  background: var(--vscode-input-background, #2a2a2a);
+  color: var(--vscode-input-foreground, #ccc);
+}
+
+.plan-empty {
+  padding: 16px;
+  opacity: 0.85;
+}
+
+.plan-tree-view {
+  padding: 8px 0;
+}
+
+.plan-tree-node {
+  position: relative;
+}
+
+.plan-tree-node-depth-1,
+.plan-tree-node-depth-2,
+.plan-tree-node-depth-3,
+.plan-tree-node-depth-4,
+.plan-tree-node-depth-5,
+.plan-tree-node-depth-6 {
+  margin-left: 16px;
+  border-left: 1px solid var(--vscode-panel-border, #444);
+}
+
+.plan-tree-row {
+  display: grid;
+  grid-template-columns: 20px auto minmax(0, 1fr) auto;
+  gap: 8px;
+  align-items: start;
+  padding: 6px 12px 6px 8px;
+}
+
+.plan-tree-row-expensive {
+  background: color-mix(in srgb, var(--vscode-inputValidation-errorBackground, #5a1d1d) 35%, transparent);
+}
+
+.plan-tree-toggle {
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: var(--vscode-foreground, #ccc);
+  cursor: pointer;
+}
+
+.plan-tree-toggle-spacer {
+  display: inline-block;
+}
+
+.plan-kind-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.plan-kind-scan {
+  background: color-mix(in srgb, var(--vscode-charts-blue, #3794ff) 25%, transparent);
+  color: var(--vscode-charts-blue, #3794ff);
+}
+
+.plan-kind-filter {
+  background: color-mix(in srgb, var(--vscode-charts-orange, #d18616) 25%, transparent);
+  color: var(--vscode-charts-orange, #d18616);
+}
+
+.plan-kind-join {
+  background: color-mix(in srgb, var(--vscode-charts-purple, #b180d7) 25%, transparent);
+  color: var(--vscode-charts-purple, #b180d7);
+}
+
+.plan-kind-aggregate {
+  background: color-mix(in srgb, var(--vscode-charts-red, #f14c4c) 20%, transparent);
+  color: var(--vscode-charts-red, #f14c4c);
+}
+
+.plan-kind-sort {
+  background: color-mix(in srgb, var(--vscode-charts-yellow, #cca700) 25%, transparent);
+  color: var(--vscode-charts-yellow, #cca700);
+}
+
+.plan-kind-limit {
+  background: color-mix(in srgb, var(--vscode-charts-green, #89d185) 20%, transparent);
+  color: var(--vscode-charts-green, #89d185);
+}
+
+.plan-kind-network {
+  background: color-mix(in srgb, var(--vscode-charts-foreground, #cccccc) 15%, transparent);
+  color: var(--vscode-foreground, #ccc);
+}
+
+.plan-kind-other {
+  background: color-mix(in srgb, var(--vscode-badge-background, #4d4d4d) 40%, transparent);
+  color: var(--vscode-badge-foreground, #fff);
+}
+
+.plan-tree-main {
+  min-width: 0;
+}
+
+.plan-tree-title {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+  font-weight: 500;
+}
+
+.plan-tree-subtitle {
+  margin-top: 2px;
+  opacity: 0.85;
+  font-size: 0.92em;
+  word-break: break-word;
+}
+
+.plan-tree-metrics {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  justify-content: flex-end;
+}
+
+.plan-metric-chip {
+  display: inline-flex;
+  gap: 4px;
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: var(--vscode-editor-inactiveSelectionBackground, rgba(255, 255, 255, 0.08));
+  font-size: 11px;
+  white-space: nowrap;
+}
+
+.plan-metric-label {
+  opacity: 0.75;
+}
+
+.plan-tag {
+  display: inline-flex;
+  padding: 1px 6px;
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.plan-tag-warning {
+  background: color-mix(in srgb, var(--vscode-editorWarning-foreground, #cca700) 20%, transparent);
+  color: var(--vscode-editorWarning-foreground, #cca700);
+}
+
+.plan-tag-danger {
+  background: color-mix(in srgb, var(--vscode-errorForeground, #f48771) 20%, transparent);
+  color: var(--vscode-errorForeground, #f48771);
+}
+
+.plan-search-hit {
+  background: color-mix(in srgb, var(--vscode-editor-findMatchHighlightBackground, #ea5c0055) 70%, transparent);
+  color: inherit;
+}
+
+.plan-table-wrap {
+  overflow: auto;
+}
+
+.plan-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+
+.plan-table th,
+.plan-table td {
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--vscode-panel-border, #444);
+  text-align: left;
+  vertical-align: top;
+}
+
+.plan-table th {
+  position: sticky;
+  top: 0;
+  background: var(--vscode-editor-background, #1e1e1e);
+  z-index: 1;
+}
+
+.plan-table-row-expensive {
+  background: color-mix(in srgb, var(--vscode-inputValidation-errorBackground, #5a1d1d) 25%, transparent);
+}
+
+.plan-table-title {
+  font-weight: 500;
+}
+
+.plan-table-subtitle {
+  margin-top: 2px;
+  opacity: 0.8;
+  font-size: 0.92em;
+}
+
 .query-error-compact {
   height: auto;
   padding: 0;

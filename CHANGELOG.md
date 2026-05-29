@@ -10,7 +10,7 @@ All notable changes to this project will be documented in this file.
 - **Schema object name filter** — inline filter on schema/database nodes; **Edit Filter** / **Reset Filter** when active
 - **Schema ER diagram & DBML** — context menu on schema (PostgreSQL, MSSQL, MySQL, SQLite) or database (ClickHouse): `View ER Diagram`, `Get DBML`; RPC `schema/getDbml`
 - **ER diagram viewer** — pan (scroll/drag), pinch or Ctrl+scroll zoom, autofit on open, **Fit to view**, **Copy DBML**
-- **Show Execution Plan** (`sqlStudio.showExecutionPlan`, Shift+Cmd+E / Shift+Ctrl+E): `query/explain` RPC, dialect-specific EXPLAIN (PostgreSQL text/ANALYZE, ClickHouse, MSSQL SHOWPLAN, MySQL, SQLite), monospace plan view in Results panel
+- **Show Execution Plan** (`sqlStudio.showExecutionPlan`, Shift+Cmd+E / Shift+Ctrl+E): structured EXPLAIN per dialect (JSON/XML/query plan), interactive **Tree** / **Table** / **Raw** views with search, metrics, and copy actions
 - Setting `sqlStudio.explainAnalyze` (PostgreSQL `EXPLAIN ANALYZE`, executes the query)
 - Warning before running unbounded `SELECT` (no `WHERE`, no `LIMIT`/`TOP`, non-aggregating): checks referenced tables with >5,000 estimated rows and recommends adding `LIMIT` (configurable via `sqlStudio.warnOnLargeUnboundedSelect` and `sqlStudio.largeTableRowThreshold`)
 - Warning when no connection is selected or the chosen connection is not active before running SQL

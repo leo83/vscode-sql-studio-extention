@@ -111,4 +111,22 @@ Parse/format/split для T-SQL: **sqlglot** с `read=tsql` (`dialect_read("mssq
 | `drivers/mysql.py` | MySQL |
 | `drivers/sqlite.py` | SQLite (local file) |
 | `drivers/registry.py` | пул соединений и фабрика драйверов |
+| `dialect/explain.py` | EXPLAIN SQL builders, `attach_plan()` |
+| `dialect/plan_parsers/` | парсеры structured EXPLAIN → `PlanNode` |
 | `schema_dbml.py` | DBML и Mermaid ER для schema/database |
+
+## `query/explain`
+
+RPC возвращает `StatementResult` с полями `plan_tree`, `plan_text`, `plan_format` и исходным `sql`.
+
+Structured EXPLAIN per dialect (`dialect/explain.py` → `build_explain_sql`):
+
+| Dialect | Запрос |
+|---------|--------|
+| PostgreSQL | `EXPLAIN (FORMAT JSON[, ANALYZE, BUFFERS])` |
+| ClickHouse | `EXPLAIN json=1` |
+| MySQL | `EXPLAIN FORMAT=JSON` |
+| SQLite | `EXPLAIN QUERY PLAN` |
+| MSSQL | `SET SHOWPLAN_XML ON` + query |
+
+Парсинг: `dialect/plan_parsers/`. При ошибке — fallback на text tree по отступам или plain `plan_text`.

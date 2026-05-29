@@ -1,3 +1,20 @@
+export type PlanFormat = "tree" | "table" | "text";
+
+export interface PlanMetric {
+  label: string;
+  value: string | number;
+}
+
+export interface PlanNode {
+  id: string;
+  kind: string;
+  title: string;
+  subtitle?: string | null;
+  metrics?: PlanMetric[];
+  tags?: string[];
+  children?: PlanNode[];
+}
+
 export interface QueryColumn {
   name: string;
   data_type?: string | null;
@@ -17,6 +34,8 @@ export interface StatementResult extends QueryResult {
   index: number;
   sql: string;
   plan_text?: string | null;
+  plan_tree?: PlanNode[] | null;
+  plan_format?: PlanFormat | null;
 }
 
 export interface QueryExecuteResult {

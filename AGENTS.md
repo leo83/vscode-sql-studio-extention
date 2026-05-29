@@ -61,7 +61,10 @@ grammars/             TextMate grammars (SQL подсветка)
 | `webview-ui/src/vscodeApi.ts` | Singleton `acquireVsCodeApi()` (один вызов на webview) |
 | `webview-ui/src/QueryError.tsx` | Форматированный вывод ошибок запроса |
 | `webview-ui/src/parseQueryError.ts` | Парсинг ClickHouse/Postgres error + stack trace |
-| `webview-ui/src/ResultsView.tsx` | Переключение Table / Chart в результатах |
+| `webview-ui/src/ExplainPlanView.tsx` | Execution plan: Tree / Table / Raw, search, copy |
+| `webview-ui/src/PlanTreeView.tsx` | Collapsible plan tree с badges и метриками |
+| `webview-ui/src/PlanTableView.tsx` | Flattened plan table |
+| `webview-ui/src/planTreeUtils.ts` | flatten/search/count для plan tree |
 | `webview-ui/src/ResultsTable.tsx` | TanStack Table: sort, filter, resize columns, copy |
 | `webview-ui/src/ResultsChart.tsx` | ECharts: конфигурация и рендер графиков |
 | `webview-ui/src/chartConfig.ts` | Типы графиков, агрегация, horizontal scroll bar, ECharts option builder |
@@ -71,6 +74,8 @@ grammars/             TextMate grammars (SQL подсветка)
 | `python/sql_studio/server.py` | JSON-RPC server |
 | `python/sql_studio/drivers/` | postgres, clickhouse (фасад), clickhouse_http, clickhouse_native, mssql, mysql, sqlite |
 | `python/sql_studio/dialect/sqlglot_service.py` | format / split SQL |
+| `python/sql_studio/dialect/explain.py` | EXPLAIN SQL builders, `attach_plan()` |
+| `python/sql_studio/dialect/plan_parsers/` | structured EXPLAIN → `PlanNode` |
 | `package.json` | Manifest расширения, contributes, settings |
 
 ## Команды
@@ -102,7 +107,7 @@ cd python && uv sync --all-groups && uv run pytest
 | `health` | Healthcheck |
 | `connection/test` | Проверка подключения |
 | `query/execute` | Выполнить SQL |
-| `query/explain` | План выполнения (EXPLAIN) для SELECT/WITH |
+| `query/explain` | Structured EXPLAIN для SELECT/WITH → `plan_tree`, `plan_text`, `plan_format` |
 | `schema/listChildren` | Узлы explorer (lazy) |
 | `schema/getTableDDL` | DDL таблицы |
 | `schema/getDbml` | DBML + Mermaid ER для схемы/базы (контекстное меню explorer) |
@@ -157,6 +162,8 @@ cd python && uv sync --all-groups && uv run pytest
 - SQL-запросы: `sqlStudio.defaultRowLimit` (default 10000).
 - Unbounded SELECT warning: `sqlStudio.warnOnLargeUnboundedSelect` (default true), порог `sqlStudio.largeTableRowThreshold` (default 5000).
 - PostgreSQL EXPLAIN ANALYZE: `sqlStudio.explainAnalyze` (default false).
+- Structured execution plan (`query/explain`): Postgres `FORMAT JSON`, ClickHouse `json=1`, MySQL `FORMAT=JSON`, SQLite `EXPLAIN QUERY PLAN`, MSSQL `SHOWPLAN_XML`; fallback — text tree по отступам.
+- `StatementResult`: `plan_tree`, `plan_text`, `plan_format` (`tree` | `table` | `text`).
 - Акценты webview: `sqlStudio.accentColor`, `sqlStudio.chartAccentColors`.
 
 ### Connections
@@ -188,6 +195,7 @@ cd python && uv sync --all-groups && uv run pytest
 - Results table: resizable columns (`columnSizing`), content-based defaults via `computeColumnSizes`.
 - Chart view: `ResultsChart` + `chartConfig` (ECharts). Bar layout `horizontal-scroll` для многих категорий. Pie с >12 категорий — scroll legend; pinch-zoom — `pieChartGestures.ts`.
 - ER diagram: scroll/drag pan, Ctrl+scroll or pinch zoom, autofit on open — `erDiagramGestures.ts` + `ErDiagramView.tsx`.
+- Execution plan: `ExplainPlanView` при `plan_tree` или `plan_text`; режимы Tree / Table / Raw; поиск, expand/collapse, copy raw/JSON; badges по типу узла и теги `full_scan` / `expensive`.
 
 ### Запросы SQL
 
@@ -218,7 +226,7 @@ cd python && uv sync --all-groups && uv run pytest
 
 Команды редактора для агента:
 
-- `sqlStudio.showExecutionPlan` — EXPLAIN для запроса под курсором (Shift+Cmd+E)
+- `sqlStudio.showExecutionPlan` — structured EXPLAIN для запроса под курсором (Shift+Cmd+E); Results panel: Tree / Table / Raw
 - `sqlStudio.filterSchemaObjects` / `editSchemaObjectFilter` / `clearSchemaObjectFilter` — фильтр объектов в Explorer
 - `sqlStudio.manageConnectionTags` — управление тегами connection
 - `sqlStudio.askAgentExplain` — prompt в clipboard для Chat

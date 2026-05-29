@@ -20,7 +20,7 @@ Write SQL, explore database schemas, run queries, and browse results in **VS Cod
 - **Create SQL Query** — new editor from Command Palette or connection context menu
 - Run queries: **Cmd+Enter** / **Ctrl+Enter** (works when focus is outside the editor if one SQL file is open)
 - **Run All in File**: **Cmd+Shift+Enter** / **Ctrl+Shift+Enter**; **Cancel Query** from editor toolbar while a query runs
-- **Show Execution Plan**: **Shift+Cmd+E** / **Shift+Ctrl+E** (`EXPLAIN` per dialect; PostgreSQL optional `sqlStudio.explainAnalyze`)
+- **Show Execution Plan**: **Shift+Cmd+E** / **Shift+Ctrl+E** (`EXPLAIN` per dialect; PostgreSQL optional `sqlStudio.explainAnalyze`); Results panel shows **Tree**, **Table**, and **Raw** views with search, metrics, and copy actions
 - Warns when no connection is selected or the chosen connection is not active before running SQL
 - Results panel: resizable columns (content-based default widths), sort, filter, pagination, copy row/value
 - Charts: line, bar (columns or horizontal scroll for many categories), scatter, area, pie, heatmap; type picker icons; CSV/Excel export
@@ -167,7 +167,7 @@ T-SQL files use extension `.tsql` and language **SQL (Microsoft SQL Server)**. T
 | `sqlStudio.autoAssociateSqlFiles` | `true` | Open `.sql` in SQL Studio language mode |
 | `sqlStudio.promptForConnectionOnRun` | `false` | Ask for connection before each run |
 | `sqlStudio.promptForConnectionOnOpen` | `true` | Ask for connection when opening `.sql` without a per-file binding |
-| `sqlStudio.explainAnalyze` | `false` | PostgreSQL only: use `EXPLAIN ANALYZE` (executes the query) |
+| `sqlStudio.explainAnalyze` | `false` | PostgreSQL only: use `EXPLAIN ANALYZE` (executes the query). Other dialects use structured EXPLAIN output (JSON/XML/query plan) rendered as an interactive tree when supported. |
 
 ## Privacy and security
 

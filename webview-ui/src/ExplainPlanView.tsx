@@ -1,19 +1,172 @@
+import { useMemo, useState } from "react";
+import { PlanTableView } from "./PlanTableView";
+import { PlanTreeView } from "./PlanTreeView";
+import {
+  countPlanNodes,
+  defaultPlanViewMode,
+  filterPlanTree,
+  planTreeToJson,
+} from "./planTreeUtils";
+import { ResultsTable } from "./ResultsTable";
 import type { StatementResult } from "./types";
 
 interface Props {
   result: StatementResult;
 }
 
+type ViewMode = "tree" | "table" | "raw";
+
+async function copyText(text: string): Promise<void> {
+  try {
+    await navigator.clipboard.writeText(text);
+  } catch {
+    // Clipboard may be unavailable in some webview contexts.
+  }
+}
+
 export function ExplainPlanView({ result }: Props) {
-  const plan = result.plan_text?.trim() || "No execution plan returned.";
+  const planText = result.plan_text?.trim() || "No execution plan returned.";
+  const hasTree = Boolean(result.plan_tree?.length);
+  const hasTableColumns = result.columns.length > 1 && result.rows.length > 0;
+  const initialMode = defaultPlanViewMode(result.plan_format, hasTree, hasTableColumns);
+  const [viewMode, setViewMode] = useState<ViewMode>(initialMode);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [sqlExpanded, setSqlExpanded] = useState(false);
+  const [expandAllSignal, setExpandAllSignal] = useState(0);
+  const [collapseAllSignal, setCollapseAllSignal] = useState(0);
+  const [copyMessage, setCopyMessage] = useState<string | null>(null);
+
+  const filteredTree = useMemo(
+    () => filterPlanTree(result.plan_tree ?? [], searchQuery),
+    [result.plan_tree, searchQuery]
+  );
+  const nodeCount = countPlanNodes(result.plan_tree);
+
+  const showCopyMessage = (message: string): void => {
+    setCopyMessage(message);
+    window.setTimeout(() => setCopyMessage(null), 1500);
+  };
 
   return (
     <div className="explain-plan">
       <div className="explain-plan-header">
         <span className="explain-plan-title">Execution plan</span>
-        <span className="explain-plan-meta">{result.duration_ms.toFixed(1)} ms</span>
+        <span className="explain-plan-meta">
+          {result.duration_ms.toFixed(1)} ms
+          {nodeCount > 0 ? ` · ${nodeCount} nodes` : ""}
+          {copyMessage ? ` · ${copyMessage}` : ""}
+        </span>
       </div>
-      <pre className="explain-plan-text">{plan}</pre>
+
+      {result.sql ? (
+        <div className="explain-plan-sql">
+          <button
+            type="button"
+            className="explain-plan-sql-toggle"
+            aria-expanded={sqlExpanded}
+            onClick={() => setSqlExpanded((value) => !value)}
+          >
+            {sqlExpanded ? "Hide SQL" : "Show SQL"}
+          </button>
+          {sqlExpanded ? <pre className="explain-plan-sql-text">{result.sql}</pre> : null}
+        </div>
+      ) : null}
+
+      <div className="toolbar explain-plan-toolbar">
+        <div className="view-mode-toggle" role="tablist" aria-label="Execution plan view">
+          <button
+            type="button"
+            role="tab"
+            aria-selected={viewMode === "tree"}
+            className={viewMode === "tree" ? "active" : ""}
+            disabled={!hasTree}
+            onClick={() => setViewMode("tree")}
+          >
+            Tree
+          </button>
+          <button
+            type="button"
+            role="tab"
+            aria-selected={viewMode === "table"}
+            className={viewMode === "table" ? "active" : ""}
+            disabled={!hasTree && !hasTableColumns}
+            onClick={() => setViewMode("table")}
+          >
+            Table
+          </button>
+          <button
+            type="button"
+            role="tab"
+            aria-selected={viewMode === "raw"}
+            className={viewMode === "raw" ? "active" : ""}
+            onClick={() => setViewMode("raw")}
+          >
+            Raw
+          </button>
+        </div>
+
+        <input
+          type="search"
+          className="plan-search-input"
+          placeholder="Search plan..."
+          value={searchQuery}
+          onChange={(event) => setSearchQuery(event.target.value)}
+          disabled={viewMode === "raw" || !hasTree}
+        />
+
+        {viewMode === "tree" && hasTree ? (
+          <>
+            <button type="button" onClick={() => setExpandAllSignal((value) => value + 1)}>
+              Expand all
+            </button>
+            <button type="button" onClick={() => setCollapseAllSignal((value) => value + 1)}>
+              Collapse all
+            </button>
+          </>
+        ) : null}
+
+        <button
+          type="button"
+          onClick={() => {
+            void copyText(planText).then(() => showCopyMessage("Raw copied"));
+          }}
+        >
+          Copy raw
+        </button>
+        {hasTree ? (
+          <button
+            type="button"
+            onClick={() => {
+              void copyText(planTreeToJson(result.plan_tree ?? [])).then(() =>
+                showCopyMessage("JSON copied")
+              );
+            }}
+          >
+            Copy JSON
+          </button>
+        ) : null}
+      </div>
+
+      <div className="explain-plan-body">
+        {viewMode === "tree" && hasTree ? (
+          <PlanTreeView
+            nodes={filteredTree}
+            searchQuery={searchQuery}
+            expandAllSignal={expandAllSignal}
+            collapseAllSignal={collapseAllSignal}
+          />
+        ) : null}
+        {viewMode === "table" ? (
+          hasTree ? (
+            <PlanTableView nodes={filteredTree.length ? filteredTree : result.plan_tree ?? []} />
+          ) : hasTableColumns ? (
+            <ResultsTable result={result} embedded showToolbar={false} />
+          ) : (
+            <div className="plan-empty">No tabular plan available.</div>
+          )
+        ) : null}
+        {viewMode === "raw" ? <pre className="explain-plan-text">{planText}</pre> : null}
+      </div>
     </div>
   );
 }

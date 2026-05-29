@@ -43,7 +43,7 @@ export function App() {
   if (result.error) {
     return <QueryError error={result.error} />;
   }
-  if (result.plan_text?.trim()) {
+  if (result.plan_tree?.length || result.plan_text?.trim()) {
     return <ExplainPlanView result={result} />;
   }
   if (result.rows.length === 0 && !result.columns.length) {
