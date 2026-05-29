@@ -16,7 +16,7 @@
 - **Database Explorer** — schemas → tables / views / functions → columns
 - **Теги подключений** — цветные метки на connections (в диалоге подключения или **Manage Tags**); отображаются в описании и иконке в Explorer
 - **Фильтр объектов схемы** — иконка фильтра на узлах schema/database для поиска таблиц, view и функций по имени; **Edit Filter** / **Reset Filter**
-- ПКМ на schema/database: **View ER Diagram** (DBML, column-level связи, pan/zoom/autofit) и **Get DBML** (копирование в буфер)
+- ПКМ на schema/database: **View ER Diagram** (DBML, column-level связи, перетаскивание маршрута, клик по связи — красная анимация «муравьи» от дочерней к родительской таблице, pan/zoom/autofit) и **Get DBML** (копирование в буфер)
 - ПКМ на объект схемы: **Object Description**, **Sample Data**, **Export Data**, **Create SQL Query**, **Generate SELECT**
 - Клик по таблице / view → preview данных (тот же UI, что и для SQL)
 - **Create SQL Query** — новый редактор запроса из Command Palette или ПКМ на connection
@@ -248,7 +248,7 @@ npx vsce package --no-dependencies --no-rewrite-relative-links
 | Новый SQL | ПКМ → **Create SQL Query** |
 | Фильтр объектов | Иконка фильтра на schema/database → ввод подстроки имени |
 | Теги connection | ПКМ → **Manage Tags** или в диалоге подключения |
-| ER-диаграмма | ПКМ на schema/database → **View ER Diagram** |
+| ER-диаграмма | ПКМ на schema/database → **View ER Diagram** (pan, zoom, перетаскивание таблиц, клик по связи — красные «муравьи» FK→PK, перетаскивание midpoint для маршрута, **Fit to view**, **Copy DBML**) |
 | Запрос | `.sql` + connection в status bar + **Cmd+Enter** |
 | Формат SQL | **`SQL Studio: Format SQL`** |
 | Агент | **`SQL Studio: Ask Agent to Explain Query`** |

@@ -194,7 +194,7 @@ cd python && uv sync --all-groups && uv run pytest
 - Ошибки `query/execute`: `QueryResult.error` → компонент `QueryError` (summary + collapsible stack trace), не plain text.
 - Results table: resizable columns (`columnSizing`), content-based defaults via `computeColumnSizes`.
 - Chart view: `ResultsChart` + `chartConfig` (ECharts). Bar layout `horizontal-scroll` для многих категорий. Pie с >12 категорий — scroll legend; pinch-zoom — `pieChartGestures.ts`.
-- ER diagram: scroll/drag pan, Ctrl+scroll or pinch zoom, autofit on open — `erDiagramGestures.ts` + `ErDiagramView.tsx`.
+- ER diagram: scroll/drag pan, Ctrl+scroll or pinch zoom, autofit on open — `erDiagramGestures.ts` + `ErDiagramView.tsx`; column-level edge handles (`columnHandleTop`), click edge → red marching-ants animation (child FK → parent PK), draggable midpoint reroute (`ColumnEdge`, `routeCenterX/Y`).
 - Execution plan: `ExplainPlanView` при `plan_tree` или `plan_text`; режимы Tree / Table / Raw; поиск, expand/collapse, copy raw/JSON; badges по типу узла и теги `full_scan` / `expensive`.
 
 ### Запросы SQL

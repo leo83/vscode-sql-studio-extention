@@ -1620,6 +1620,7 @@ button.secondary {
 }
 
 .dbml-edge__path--animated {
+  stroke: var(--vscode-errorForeground, #f14c4c);
   stroke-dasharray: 8 5;
   animation: dbml-edge-march 0.55s linear infinite;
 }

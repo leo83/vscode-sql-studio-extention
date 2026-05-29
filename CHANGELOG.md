@@ -27,7 +27,7 @@ All notable changes to this project will be documented in this file.
 
 - Pie charts fill the results panel; scroll legends use the full vertical space
 - Pie chart pinch zoom (trackpad pinch / Ctrl+Cmd + scroll) and legend trackpad scroll use reliable hit regions
-- ER diagram uses local DBML renderer (`@dbml/core` + React Flow) instead of Mermaid; relationships attach to specific columns
+- ER diagram uses local DBML renderer (`@dbml/core` + React Flow) instead of Mermaid; relationships attach to specific columns; click-to-select with red marching-ants flow (FK → PK) and draggable midpoint routing
 - Connection tags shown as `[name]` in Explorer description
 - Python backend: flat package layout (`python/sql_studio/` instead of `python/src/sql_studio/`)
 - Author contact: Lev Ragulin — leo@levragulin.ru

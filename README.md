@@ -14,7 +14,7 @@ Write SQL, explore database schemas, run queries, and browse results in **VS Cod
 - **Database Explorer** — lazy schema tree (schemas/databases → tables, views, functions → columns)
 - **Connection tags** — color-coded labels on connections (edit in the connection dialog or **Manage Tags**); shown in Explorer description and composite icons
 - **Schema object filter** — inline filter on schema/database nodes to search tables, views, and functions by name; **Edit Filter** / **Reset Filter** when active
-- Context menu on schema/database: **View ER Diagram** (DBML, column-level relationships, pan/zoom/autofit) and **Get DBML** (copy to clipboard)
+- Context menu on schema/database: **View ER Diagram** (DBML, column-level relationships, draggable routing, click-to-highlight with red animated flow child→parent, pan/zoom/autofit) and **Get DBML** (copy to clipboard)
 - Context menu on schema objects: Object Description, Sample Data, Export Data, Create SQL Query, Generate SELECT
 - Click a table or view to preview data in the same results UI as query output
 - **Create SQL Query** — new editor from Command Palette or connection context menu
@@ -147,7 +147,7 @@ T-SQL files use extension `.tsql` and language **SQL (Microsoft SQL Server)**. T
 | New SQL from object | Right-click → **Create SQL Query** or **Generate SELECT** |
 | Filter objects by name | Filter icon on schema/database node; **Edit Filter** / **Reset Filter** when active |
 | Connection tags | Right-click connection → **Manage Tags**, or edit in the connection dialog |
-| ER diagram | Right-click schema/database → **View ER Diagram** (pan, zoom, **Fit to view**, **Copy DBML**) |
+| ER diagram | Right-click schema/database → **View ER Diagram** (pan, zoom, drag tables, click a relationship to highlight with red marching-ants animation child→parent, drag midpoint to reroute, **Fit to view**, **Copy DBML**) |
 | Run SQL | Open `.sql`, pick connection in status bar, **Cmd+Enter** / **Ctrl+Enter** |
 | Format SQL | Command Palette → **SQL Studio: Format SQL** |
 | Agent help | **SQL Studio: Ask Agent to Explain Query** |
