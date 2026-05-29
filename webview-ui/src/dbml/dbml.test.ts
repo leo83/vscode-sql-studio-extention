@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { buildGraph } from "./buildGraph";
 import { layoutGraph } from "./layout";
 import { parseDbml } from "./parseDbml";
+import { columnHandleTop, TABLE_HEADER_HEIGHT, TABLE_ROW_HEIGHT } from "./types";
 
 const SAMPLE_DBML = `
 Table public.users {
@@ -75,5 +76,12 @@ describe("layoutGraph", () => {
     expect(users).toBeDefined();
     expect(posts).toBeDefined();
     expect(users!.position.y).toBeLessThan(posts!.position.y);
+  });
+});
+
+describe("columnHandleTop", () => {
+  it("aligns handles with fixed table row geometry", () => {
+    expect(columnHandleTop(0)).toBe(TABLE_HEADER_HEIGHT + TABLE_ROW_HEIGHT / 2);
+    expect(columnHandleTop(2)).toBe(TABLE_HEADER_HEIGHT + 2 * TABLE_ROW_HEIGHT + TABLE_ROW_HEIGHT / 2);
   });
 });

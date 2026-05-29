@@ -25,6 +25,7 @@ export function buildGraph(schema: DbmlSchema): { nodes: Node<TableNodeData>[]; 
     target: relationship.toTableId,
     sourceHandle: `${columnHandleId(relationship.fromTableId, relationship.fromColumn)}-right`,
     targetHandle: `${columnHandleId(relationship.toTableId, relationship.toColumn)}-left`,
+    selectable: true,
     data: { manySide: "source" as const },
   }));
 

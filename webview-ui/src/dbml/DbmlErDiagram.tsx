@@ -130,6 +130,7 @@ function DbmlErDiagramInner(
       selectionOnDrag={false}
       nodesConnectable={false}
       nodesDraggable
+      elementsSelectable
       proOptions={{ hideAttribution: true }}
       className="dbml-er-flow"
     >

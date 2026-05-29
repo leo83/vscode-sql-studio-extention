@@ -1537,7 +1537,11 @@ button.secondary {
   background: #1d71b8;
   color: #fff;
   font-weight: 600;
-  padding: 8px 12px;
+  height: 36px;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  padding: 0 12px;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -1552,8 +1556,9 @@ button.secondary {
   grid-template-columns: 18px minmax(0, 1fr) minmax(0, 110px) auto;
   gap: 6px;
   align-items: center;
-  min-height: 28px;
-  padding: 4px 10px 4px 8px;
+  height: 28px;
+  box-sizing: border-box;
+  padding: 0 10px 0 8px;
   border-top: 1px solid var(--vscode-widget-border, #3a3a3a);
 }
 
@@ -1604,8 +1609,35 @@ button.secondary {
   pointer-events: none;
 }
 
-.dbml-edge path {
+.dbml-edge__path {
   stroke: var(--vscode-textLink-foreground, #6cb6ff);
   stroke-width: 1.5;
+  fill: none;
+}
+
+.dbml-edge--selected .dbml-edge__path {
+  stroke-width: 2;
+}
+
+.dbml-edge__path--animated {
+  stroke-dasharray: 8 5;
+  animation: dbml-edge-march 0.55s linear infinite;
+}
+
+@keyframes dbml-edge-march {
+  to {
+    stroke-dashoffset: -13;
+  }
+}
+
+.dbml-edge__control {
+  fill: var(--vscode-editorWidget-background, #2d2d2d);
+  stroke: var(--vscode-textLink-foreground, #6cb6ff);
+  stroke-width: 2;
+  cursor: grab;
+}
+
+.dbml-edge__control:active {
+  cursor: grabbing;
 }
 

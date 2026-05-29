@@ -38,6 +38,9 @@ export interface TableNodeData {
 
 export interface ColumnEdgeData {
   manySide: "source" | "target";
+  /** Custom bend point in flow coordinates (user-adjusted routing). */
+  routeCenterX?: number;
+  routeCenterY?: number;
   [key: string]: unknown;
 }
 
@@ -52,6 +55,11 @@ export function tableHeight(columnCount: number): number {
 
 export function columnHandleId(tableId: string, columnName: string): string {
   return `${tableId}::${columnName}`;
+}
+
+/** Vertical center of a column row handle within a table node (flow px). */
+export function columnHandleTop(columnIndex: number): number {
+  return TABLE_HEADER_HEIGHT + columnIndex * TABLE_ROW_HEIGHT + TABLE_ROW_HEIGHT / 2;
 }
 
 export function qualifiedTableName(schemaName: string | null, tableName: string): string {

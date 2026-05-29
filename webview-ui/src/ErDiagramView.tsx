@@ -54,7 +54,8 @@ export function ErDiagramView({ init }: Props) {
           <h1>ER diagram — {init.scope}</h1>
           <p className="er-diagram__meta">
             {init.table_count} tables · {init.relationship_count} relationships · scroll to pan ·
-            pinch or Ctrl+scroll to zoom · drag tables
+            pinch or Ctrl+scroll to zoom · drag tables · click a relationship to highlight · drag
+            its midpoint to reroute
           </p>
         </div>
         <div className="er-diagram__actions">

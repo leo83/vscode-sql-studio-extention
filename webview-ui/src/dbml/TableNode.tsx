@@ -3,6 +3,7 @@ import type { TableNodeData } from "./types";
 import {
   TABLE_WIDTH,
   columnHandleId,
+  columnHandleTop,
 } from "./types";
 
 export function TableNode({ data }: NodeProps<Node<TableNodeData>>) {
@@ -14,8 +15,10 @@ export function TableNode({ data }: NodeProps<Node<TableNodeData>>) {
         {table.label}
       </div>
       <div className="dbml-table__body">
-        {table.columns.map((column) => {
+        {table.columns.map((column, columnIndex) => {
           const baseHandleId = columnHandleId(table.id, column.name);
+          const handleTop = columnHandleTop(columnIndex);
+          const handleStyle = { top: handleTop };
           return (
             <div key={column.name} className="dbml-table__row">
               <Handle
@@ -23,12 +26,14 @@ export function TableNode({ data }: NodeProps<Node<TableNodeData>>) {
                 type="target"
                 position={Position.Left}
                 className="dbml-table__handle"
+                style={handleStyle}
               />
               <Handle
                 id={`${baseHandleId}-right`}
                 type="source"
                 position={Position.Right}
                 className="dbml-table__handle"
+                style={handleStyle}
               />
               <span className="dbml-table__icon" aria-hidden="true">
                 {column.isPk ? "🔑" : column.isFk ? "🔗" : ""}
