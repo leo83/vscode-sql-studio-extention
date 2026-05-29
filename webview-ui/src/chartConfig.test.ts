@@ -28,8 +28,8 @@ describe("pieCenter", () => {
 });
 
 describe("scalePieRadius", () => {
-  it("scales outer and inner radius and caps the outer radius", () => {
+  it("scales outer radius and preserves donut ring thickness", () => {
     expect(scalePieRadius("46%", "84%", 1)).toEqual(["46.0%", "84.0%"]);
-    expect(scalePieRadius("46%", "84%", 2)).toEqual(["92.0%", "92.0%"]);
+    expect(scalePieRadius("46%", "84%", 2)).toEqual(["50.0%", "88.0%"]);
   });
 });

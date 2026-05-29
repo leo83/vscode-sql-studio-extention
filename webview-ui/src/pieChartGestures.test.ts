@@ -74,8 +74,8 @@ describe("legend and pie hit regions", () => {
 
 describe("wheel helpers", () => {
   it("derives scroll steps from trackpad delta", () => {
-    expect(wheelSteps(24)).toBe(1);
-    expect(wheelSteps(72)).toBe(3);
+    expect(wheelSteps(12)).toBe(1);
+    expect(wheelSteps(36)).toBe(3);
   });
 
   it("derives zoom delta from ctrl/meta wheel events", () => {

@@ -55,6 +55,8 @@ export interface ChartViewOptions {
 export interface ChartBuildResult {
   option: EChartsOption | null;
   warning?: string;
+  /** When set, UI can offer a one-click switch (e.g. bar layout for many categories). */
+  suggestedBarLayout?: BarLayout;
 }
 
 export function defaultChartSettings(columns: ColumnInfo[]): ChartSettings {
@@ -272,12 +274,7 @@ function buildGroupedSeries(
       })
     : xLabels;
 
-  const manyCategoriesHint =
-    settings.chartType === "bar" &&
-    settings.barLayout === "columns" &&
-    orderedLabels.length > MANY_CATEGORIES_THRESHOLD
-      ? `${orderedLabels.length} categories — switch to Horizontal (scroll) for readable bars.`
-      : undefined;
+  const manyCategoriesNotice = barManyCategoriesNotice(settings, orderedLabels.length);
 
   if (seriesNames.length === 0) {
     const data = orderedLabels.map((label) => valueForLabel(label));
@@ -290,7 +287,7 @@ function buildGroupedSeries(
             data,
           },
         ]),
-        warning: manyCategoriesHint,
+        ...manyCategoriesNotice,
       };
     }
 
@@ -312,7 +309,7 @@ function buildGroupedSeries(
         },
       ] as EChartsOption["series"],
     };
-    return { option, warning: manyCategoriesHint };
+    return { option, ...manyCategoriesNotice };
   }
 
   const series = seriesNames.map((name) => ({
@@ -326,7 +323,7 @@ function buildGroupedSeries(
   if (useHorizontalScroll) {
     return {
       option: buildHorizontalBarOption(theme, orderedLabels, series),
-      warning: manyCategoriesHint,
+      ...manyCategoriesNotice,
     };
   }
 
@@ -342,8 +339,25 @@ function buildGroupedSeries(
       yAxis: { type: "value", axisLabel: { color: theme.text } },
       series,
     },
-    warning: manyCategoriesHint,
+    ...manyCategoriesNotice,
   };
+}
+
+function barManyCategoriesNotice(
+  settings: ChartSettings,
+  categoryCount: number
+): Pick<ChartBuildResult, "warning" | "suggestedBarLayout"> {
+  if (
+    settings.chartType === "bar" &&
+    settings.barLayout === "columns" &&
+    categoryCount > MANY_CATEGORIES_THRESHOLD
+  ) {
+    return {
+      warning: `${categoryCount} categories — switch to Horizontal (scroll) for readable bars.`,
+      suggestedBarLayout: "horizontal-scroll",
+    };
+  }
+  return {};
 }
 
 function buildScatter(
@@ -393,20 +407,28 @@ function buildScatter(
   };
 }
 
-function scalePercentRadius(value: string, scale: number): string {
+const PIE_OUTER_RADIUS_MAX = 88;
+const PIE_MIN_RING_GAP_PERCENT = 8;
+
+function parsePercentRadius(value: string): number {
   const match = /^([\d.]+)%$/.exec(value.trim());
-  if (!match) {
-    return value;
-  }
-  return `${Math.min(92, parseFloat(match[1]) * scale).toFixed(1)}%`;
+  return match ? parseFloat(match[1]) : 0;
 }
 
+/** Scale pie zoom while preserving donut ring thickness (inner hole does not swallow the chart). */
 export function scalePieRadius(
   inner: string,
   outer: string,
   scale: number
 ): [string, string] {
-  return [scalePercentRadius(inner, scale), scalePercentRadius(outer, scale)];
+  const innerPct = parsePercentRadius(inner);
+  const outerPct = parsePercentRadius(outer);
+  const ringWidth = Math.max(0, outerPct - innerPct);
+  const scaledOuter = Math.min(PIE_OUTER_RADIUS_MAX, outerPct * scale);
+  const scaledInner = Math.max(0, scaledOuter - ringWidth);
+  const maxInner = scaledOuter - PIE_MIN_RING_GAP_PERCENT;
+  const finalInner = Math.min(scaledInner, maxInner);
+  return [`${finalInner.toFixed(1)}%`, `${scaledOuter.toFixed(1)}%`];
 }
 
 export function pieUsesScrollLegend(categoryCount: number): boolean {
@@ -484,6 +506,8 @@ function buildPie(
   return {
     option: {
       ...baseOption(theme),
+      animation: false,
+      animationDurationUpdate: 0,
       legend,
       color: theme.palette,
       tooltip: { trigger: "item", backgroundColor: theme.background, borderColor: theme.border, textStyle: { color: theme.text } },
@@ -493,6 +517,8 @@ function buildPie(
           radius: scaledRadius,
           center: pieCenter(manyCategories),
           data,
+          animation: false,
+          animationDurationUpdate: 0,
           label: { show: showSliceLabels, color: theme.text },
           labelLine: { show: showSliceLabels },
         },

@@ -103,7 +103,7 @@ export function isPointInPieRegion(
 }
 
 export function wheelSteps(deltaY: number): number {
-  return Math.max(1, Math.round(Math.abs(deltaY) / 24));
+  return Math.max(1, Math.round(Math.abs(deltaY) / 12));
 }
 
 export function wheelZoomDelta(deltaY: number): number {
@@ -158,7 +158,8 @@ export function nextLegendScrollIndex(
   return Math.max(0, Math.min(itemCount - 1, currentIndex + deltaSteps));
 }
 
-function scrollLegend(chart: EChartsType, deltaSteps: number): void {
+/** Imperative legend scroll (tests / fallback). Prefer native ECharts wheel handling. */
+export function scrollLegendBySteps(chart: EChartsType, deltaSteps: number): void {
   const state = getLegendScrollState(chart);
   if (!state || state.count === 0) {
     return;
@@ -214,17 +215,14 @@ export function attachPieChartGestures(
     const { width, legendRegion } = getRegions();
 
     if (legendRegion && isPointInLegendRegion(point, legendRegion) && !isZoomWheel(event)) {
-      const steps = wheelSteps(event.deltaY);
-      scrollLegend(chart, event.deltaY > 0 ? steps : -steps);
+      // Block page scroll only; let ECharts handle legend wheel on the canvas (no stopPropagation).
       event.preventDefault();
-      event.stopPropagation();
       return;
     }
 
     if (isZoomWheel(event) && isPointInPieRegion(point, legendRegion, width)) {
       setPieScale(clampPieScale(getPieScale() + wheelZoomDelta(event.deltaY)));
       event.preventDefault();
-      event.stopPropagation();
     }
   };
 
@@ -287,7 +285,8 @@ export function attachPieChartGestures(
     }
   };
 
-  dom.addEventListener("wheel", onWheel, { passive: false, capture: true });
+  // Bubble phase so ECharts zrender receives the event before we prevent page scroll.
+  dom.addEventListener("wheel", onWheel, { passive: false });
   dom.addEventListener("gesturestart", onGestureStart, { passive: false });
   dom.addEventListener("gesturechange", onGestureChange, { passive: false });
   dom.addEventListener("gestureend", onGestureEnd);
@@ -298,7 +297,7 @@ export function attachPieChartGestures(
 
   return {
     dispose: () => {
-      dom.removeEventListener("wheel", onWheel, true);
+      dom.removeEventListener("wheel", onWheel);
       dom.removeEventListener("gesturestart", onGestureStart);
       dom.removeEventListener("gesturechange", onGestureChange);
       dom.removeEventListener("gestureend", onGestureEnd);

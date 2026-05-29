@@ -53,6 +53,10 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     context.extensionUri
   );
 
+  connectionManager.setOnProfilesChanged(() => {
+    explorerProvider.refresh();
+  });
+
   let explorerView: vscode.TreeView<ExplorerTreeItem>;
   try {
     explorerView = vscode.window.createTreeView("sqlStudio.explorer", {

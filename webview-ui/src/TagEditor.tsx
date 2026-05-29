@@ -1,6 +1,8 @@
 import { useMemo, useState } from "react";
+import { TagPill } from "./tagPill";
 import {
   TAG_COLOR_OPTIONS,
+  contrastingTextColor,
   normalizeTags,
   paletteColorFromHex,
   tagColorHex,
@@ -71,35 +73,29 @@ export function TagEditor({ tags, onChange }: Props) {
     <div className="tag-editor">
       <div className="form-row">
         <label htmlFor="field-tags">Tags (optional)</label>
-        <span className="field-hint">Colored [tags] shown in Database Explorer</span>
+        <span className="field-hint">Colored pills shown next to each connection in Database Explorer</span>
       </div>
 
       {normalized.length > 0 ? (
         <ul className="tag-list">
-          {normalized.map((tag, index) => {
-            const color = tagColorHex(tag.color);
-            return (
-              <li key={`${tag.name}-${index}`}>
-                <button
-                  type="button"
-                  className={`tag-bracket${editingIndex === index ? " tag-bracket-editing" : ""}`}
-                  style={{ color }}
-                  aria-label={`Change color for ${tag.name}`}
-                  onClick={() => startEditColor(index)}
+          {normalized.map((tag, index) => (
+            <li key={`${tag.name}-${index}`}>
+              <TagPill
+                tag={tag}
+                className={editingIndex === index ? "tag-pill-editing" : ""}
+                onClick={() => startEditColor(index)}
+              >
+                <span
+                  className="tag-remove"
+                  role="button"
+                  aria-label={`Remove tag ${tag.name}`}
+                  onClick={(event) => removeTag(index, event)}
                 >
-                  <span className="tag-name">[{tag.name}]</span>
-                  <span
-                    className="tag-remove"
-                    role="button"
-                    aria-label={`Remove tag ${tag.name}`}
-                    onClick={(event) => removeTag(index, event)}
-                  >
-                    ×
-                  </span>
-                </button>
-              </li>
-            );
-          })}
+                  ×
+                </span>
+              </TagPill>
+            </li>
+          ))}
         </ul>
       ) : null}
 
@@ -111,10 +107,13 @@ export function TagEditor({ tags, onChange }: Props) {
               : "Tag color"}
           </span>
           <span
-            className="tag-color-preview-bracket"
-            style={{ color: selectedHex }}
+            className="tag-color-preview-pill"
+            style={{
+              backgroundColor: selectedHex,
+              color: contrastingTextColor(selectedHex),
+            }}
           >
-            [{editingIndex !== null ? normalized[editingIndex]?.name : tagColorLabel(color)}]
+            {editingIndex !== null ? normalized[editingIndex]?.name : tagColorLabel(color)}
           </span>
         </div>
 

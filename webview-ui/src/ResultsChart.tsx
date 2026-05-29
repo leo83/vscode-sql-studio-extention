@@ -100,13 +100,17 @@ export function ResultsChart({ records, columns }: Props) {
     }
   }, [allowedAggregations, settings.aggregation]);
 
-  const { option, warning } = useMemo(
+  const { option, warning, suggestedBarLayout } = useMemo(
     () =>
       buildChartOption(records, settings, {
         pieScale: isPie ? pieScale : undefined,
       }),
     [records, settings, isPie, pieScale]
   );
+
+  const horizontalScrollBarLabel =
+    BAR_LAYOUT_OPTIONS.find((opt) => opt.value === "horizontal-scroll")?.label ??
+    "Horizontal (scroll)";
 
   const detachPieGestures = useCallback(() => {
     pieGesturesRef.current?.dispose();
@@ -280,14 +284,27 @@ export function ResultsChart({ records, columns }: Props) {
       </aside>
 
       <div className="chart-canvas-wrap" ref={canvasWrapRef}>
-        {warning ? <div className="chart-warning">{warning}</div> : null}
+        {warning ? (
+          <div className="chart-warning">
+            <span className="chart-warning-text">{warning}</span>
+            {suggestedBarLayout ? (
+              <button
+                type="button"
+                className="chart-warning-action"
+                onClick={() => update({ barLayout: suggestedBarLayout })}
+              >
+                {horizontalScrollBarLabel}
+              </button>
+            ) : null}
+          </div>
+        ) : null}
         {option ? (
           <ReactECharts
             ref={chartRef}
             className="chart-canvas"
             option={option}
             notMerge
-            lazyUpdate
+            lazyUpdate={!isPie}
             onChartReady={onChartReady}
             style={{ height: "100%", width: "100%" }}
           />

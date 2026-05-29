@@ -25,18 +25,35 @@ function rowToJson(row: Record<string, unknown>): string {
   return JSON.stringify(row, null, 2);
 }
 
-function getCopyShortcutLabel(): string {
+function isMacPlatform(): boolean {
   const platform = navigator.platform;
   const userAgent = navigator.userAgent;
-  const isMac =
-    /Mac|iPhone|iPad|iPod/.test(platform) || /Mac OS X|Macintosh/.test(userAgent);
-  return isMac ? "⌘+C" : "Ctrl+C";
+  return /Mac|iPhone|iPad|iPod/.test(platform) || /Mac OS X|Macintosh/.test(userAgent);
+}
+
+function getCopyRowShortcutLabel(): string {
+  return isMacPlatform() ? "⌘+⌥+C" : "Ctrl+Alt+C";
+}
+
+function getCopyValueShortcutLabel(): string {
+  return isMacPlatform() ? "⌘+C" : "Ctrl+C";
+}
+
+function formatRawCellValue(value: unknown): string {
+  if (value === null || value === undefined) {
+    return "";
+  }
+  if (typeof value === "object") {
+    return JSON.stringify(value);
+  }
+  return String(value);
 }
 
 interface ContextMenuState {
   x: number;
   y: number;
   rowId: string;
+  columnId: string | null;
 }
 
 export function ResultsTable({ result, embedded = false, showToolbar = true }: Props) {
@@ -44,9 +61,11 @@ export function ResultsTable({ result, embedded = false, showToolbar = true }: P
   const [sorting, setSorting] = useState<SortingState>([]);
   const [columnSizing, setColumnSizing] = useState<ColumnSizingState>({});
   const [selectedRowId, setSelectedRowId] = useState<string | null>(null);
+  const [selectedColumnId, setSelectedColumnId] = useState<string | null>(null);
   const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(null);
   const tableWrapRef = useRef<HTMLDivElement>(null);
-  const copyShortcutLabel = useMemo(() => getCopyShortcutLabel(), []);
+  const copyRowShortcutLabel = useMemo(() => getCopyRowShortcutLabel(), []);
+  const copyValueShortcutLabel = useMemo(() => getCopyValueShortcutLabel(), []);
 
   const columnNames = useMemo(() => {
     if (result.columns.length > 0) {
@@ -124,6 +143,7 @@ export function ResultsTable({ result, embedded = false, showToolbar = true }: P
 
   useEffect(() => {
     setSelectedRowId(null);
+    setSelectedColumnId(null);
     setColumnSizing({});
   }, [result]);
 
@@ -150,9 +170,27 @@ export function ResultsTable({ result, embedded = false, showToolbar = true }: P
     await copyRow(row);
   }, [rows, selectedRowId, copyRow]);
 
+  const copyCellValue = useCallback(
+    async (row: Row<Record<string, unknown>>, columnId: string) => {
+      await navigator.clipboard.writeText(formatRawCellValue(row.original[columnId]));
+    },
+    []
+  );
+
+  const copySelectedValue = useCallback(async () => {
+    const row = rows.find((item) => item.id === selectedRowId);
+    if (!row || !selectedColumnId) {
+      return;
+    }
+    await copyCellValue(row, selectedColumnId);
+  }, [rows, selectedRowId, selectedColumnId, copyCellValue]);
+
   const selectRow = useCallback(
-    (row: Row<Record<string, unknown>>) => {
+    (row: Row<Record<string, unknown>>, columnId?: string) => {
       setSelectedRowId(row.id);
+      if (columnId) {
+        setSelectedColumnId(columnId);
+      }
       tableWrapRef.current?.focus({ preventScroll: true });
       scrollRowIntoView(row.id);
     },
@@ -198,22 +236,52 @@ export function ResultsTable({ result, embedded = false, showToolbar = true }: P
     };
   }, [contextMenu]);
 
-  const handleRowContextMenu = (
-    event: React.MouseEvent<HTMLTableRowElement>,
-    row: Row<Record<string, unknown>>
-  ) => {
-    event.preventDefault();
-    selectRow(row);
-    setContextMenu({ x: event.clientX, y: event.clientY, rowId: row.id });
+  const columnIdFromEventTarget = (event: React.MouseEvent): string | null => {
+    const cell = (event.target as HTMLElement).closest<HTMLTableCellElement>(
+      "td[data-column-id]"
+    );
+    return cell?.dataset.columnId ?? null;
   };
 
-  const handleContextMenuCopy = async () => {
+  const openContextMenu = (
+    event: React.MouseEvent,
+    row: Row<Record<string, unknown>>,
+    explicitColumnId: string | null
+  ) => {
+    event.preventDefault();
+    event.stopPropagation();
+
+    const columnId =
+      explicitColumnId ??
+      columnIdFromEventTarget(event) ??
+      (row.id === selectedRowId ? selectedColumnId : null);
+
+    selectRow(row, columnId ?? undefined);
+    setContextMenu({
+      x: event.clientX,
+      y: event.clientY,
+      rowId: row.id,
+      columnId,
+    });
+  };
+
+  const handleContextMenuCopyRow = async () => {
     const row = rows.find((item) => item.id === contextMenu?.rowId);
     setContextMenu(null);
     if (!row) {
       return;
     }
     await copyRow(row);
+  };
+
+  const handleContextMenuCopyValue = async () => {
+    const menu = contextMenu;
+    setContextMenu(null);
+    const row = rows.find((item) => item.id === menu?.rowId);
+    if (!row || !menu?.columnId) {
+      return;
+    }
+    await copyCellValue(row, menu.columnId);
   };
 
   const handleTableKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
@@ -229,7 +297,13 @@ export function ResultsTable({ result, embedded = false, showToolbar = true }: P
     }
     if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "c" && selectedRowId) {
       event.preventDefault();
-      void copySelectedRow();
+      if (event.altKey) {
+        void copySelectedRow();
+        return;
+      }
+      if (selectedColumnId) {
+        void copySelectedValue();
+      }
     }
   };
 
@@ -320,18 +394,33 @@ export function ResultsTable({ result, embedded = false, showToolbar = true }: P
                 data-row-id={row.id}
                 className={row.id === selectedRowId ? "row-selected" : undefined}
                 onClick={() => selectRow(row)}
-                onContextMenu={(event) => handleRowContextMenu(event, row)}
+                onContextMenu={(event) => openContextMenu(event, row, null)}
               >
                 <td className="row-num">{pageIndex * pageSize + row.index + 1}</td>
-                {row.getVisibleCells().map((cell) => (
+                {row.getVisibleCells().map((cell) => {
+                  const isSelectedCell =
+                    row.id === selectedRowId && cell.column.id === selectedColumnId;
+                  return (
                   <td
                     key={cell.id}
+                    data-column-id={cell.column.id}
                     style={{ width: cell.column.getSize() }}
-                    className={numericColumnNames.has(cell.column.id) ? "cell-numeric" : "cell-text"}
+                    className={[
+                      numericColumnNames.has(cell.column.id) ? "cell-numeric" : "cell-text",
+                      isSelectedCell ? "cell-selected" : "",
+                    ]
+                      .filter(Boolean)
+                      .join(" ")}
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      selectRow(row, cell.column.id);
+                    }}
+                    onContextMenu={(event) => openContextMenu(event, row, cell.column.id)}
                   >
                     {flexRender(cell.column.columnDef.cell, cell.getContext())}
                   </td>
-                ))}
+                  );
+                })}
               </tr>
             ))}
           </tbody>
@@ -342,9 +431,17 @@ export function ResultsTable({ result, embedded = false, showToolbar = true }: P
             style={{ top: contextMenu.y, left: contextMenu.x }}
             onClick={(event) => event.stopPropagation()}
           >
-            <button type="button" onClick={() => void handleContextMenuCopy()}>
-              <span>Copy</span>
-              <span className="row-context-menu-shortcut">{copyShortcutLabel}</span>
+            <button type="button" onClick={() => void handleContextMenuCopyRow()}>
+              <span>Copy row</span>
+              <span className="row-context-menu-shortcut">{copyRowShortcutLabel}</span>
+            </button>
+            <button
+              type="button"
+              disabled={!contextMenu.columnId}
+              onClick={() => void handleContextMenuCopyValue()}
+            >
+              <span>Copy value</span>
+              <span className="row-context-menu-shortcut">{copyValueShortcutLabel}</span>
             </button>
           </div>
         ) : null}

@@ -5,7 +5,7 @@ import {
   formatTagsBracketPlain,
   normalizeTags,
   promptTagColor,
-  tagBracketIconUri,
+  tagPillIconUri,
   tagColorLabel,
 } from "./connectionTags";
 import {
@@ -23,6 +23,7 @@ const DOCUMENT_CONNECTIONS_KEY = "sqlStudio.documentConnections";
 export class ConnectionManager {
   private profiles: ConnectionProfile[] = [];
   private dialog: ConnectionDialog | undefined;
+  private onProfilesChanged?: () => void;
   /** Connections explicitly disconnected this session (Database Explorer → Disconnect). */
   private disconnectedIds = new Set<string>();
 
@@ -34,6 +35,14 @@ export class ConnectionManager {
   async initialize(): Promise<void> {
     this.profiles =
       this.context.globalState.get<ConnectionProfile[]>(STORAGE_KEY) ?? [];
+  }
+
+  setOnProfilesChanged(callback: () => void): void {
+    this.onProfilesChanged = callback;
+  }
+
+  private notifyProfilesChanged(): void {
+    this.onProfilesChanged?.();
   }
 
   listProfiles(): ConnectionProfile[] {
@@ -207,6 +216,7 @@ export class ConnectionManager {
       password
     );
     await this.persist();
+    this.notifyProfilesChanged();
   }
 
   async deleteConnection(id: string, persist = true): Promise<void> {
@@ -217,6 +227,7 @@ export class ConnectionManager {
     }
     if (persist) {
       await this.persist();
+      this.notifyProfilesChanged();
     }
   }
 
@@ -257,7 +268,7 @@ export class ConnectionManager {
         ...tags.map((tag) => ({
           label: tag.name,
           description: tagColorLabel(tag.color),
-          iconPath: tagBracketIconUri(tag),
+          iconPath: tagPillIconUri(tag),
           tag,
         })),
       ];
@@ -356,6 +367,7 @@ export class ConnectionManager {
     if (idx >= 0) {
       this.profiles[idx] = updated;
       await this.persist();
+      this.notifyProfilesChanged();
     }
   }
 

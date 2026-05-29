@@ -3,6 +3,7 @@ import { ConnectionManager } from "../connectionManager";
 import {
   connectionDialectIcon,
   formatConnectionExplorerDescription,
+  formatObjectFilterDescription,
   formatTagsTooltip,
   normalizeTags,
 } from "../connectionTags";
@@ -175,6 +176,16 @@ export class SchemaExplorerProvider implements vscode.TreeDataProvider<ExplorerT
   }
 
   getTreeItem(element: ExplorerTreeItem): vscode.TreeItem {
+    if (element.itemType === "connection" && element.connectionId) {
+      const profile = this.connections.getProfile(element.connectionId);
+      if (profile) {
+        element.description = formatConnectionExplorerDescription(
+          profile.tags,
+          `${profile.host}:${profile.port}`
+        );
+      }
+    }
+
     if (
       (element.itemType === "schema" || element.itemType === "database") &&
       element.connectionId &&
@@ -186,7 +197,7 @@ export class SchemaExplorerProvider implements vscode.TreeDataProvider<ExplorerT
       );
       if (filter) {
         element.contextValue = `${element.itemType}.filtered`;
-        element.description = `$(filter-filled) ${filter}`;
+        element.description = formatObjectFilterDescription(filter);
         const baseTooltip =
           typeof element.tooltip === "string"
             ? element.tooltip
