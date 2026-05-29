@@ -305,6 +305,12 @@
         "command": "sqlStudio.getSchemaDbml",
         "title": "Get DBML",
         "category": "SQL Studio"
+      },
+      {
+        "command": "sqlStudio.filterSchemaObjects",
+        "title": "Filter Objects",
+        "category": "SQL Studio",
+        "icon": "$(filter)"
       }
     ],
     "menus": {
@@ -321,6 +327,11 @@
         }
       ],
       "view/item/context": [
+        {
+          "command": "sqlStudio.filterSchemaObjects",
+          "when": "view == sqlStudio.explorer && viewItem =~ /^(schema|database)$/",
+          "group": "inline@0"
+        },
         {
           "command": "sqlStudio.previewData",
           "when": "view == sqlStudio.explorer && viewItem =~ /^(table|view)$/",

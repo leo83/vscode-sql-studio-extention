@@ -393,6 +393,12 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     vscode.commands.registerCommand("sqlStudio.refreshExplorer", () =>
       explorerProvider.refresh()
     ),
+    vscode.commands.registerCommand(
+      "sqlStudio.filterSchemaObjects",
+      async (item: ExplorerTreeItem) => {
+        await explorerProvider.promptObjectNameFilter(item);
+      }
+    ),
     vscode.commands.registerCommand("sqlStudio.cancelQuery", () =>
       queryRunner.cancelRunningQuery()
     ),

@@ -8,6 +8,10 @@ import {
 } from "../connectionTags";
 import { PythonClient } from "../pythonClient";
 import { ConnectionProfile, SchemaNodePayload, toRpcConnection } from "../types";
+import {
+  filterSchemaNodes,
+  objectFilterKey,
+} from "./objectNameFilter";
 
 export type ExplorerItemType =
   | "connections-root"
@@ -101,6 +105,7 @@ export class ExplorerTreeItem extends vscode.TreeItem {
 export class SchemaExplorerProvider implements vscode.TreeDataProvider<ExplorerTreeItem> {
   private _onDidChangeTreeData = new vscode.EventEmitter<ExplorerTreeItem | undefined>();
   readonly onDidChangeTreeData = this._onDidChangeTreeData.event;
+  private readonly objectNameFilters = new Map<string, string>();
 
   constructor(
     private readonly connections: ConnectionManager,
@@ -108,11 +113,69 @@ export class SchemaExplorerProvider implements vscode.TreeDataProvider<ExplorerT
     private readonly extensionUri: vscode.Uri
   ) {}
 
+  getObjectNameFilter(connectionId: string, path: string[]): string | undefined {
+    return this.objectNameFilters.get(objectFilterKey(connectionId, path));
+  }
+
+  async promptObjectNameFilter(item: ExplorerTreeItem): Promise<void> {
+    if (
+      !item.connectionId ||
+      !item.node ||
+      (item.itemType !== "schema" && item.itemType !== "database")
+    ) {
+      return;
+    }
+
+    const key = objectFilterKey(item.connectionId, item.node.path);
+    const current = this.objectNameFilters.get(key) ?? "";
+    const value = await vscode.window.showInputBox({
+      title: `Filter objects in ${item.label}`,
+      placeHolder: "Show objects whose name contains…",
+      prompt: "Leave empty to show all objects.",
+      value: current,
+    });
+    if (value === undefined) {
+      return;
+    }
+
+    const trimmed = value.trim();
+    if (trimmed) {
+      this.objectNameFilters.set(key, trimmed);
+    } else {
+      this.objectNameFilters.delete(key);
+    }
+    this.refreshNode(item);
+  }
+
   refresh(): void {
     this._onDidChangeTreeData.fire(undefined);
   }
 
+  refreshNode(item: ExplorerTreeItem): void {
+    this._onDidChangeTreeData.fire(item);
+  }
+
   getTreeItem(element: ExplorerTreeItem): vscode.TreeItem {
+    if (
+      (element.itemType === "schema" || element.itemType === "database") &&
+      element.connectionId &&
+      element.node
+    ) {
+      const filter = this.getObjectNameFilter(
+        element.connectionId,
+        element.node.path
+      );
+      if (filter) {
+        element.description = `$(filter) ${filter}`;
+        const baseTooltip =
+          typeof element.tooltip === "string"
+            ? element.tooltip
+            : element.label;
+        element.tooltip = `${baseTooltip}\nFilter: "${filter}"`;
+      } else {
+        element.description = undefined;
+      }
+    }
     return element;
   }
 
@@ -187,7 +250,11 @@ export class SchemaExplorerProvider implements vscode.TreeDataProvider<ExplorerT
           "schema/listChildren",
           { connection: toRpcConnection(conn), path: element.node.path }
         );
-        return nodes.map(
+        const filtered = filterSchemaNodes(
+          nodes,
+          this.getObjectNameFilter(element.connectionId, element.node.path)
+        );
+        return filtered.map(
           (n) =>
             new ExplorerTreeItem(
               n,
