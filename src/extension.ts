@@ -399,6 +399,18 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
         await explorerProvider.promptObjectNameFilter(item);
       }
     ),
+    vscode.commands.registerCommand(
+      "sqlStudio.editSchemaObjectFilter",
+      async (item: ExplorerTreeItem) => {
+        await explorerProvider.promptObjectNameFilter(item);
+      }
+    ),
+    vscode.commands.registerCommand(
+      "sqlStudio.clearSchemaObjectFilter",
+      (item: ExplorerTreeItem) => {
+        explorerProvider.clearObjectNameFilter(item);
+      }
+    ),
     vscode.commands.registerCommand("sqlStudio.cancelQuery", () =>
       queryRunner.cancelRunningQuery()
     ),

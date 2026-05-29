@@ -311,6 +311,18 @@
         "title": "Filter Objects",
         "category": "SQL Studio",
         "icon": "$(filter)"
+      },
+      {
+        "command": "sqlStudio.editSchemaObjectFilter",
+        "title": "Edit Filter",
+        "category": "SQL Studio",
+        "icon": "$(filter-filled)"
+      },
+      {
+        "command": "sqlStudio.clearSchemaObjectFilter",
+        "title": "Reset Filter",
+        "category": "SQL Studio",
+        "icon": "$(close)"
       }
     ],
     "menus": {
@@ -331,6 +343,16 @@
           "command": "sqlStudio.filterSchemaObjects",
           "when": "view == sqlStudio.explorer && viewItem =~ /^(schema|database)$/",
           "group": "inline@0"
+        },
+        {
+          "command": "sqlStudio.editSchemaObjectFilter",
+          "when": "view == sqlStudio.explorer && viewItem =~ /^(schema|database)\\.filtered$/",
+          "group": "inline@0"
+        },
+        {
+          "command": "sqlStudio.clearSchemaObjectFilter",
+          "when": "view == sqlStudio.explorer && viewItem =~ /^(schema|database)\\.filtered$/",
+          "group": "inline@1"
         },
         {
           "command": "sqlStudio.previewData",
@@ -363,8 +385,13 @@
           "group": "1_query@2"
         },
         {
+          "command": "sqlStudio.clearSchemaObjectFilter",
+          "when": "view == sqlStudio.explorer && viewItem =~ /^(schema|database)\\.filtered$/",
+          "group": "1_actions@0"
+        },
+        {
           "command": "sqlStudio.copyObjectName",
-          "when": "view == sqlStudio.explorer && viewItem =~ /^(table|view|function|procedure|column|schema|database)$/",
+          "when": "view == sqlStudio.explorer && viewItem =~ /^(table|view|function|procedure|column|schema|database)(\\.filtered)?$/",
           "group": "1_actions@1"
         },
         {
@@ -404,12 +431,12 @@
         },
         {
           "command": "sqlStudio.showSchemaDiagram",
-          "when": "view == sqlStudio.explorer && viewItem =~ /^(schema|database)$/",
+          "when": "view == sqlStudio.explorer && viewItem =~ /^(schema|database)(\\.filtered)?$/",
           "group": "2_schema@1"
         },
         {
           "command": "sqlStudio.getSchemaDbml",
-          "when": "view == sqlStudio.explorer && viewItem =~ /^(schema|database)$/",
+          "when": "view == sqlStudio.explorer && viewItem =~ /^(schema|database)(\\.filtered)?$/",
           "group": "2_schema@2"
         }
       ],

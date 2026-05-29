@@ -117,6 +117,23 @@ export class SchemaExplorerProvider implements vscode.TreeDataProvider<ExplorerT
     return this.objectNameFilters.get(objectFilterKey(connectionId, path));
   }
 
+  clearObjectNameFilter(item: ExplorerTreeItem): void {
+    if (
+      !item.connectionId ||
+      !item.node ||
+      (item.itemType !== "schema" && item.itemType !== "database")
+    ) {
+      return;
+    }
+
+    const key = objectFilterKey(item.connectionId, item.node.path);
+    if (!this.objectNameFilters.has(key)) {
+      return;
+    }
+    this.objectNameFilters.delete(key);
+    this.refreshNode(item);
+  }
+
   async promptObjectNameFilter(item: ExplorerTreeItem): Promise<void> {
     if (
       !item.connectionId ||
@@ -131,7 +148,9 @@ export class SchemaExplorerProvider implements vscode.TreeDataProvider<ExplorerT
     const value = await vscode.window.showInputBox({
       title: `Filter objects in ${item.label}`,
       placeHolder: "Show objects whose name contains…",
-      prompt: "Leave empty to show all objects.",
+      prompt: current
+        ? `Active filter: "${current}". Clear the field or use Reset filter.`
+        : "Leave empty to show all objects.",
       value: current,
     });
     if (value === undefined) {
@@ -166,13 +185,15 @@ export class SchemaExplorerProvider implements vscode.TreeDataProvider<ExplorerT
         element.node.path
       );
       if (filter) {
-        element.description = `$(filter) ${filter}`;
+        element.contextValue = `${element.itemType}.filtered`;
+        element.description = `$(filter-filled) ${filter}`;
         const baseTooltip =
           typeof element.tooltip === "string"
             ? element.tooltip
-            : element.label;
-        element.tooltip = `${baseTooltip}\nFilter: "${filter}"`;
+            : String(element.label);
+        element.tooltip = `${baseTooltip}\n\nFiltered by: "${filter}"\nUse $(close) to reset.`;
       } else {
+        element.contextValue = element.itemType;
         element.description = undefined;
       }
     }
