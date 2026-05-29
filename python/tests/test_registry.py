@@ -9,6 +9,7 @@ from sql_studio.drivers.registry import (
     disconnect,
     get_driver,
     get_session_database,
+    is_connection_active,
     set_session_database,
 )
 from sql_studio.models import ConnectionConfig
@@ -56,6 +57,18 @@ def test_disconnect_removes_driver_from_pool() -> None:
 
 def test_disconnect_missing_id_is_noop() -> None:
     disconnect("missing")
+
+
+def test_is_connection_active_false_when_not_in_pool() -> None:
+    assert is_connection_active("missing") is False
+
+
+def test_is_connection_active_true_when_driver_connected() -> None:
+    mock_driver = MagicMock()
+    mock_driver.is_connected_with.return_value = True
+    mock_driver._config = _postgres_config("pg-active")
+    _DRIVERS["pg-active"] = mock_driver
+    assert is_connection_active("pg-active") is True
 
 
 def test_cancel_query_calls_driver_cancel() -> None:

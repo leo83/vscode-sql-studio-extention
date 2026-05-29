@@ -65,6 +65,36 @@ def test_connection_disconnect(mock_disconnect: MagicMock, server: JsonRpcServer
     mock_disconnect.assert_called_once_with("c1")
 
 
+@patch("sql_studio.server.get_driver")
+def test_connection_connect(mock_get_driver: MagicMock, server: JsonRpcServer) -> None:
+    response = server._handle(
+        {
+            "id": 31,
+            "method": "connection/connect",
+            "params": {"connection": _connection()},
+        }
+    )
+    assert response["result"] == {"ok": True}
+    mock_get_driver.assert_called_once()
+    assert isinstance(mock_get_driver.call_args[0][0], ConnectionConfig)
+
+
+@patch("sql_studio.server.is_connection_active")
+def test_connection_is_connected(
+    mock_is_connected: MagicMock, server: JsonRpcServer
+) -> None:
+    mock_is_connected.return_value = True
+    response = server._handle(
+        {
+            "id": 32,
+            "method": "connection/isConnected",
+            "params": {"connectionId": "c1"},
+        }
+    )
+    assert response["result"] == {"connected": True}
+    mock_is_connected.assert_called_once_with("c1")
+
+
 @patch("sql_studio.server.cancel_query")
 def test_query_cancel(mock_cancel: MagicMock, server: JsonRpcServer) -> None:
     mock_cancel.return_value = True

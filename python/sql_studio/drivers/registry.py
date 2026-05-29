@@ -64,6 +64,16 @@ def _restore_session_database(driver: Driver, connection_id: str) -> None:
         setter(database)
 
 
+def is_connection_active(connection_id: str) -> bool:
+    driver = _DRIVERS.get(connection_id)
+    if driver is None:
+        return False
+    config = getattr(driver, "_config", None)
+    if config is None:
+        return False
+    return driver.is_connected_with(config)
+
+
 def disconnect(connection_id: str) -> None:
     clear_session_database(connection_id)
     driver = _DRIVERS.pop(connection_id, None)

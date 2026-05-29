@@ -299,6 +299,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
             },
             { timeoutMs: 20_000 }
           );
+          connectionManager.markDatabaseConnectionActive(id);
           vscode.window.showInformationMessage(`Connection "${conn.name}" OK`);
         } catch (err) {
           const msg = err instanceof Error ? err.message : String(err);

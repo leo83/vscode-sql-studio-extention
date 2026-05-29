@@ -151,6 +151,10 @@ export class QueryRunner {
       }
     }
     if (!conn) {
+      await this.notifyNoConnectionSelected();
+      return undefined;
+    }
+    if (!(await this.ensureActiveDatabaseConnection(conn))) {
       return undefined;
     }
     return this.executeWithConnection(
@@ -175,6 +179,9 @@ export class QueryRunner {
     const conn = await this.connections.getConnectionWithSecret(connectionId);
     if (!conn) {
       vscode.window.showErrorMessage("Connection not found.");
+      return;
+    }
+    if (!(await this.ensureActiveDatabaseConnection(conn))) {
       return;
     }
     const limit = getPreviewRowLimit();
@@ -287,6 +294,10 @@ export class QueryRunner {
       }
     }
     if (!conn) {
+      await this.notifyNoConnectionSelected();
+      return undefined;
+    }
+    if (!(await this.ensureActiveDatabaseConnection(conn))) {
       return undefined;
     }
 
@@ -484,6 +495,33 @@ export class QueryRunner {
       await vscode.commands.executeCommand("setContext", "sqlStudio.queryRunning", false);
     }
     return result;
+  }
+
+  private async notifyNoConnectionSelected(): Promise<void> {
+    const picked = await vscode.window.showWarningMessage(
+      "No database connection selected.",
+      "Select Connection"
+    );
+    if (picked === "Select Connection") {
+      await vscode.commands.executeCommand("sqlStudio.selectConnection");
+    }
+  }
+
+  private async ensureActiveDatabaseConnection(
+    conn: ConnectionWithSecret
+  ): Promise<boolean> {
+    if (this.connections.isDatabaseConnectionActive(conn.id)) {
+      return true;
+    }
+    const picked = await vscode.window.showWarningMessage(
+      `Connection "${conn.name}" is not active.`,
+      "Connect",
+      "Cancel"
+    );
+    if (picked !== "Connect") {
+      return false;
+    }
+    return this.connections.connectToDatabase(conn.id);
   }
 
   private isCancelledError(err: unknown): boolean {

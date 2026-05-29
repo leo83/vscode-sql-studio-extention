@@ -25,6 +25,7 @@ from sql_studio.drivers.registry import (
     disconnect,
     get_driver,
     get_session_database,
+    is_connection_active,
     set_session_database,
     test_connection,
 )
@@ -60,6 +61,8 @@ class JsonRpcServer:
         self._handlers: dict[str, Handler] = {
             "health": self._health,
             "connection/test": self._connection_test,
+            "connection/connect": self._connection_connect,
+            "connection/isConnected": self._connection_is_connected,
             "connection/disconnect": self._connection_disconnect,
             "query/execute": self._query_execute,
             "query/explain": self._query_explain,
@@ -143,6 +146,14 @@ class JsonRpcServer:
         config = ConnectionConfig.model_validate(params["connection"])
         test_connection(config)
         return {"ok": True}
+
+    def _connection_connect(self, params: dict[str, Any]) -> dict[str, bool]:
+        config = ConnectionConfig.model_validate(params["connection"])
+        get_driver(config)
+        return {"ok": True}
+
+    def _connection_is_connected(self, params: dict[str, Any]) -> dict[str, bool]:
+        return {"connected": is_connection_active(params["connectionId"])}
 
     def _connection_disconnect(self, params: dict[str, Any]) -> dict[str, bool]:
         disconnect(params["connectionId"])

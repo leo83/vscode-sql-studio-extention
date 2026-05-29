@@ -12,6 +12,7 @@ import {
   ConnectionProfile,
   ConnectionWithSecret,
   secretKeyForConnection,
+  toRpcConnection,
 } from "./types";
 import { ConnectionDialog } from "./webview/connectionDialog";
 
@@ -22,6 +23,8 @@ const DOCUMENT_CONNECTIONS_KEY = "sqlStudio.documentConnections";
 export class ConnectionManager {
   private profiles: ConnectionProfile[] = [];
   private dialog: ConnectionDialog | undefined;
+  /** Connections explicitly disconnected this session (Database Explorer → Disconnect). */
+  private disconnectedIds = new Set<string>();
 
   constructor(
     private readonly context: vscode.ExtensionContext,
@@ -360,10 +363,44 @@ export class ConnectionManager {
     await this.context.globalState.update(STORAGE_KEY, this.profiles);
   }
 
+  isDatabaseConnectionActive(connectionId: string): boolean {
+    return !this.disconnectedIds.has(connectionId);
+  }
+
+  markDatabaseConnectionActive(connectionId: string): void {
+    this.disconnectedIds.delete(connectionId);
+  }
+
+  async connectToDatabase(connectionId: string): Promise<boolean> {
+    if (!this.python) {
+      vscode.window.showErrorMessage("SQL Studio backend is not available.");
+      return false;
+    }
+    const conn = await this.getConnectionWithSecret(connectionId);
+    if (!conn) {
+      vscode.window.showErrorMessage("Connection not found.");
+      return false;
+    }
+    try {
+      await this.python.request(
+        "connection/connect",
+        { connection: toRpcConnection(conn) },
+        { timeoutMs: 20_000 }
+      );
+      this.markDatabaseConnectionActive(connectionId);
+      return true;
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      vscode.window.showErrorMessage(`Connection failed: ${msg}`);
+      return false;
+    }
+  }
+
   async disconnectFromDatabase(connectionId: string): Promise<void> {
     if (!this.python) {
       return;
     }
     await this.python.request("connection/disconnect", { connectionId });
+    this.disconnectedIds.add(connectionId);
   }
 }
