@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useRef } from "react";
 import {
   DbmlErDiagram,
   type DbmlErDiagramHandle,
@@ -17,8 +17,6 @@ function encodeDbmlForDbdiagram(dbml: string): string {
 
 export function ErDiagramView({ init }: Props) {
   const diagramRef = useRef<DbmlErDiagramHandle>(null);
-  const [zoomPercent, setZoomPercent] = useState(100);
-  const [isFitView, setIsFitView] = useState(true);
   const vscode = getVsCodeApi();
 
   if (init.table_count === 0) {
@@ -47,12 +45,6 @@ export function ErDiagramView({ init }: Props) {
 
   const resetView = (): void => {
     diagramRef.current?.fitView();
-    setIsFitView(true);
-  };
-
-  const handleViewportChange = (nextZoom: number, fit: boolean): void => {
-    setZoomPercent(nextZoom);
-    setIsFitView(fit);
   };
 
   return (
@@ -62,16 +54,13 @@ export function ErDiagramView({ init }: Props) {
           <h1>ER diagram — {init.scope}</h1>
           <p className="er-diagram__meta">
             {init.table_count} tables · {init.relationship_count} relationships · scroll to pan ·
-            pinch or Ctrl+scroll to zoom · drag tables · autofit on open
-            {!isFitView ? ` · ${zoomPercent}%` : ""}
+            pinch or Ctrl+scroll to zoom · drag tables
           </p>
         </div>
         <div className="er-diagram__actions">
-          {!isFitView && (
-            <button type="button" className="er-diagram__btn er-diagram__btn--secondary" onClick={resetView}>
-              Fit to view
-            </button>
-          )}
+          <button type="button" className="er-diagram__btn er-diagram__btn--secondary" onClick={resetView}>
+            Fit to view
+          </button>
           <button type="button" className="er-diagram__btn er-diagram__btn--secondary" onClick={openInDbdiagram}>
             Open in dbdiagram.io
           </button>
@@ -81,11 +70,7 @@ export function ErDiagramView({ init }: Props) {
         </div>
       </header>
       <div className="er-diagram__viewport er-diagram__viewport--flow">
-        <DbmlErDiagram
-          ref={diagramRef}
-          dbml={init.dbml}
-          onViewportChange={handleViewportChange}
-        />
+        <DbmlErDiagram ref={diagramRef} dbml={init.dbml} />
       </div>
     </div>
   );

@@ -1,14 +1,19 @@
 import {
   forwardRef,
+  memo,
   useCallback,
   useEffect,
   useImperativeHandle,
   useMemo,
+  useRef,
 } from "react";
 import {
   Background,
+  Controls,
   ReactFlow,
   ReactFlowProvider,
+  useEdgesState,
+  useNodesState,
   useReactFlow,
   type Edge,
   type Node,
@@ -23,82 +28,87 @@ import type { TableNodeData } from "./types";
 const nodeTypes = { tableNode: TableNode };
 const edgeTypes = { columnEdge: ColumnEdge };
 
+const FIT_VIEW_OPTIONS = { padding: 0.12 } as const;
+
 export interface DbmlErDiagramHandle {
   fitView: () => void;
-  getZoomPercent: () => number;
-  isFitView: () => boolean;
 }
 
 interface InnerProps {
   dbml: string;
-  onReady?: () => void;
-  onViewportChange?: (zoomPercent: number, isFit: boolean) => void;
 }
 
 function DbmlErDiagramInner(
-  { dbml, onReady, onViewportChange }: InnerProps,
+  { dbml }: InnerProps,
   ref: React.ForwardedRef<DbmlErDiagramHandle>
 ) {
-  const { fitView, getZoom } = useReactFlow();
+  const { fitView } = useReactFlow();
+  const fitDbmlRef = useRef<string | null>(null);
 
-  const { nodes, edges, parseError } = useMemo(() => {
+  const { layoutNodes, layoutEdges, parseError } = useMemo(() => {
     try {
       const schema = parseDbml(dbml);
       const graph = buildGraph(schema);
       return {
         parseError: null as string | null,
-        nodes: layoutGraph(graph.nodes, graph.edges),
-        edges: graph.edges,
+        layoutNodes: layoutGraph(graph.nodes, graph.edges),
+        layoutEdges: graph.edges,
       };
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
       return {
         parseError: message,
-        nodes: [] as Node<TableNodeData>[],
-        edges: [] as Edge[],
+        layoutNodes: [] as Node<TableNodeData>[],
+        layoutEdges: [] as Edge[],
       };
     }
   }, [dbml]);
 
-  const notifyViewport = useCallback(() => {
-    const zoom = getZoom();
-    onViewportChange?.(Math.round(zoom * 100), false);
-  }, [getZoom, onViewportChange]);
+  const [nodes, setNodes, onNodesChange] = useNodesState(layoutNodes);
+  const [edges, setEdges, onEdgesChange] = useEdgesState(layoutEdges);
 
-  const handleFitView = useCallback(() => {
-    fitView({ padding: 0.12, duration: 200 });
-    window.setTimeout(() => {
-      onViewportChange?.(Math.round(getZoom() * 100), true);
-    }, 220);
-  }, [fitView, getZoom, onViewportChange]);
+  useEffect(() => {
+    fitDbmlRef.current = null;
+    setNodes(layoutNodes);
+    setEdges(layoutEdges);
+  }, [dbml, layoutNodes, layoutEdges, setNodes, setEdges]);
+
+  const runFitView = useCallback(
+    (duration: number) => {
+      void fitView({ ...FIT_VIEW_OPTIONS, duration });
+    },
+    [fitView]
+  );
 
   useImperativeHandle(
     ref,
     () => ({
-      fitView: handleFitView,
-      getZoomPercent: () => Math.round(getZoom() * 100),
-      isFitView: () => false,
+      fitView: () => runFitView(200),
     }),
-    [getZoom, handleFitView]
+    [runFitView]
   );
 
   useEffect(() => {
-    if (nodes.length === 0) {
+    if (parseError || layoutNodes.length === 0) {
       return;
     }
-    const frame = requestAnimationFrame(() => {
-      fitView({ padding: 0.12, duration: 0 });
-      onReady?.();
-      onViewportChange?.(Math.round(getZoom() * 100), true);
-    });
-    return () => cancelAnimationFrame(frame);
-  }, [nodes, edges, dbml, fitView, getZoom, onReady, onViewportChange]);
+    if (fitDbmlRef.current === dbml) {
+      return;
+    }
+    fitDbmlRef.current = dbml;
+
+    const timeout = window.setTimeout(() => {
+      runFitView(0);
+    }, 64);
+
+    return () => window.clearTimeout(timeout);
+  }, [dbml, layoutNodes.length, parseError, runFitView]);
 
   if (parseError) {
     return <div className="er-diagram__error">{parseError}</div>;
   }
 
-  if (nodes.length === 0) {
+  if (layoutNodes.length === 0) {
     return <div className="er-diagram__error">No tables found in DBML.</div>;
   }
 
@@ -106,6 +116,8 @@ function DbmlErDiagramInner(
     <ReactFlow
       nodes={nodes}
       edges={edges}
+      onNodesChange={onNodesChange}
+      onEdgesChange={onEdgesChange}
       nodeTypes={nodeTypes}
       edgeTypes={edgeTypes}
       fitView={false}
@@ -119,11 +131,14 @@ function DbmlErDiagramInner(
       nodesConnectable={false}
       nodesDraggable
       proOptions={{ hideAttribution: true }}
-      onMoveEnd={notifyViewport}
-      onPaneClick={notifyViewport}
       className="dbml-er-flow"
     >
       <Background gap={20} size={1} className="dbml-er-flow__background" />
+      <Controls
+        showInteractive={false}
+        fitViewOptions={FIT_VIEW_OPTIONS}
+        position="bottom-right"
+      />
     </ReactFlow>
   );
 }
@@ -132,16 +147,16 @@ const DbmlErDiagramInnerWithRef = forwardRef(DbmlErDiagramInner);
 
 export interface DbmlErDiagramProps {
   dbml: string;
-  onReady?: () => void;
-  onViewportChange?: (zoomPercent: number, isFit: boolean) => void;
 }
 
-export const DbmlErDiagram = forwardRef<DbmlErDiagramHandle, DbmlErDiagramProps>(
-  function DbmlErDiagram(props, ref) {
+const DbmlErDiagramBody = forwardRef<DbmlErDiagramHandle, DbmlErDiagramProps>(
+  function DbmlErDiagramBody(props, ref) {
     return (
       <ReactFlowProvider>
-        <DbmlErDiagramInnerWithRef ref={ref} {...props} />
+        <DbmlErDiagramInnerWithRef ref={ref} dbml={props.dbml} />
       </ReactFlowProvider>
     );
   }
 );
+
+export const DbmlErDiagram = memo(DbmlErDiagramBody);
