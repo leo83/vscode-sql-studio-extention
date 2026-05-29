@@ -41,7 +41,7 @@ export interface ColumnEdgeData {
   [key: string]: unknown;
 }
 
-export const TABLE_WIDTH = 280;
+export const TABLE_WIDTH = 360;
 export const TABLE_HEADER_HEIGHT = 36;
 export const TABLE_ROW_HEIGHT = 28;
 export const TABLE_PADDING_BOTTOM = 4;

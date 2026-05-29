@@ -1548,9 +1548,8 @@ button.secondary {
 }
 
 .dbml-table__row {
-  position: relative;
   display: grid;
-  grid-template-columns: 18px 1fr auto auto;
+  grid-template-columns: 18px minmax(0, 1fr) minmax(0, 110px) auto;
   gap: 6px;
   align-items: center;
   min-height: 28px;
@@ -1567,15 +1566,17 @@ button.secondary {
 
 .dbml-table__col-name {
   color: var(--vscode-foreground);
-  overflow: hidden;
-  text-overflow: ellipsis;
   white-space: nowrap;
+  min-width: 0;
 }
 
 .dbml-table__col-type {
   color: var(--vscode-descriptionForeground, #999);
   font-size: 11px;
   white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
 }
 
 .dbml-table__badge {
@@ -1597,10 +1598,9 @@ button.secondary {
   opacity: 0;
 }
 
-.dbml-edge__crow,
-.dbml-edge__bar {
-  stroke: var(--vscode-textLink-foreground, #6cb6ff);
-  stroke-width: 1.5;
+.dbml-edge__arrow {
+  fill: var(--vscode-textLink-foreground, #6cb6ff);
+  stroke: none;
   pointer-events: none;
 }
 

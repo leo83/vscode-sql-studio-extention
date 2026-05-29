@@ -6,31 +6,8 @@ import {
 } from "@xyflow/react";
 import type { ColumnEdgeData } from "./types";
 
-function CrowFoot({ x, y, direction }: { x: number; y: number; direction: "left" | "right" }) {
-  const sign = direction === "right" ? 1 : -1;
-  const points = [
-    `${x},${y}`,
-    `${x + sign * 10},${y - 6}`,
-    `${x + sign * 10},${y + 6}`,
-    `${x},${y}`,
-    `${x + sign * 14},${y - 10}`,
-    `${x + sign * 14},${y}`,
-    `${x + sign * 14},${y + 10}`,
-  ].join(" ");
-  return <polyline points={points} className="dbml-edge__crow" fill="none" />;
-}
-
-function OneBar({ x, y }: { x: number; y: number }) {
-  return (
-    <line
-      x1={x}
-      y1={y - 8}
-      x2={x}
-      y2={y + 8}
-      className="dbml-edge__bar"
-      strokeWidth={2}
-    />
-  );
+function arrowMarkerId(edgeId: string): string {
+  return `dbml-arrow-${edgeId.replace(/[^a-zA-Z0-9_-]/g, "_")}`;
 }
 
 export function ColumnEdge({
@@ -41,7 +18,6 @@ export function ColumnEdge({
   targetY,
   sourcePosition,
   targetPosition,
-  data,
 }: EdgeProps<Edge<ColumnEdgeData>>) {
   const [edgePath] = getSmoothStepPath({
     sourceX,
@@ -53,23 +29,25 @@ export function ColumnEdge({
     borderRadius: 0,
   });
 
-  const manySide = data?.manySide ?? "source";
-  const manyAtSource = manySide === "source";
+  const markerId = arrowMarkerId(id);
 
   return (
     <g className="dbml-edge">
-      <BaseEdge id={id} path={edgePath} />
-      {manyAtSource ? (
-        <>
-          <CrowFoot x={sourceX} y={sourceY} direction="right" />
-          <OneBar x={targetX} y={targetY} />
-        </>
-      ) : (
-        <>
-          <OneBar x={sourceX} y={sourceY} />
-          <CrowFoot x={targetX} y={targetY} direction="left" />
-        </>
-      )}
+      <defs>
+        <marker
+          id={markerId}
+          viewBox="0 -5 10 10"
+          refX={10}
+          refY={0}
+          markerWidth={8}
+          markerHeight={8}
+          orient="auto"
+          markerUnits="userSpaceOnUse"
+        >
+          <path d="M0,-5 L10,0 L0,5 Z" className="dbml-edge__arrow" />
+        </marker>
+      </defs>
+      <BaseEdge id={id} path={edgePath} markerEnd={`url(#${markerId})`} />
     </g>
   );
 }

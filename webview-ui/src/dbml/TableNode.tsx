@@ -33,8 +33,12 @@ export function TableNode({ data }: NodeProps<Node<TableNodeData>>) {
               <span className="dbml-table__icon" aria-hidden="true">
                 {column.isPk ? "🔑" : column.isFk ? "🔗" : ""}
               </span>
-              <span className="dbml-table__col-name">{column.name}</span>
-              <span className="dbml-table__col-type">{column.dataType}</span>
+              <span className="dbml-table__col-name" title={column.name}>
+                {column.name}
+              </span>
+              <span className="dbml-table__col-type" title={column.dataType}>
+                {column.dataType}
+              </span>
               {column.isNotNull ? <span className="dbml-table__badge">NN</span> : null}
             </div>
           );
