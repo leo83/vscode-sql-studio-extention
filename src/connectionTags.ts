@@ -124,41 +124,15 @@ export function formatTagsBracketPlain(tags: ConnectionTag[] | undefined): strin
   return normalized.map(formatTagBracketPlain).join(" ");
 }
 
-/** Colored dot per palette — plain text, always visible in TreeItem.description. */
-const TAG_EMOJI_BY_PALETTE_ID: Record<string, string> = {
-  blue: "🔵",
-  green: "🟢",
-  orange: "🟠",
-  red: "🔴",
-  purple: "🟣",
-  teal: "🔷",
-  yellow: "🟡",
-  pink: "🩷",
-  indigo: "🟣",
-  lime: "🟢",
-  brown: "🟤",
-  gray: "⚪",
-};
-
-export function tagMarkerForColor(color: string): string {
-  if (isCustomTagColor(color)) {
-    return "●";
-  }
-  return TAG_EMOJI_BY_PALETTE_ID[color] ?? "●";
-}
-
-/** Explorer description: tag markers + endpoint (right of connection name). */
+/** Explorer description: [tag] brackets + endpoint (right of connection name). */
 export function formatConnectionExplorerDescription(
   tags: ConnectionTag[] | undefined,
   endpoint: string
 ): string {
-  const normalized = normalizeTags(tags);
-  if (normalized.length === 0) {
+  const tagPart = formatTagsBracketPlain(tags);
+  if (!tagPart) {
     return endpoint;
   }
-  const tagPart = normalized
-    .map((tag) => `${tagMarkerForColor(tag.color)} ${tag.name}`)
-    .join("  ");
   return `${tagPart}  ${endpoint}`;
 }
 
