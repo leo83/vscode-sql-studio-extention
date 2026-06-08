@@ -554,8 +554,7 @@ export class QueryRunner {
       const picked = await vscode.window.showWarningMessage(
         `Unbounded SELECT without WHERE may scan large tables:\n${detail}`,
         { modal: true },
-        "Run anyway",
-        "Cancel"
+        "Run anyway"
       );
       return picked === "Run anyway";
     } catch {
