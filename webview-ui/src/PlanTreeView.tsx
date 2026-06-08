@@ -61,12 +61,16 @@ function PlanTreeNode({ node, depth, searchQuery, defaultExpanded }: TreeNodePro
         <span className={`plan-kind-badge plan-kind-${category}`}>{node.kind}</span>
         <div className="plan-tree-main">
           <div className="plan-tree-title">
-            {highlightText(node.title, searchQuery)}
+            <span className="plan-tree-title-text" title={node.title}>
+              {highlightText(node.title, searchQuery)}
+            </span>
             {fullScan ? <span className="plan-tag plan-tag-warning">full scan</span> : null}
             {expensive ? <span className="plan-tag plan-tag-danger">expensive</span> : null}
           </div>
           {node.subtitle ? (
-            <div className="plan-tree-subtitle">{highlightText(node.subtitle, searchQuery)}</div>
+            <div className="plan-tree-subtitle" title={node.subtitle}>
+              {highlightText(node.subtitle, searchQuery)}
+            </div>
           ) : null}
         </div>
         {node.metrics?.length ? (

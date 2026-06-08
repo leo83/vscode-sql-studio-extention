@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { PlanTableView } from "./PlanTableView";
 import { PlanTreeView } from "./PlanTreeView";
 import {
@@ -6,6 +6,7 @@ import {
   defaultPlanViewMode,
   filterPlanTree,
   planTreeToJson,
+  planTreeToMarkdown,
 } from "./planTreeUtils";
 import { ResultsTable } from "./ResultsTable";
 import type { StatementResult } from "./types";
@@ -35,6 +36,25 @@ export function ExplainPlanView({ result }: Props) {
   const [expandAllSignal, setExpandAllSignal] = useState(0);
   const [collapseAllSignal, setCollapseAllSignal] = useState(0);
   const [copyMessage, setCopyMessage] = useState<string | null>(null);
+  const [contextMenu, setContextMenu] = useState<{ x: number; y: number } | null>(null);
+
+  useEffect(() => {
+    if (!contextMenu) {
+      return;
+    }
+    const closeMenu = () => setContextMenu(null);
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        closeMenu();
+      }
+    };
+    window.addEventListener("click", closeMenu);
+    window.addEventListener("keydown", onKeyDown);
+    return () => {
+      window.removeEventListener("click", closeMenu);
+      window.removeEventListener("keydown", onKeyDown);
+    };
+  }, [contextMenu]);
 
   const filteredTree = useMemo(
     () => filterPlanTree(result.plan_tree ?? [], searchQuery),
@@ -47,8 +67,41 @@ export function ExplainPlanView({ result }: Props) {
     window.setTimeout(() => setCopyMessage(null), 1500);
   };
 
+  const handleContextMenu = (event: React.MouseEvent) => {
+    event.preventDefault();
+    event.stopPropagation();
+    setContextMenu({
+      x: event.clientX,
+      y: event.clientY,
+    });
+  };
+
+  const handleCopyAsMd = async () => {
+    setContextMenu(null);
+    if (result.plan_tree) {
+      const md = planTreeToMarkdown(result.plan_tree);
+      await copyText(md);
+      showCopyMessage("MD copied");
+    } else {
+      const md = "```\n" + planText + "\n```";
+      await copyText(md);
+      showCopyMessage("MD copied");
+    }
+  };
+
+  const handleCopyAsJson = async () => {
+    setContextMenu(null);
+    if (result.plan_tree) {
+      const json = planTreeToJson(result.plan_tree);
+      await copyText(json);
+      showCopyMessage("JSON copied");
+    } else {
+      showCopyMessage("No JSON plan");
+    }
+  };
+
   return (
-    <div className="explain-plan">
+    <div className="explain-plan" onContextMenu={handleContextMenu}>
       <div className="explain-plan-header">
         <span className="explain-plan-title">Execution plan</span>
         <span className="explain-plan-meta">
@@ -167,6 +220,22 @@ export function ExplainPlanView({ result }: Props) {
         ) : null}
         {viewMode === "raw" ? <pre className="explain-plan-text">{planText}</pre> : null}
       </div>
+      {contextMenu ? (
+        <div
+          className="row-context-menu"
+          style={{ top: contextMenu.y, left: contextMenu.x }}
+          onClick={(event) => event.stopPropagation()}
+        >
+          <button type="button" onClick={() => void handleCopyAsMd()}>
+            <span>Copy plan as MD</span>
+          </button>
+          {hasTree ? (
+            <button type="button" onClick={() => void handleCopyAsJson()}>
+              <span>Copy plan as JSON</span>
+            </button>
+          ) : null}
+        </div>
+      ) : null}
     </div>
   );
 }

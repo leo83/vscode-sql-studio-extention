@@ -6,6 +6,7 @@ import {
   flattenPlanTree,
   getPlanKindCategory,
   nodeMatchesSearch,
+  planTreeToMarkdown,
 } from "./planTreeUtils";
 import type { PlanNode } from "./types";
 
@@ -61,5 +62,11 @@ describe("planTreeUtils", () => {
     expect(defaultPlanViewMode("tree", true, false)).toBe("tree");
     expect(defaultPlanViewMode("table", true, true)).toBe("table");
     expect(defaultPlanViewMode("text", false, false)).toBe("raw");
+  });
+
+  it("converts plan tree to markdown", () => {
+    const markdown = planTreeToMarkdown(sampleTree);
+    expect(markdown).toContain("- **Limit**");
+    expect(markdown).toContain("  - **ReadFromMergeTree** (robotisation.message) [full_scan] *(Est. rows: 1000)*");
   });
 });

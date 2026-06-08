@@ -118,6 +118,32 @@ export function planTreeToJson(nodes: PlanNode[]): string {
   return JSON.stringify(nodes, null, 2);
 }
 
+export function planTreeToMarkdown(nodes: PlanNode[], indent = 0): string {
+  const lines: string[] = [];
+  const prefix = "  ".repeat(indent);
+  for (const node of nodes) {
+    let line = `${prefix}- **${node.kind}**`;
+    if (node.title && node.title !== node.kind) {
+      line += ` ${node.title}`;
+    }
+    if (node.subtitle) {
+      line += ` (${node.subtitle})`;
+    }
+    if (node.tags?.length) {
+      line += ` [${node.tags.join(", ")}]`;
+    }
+    if (node.metrics?.length) {
+      const metricsStr = node.metrics.map((m) => `${m.label}: ${m.value}`).join(", ");
+      line += ` *(${metricsStr})*`;
+    }
+    lines.push(line);
+    if (node.children?.length) {
+      lines.push(planTreeToMarkdown(node.children, indent + 1));
+    }
+  }
+  return lines.join("\n");
+}
+
 export function defaultPlanViewMode(
   planFormat: string | null | undefined,
   hasTree: boolean,
