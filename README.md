@@ -1,6 +1,5 @@
 # SQL Studio
 
-[![CI](https://github.com/levragulin/cursor-sql-studio/actions/workflows/ci.yml/badge.svg)](https://github.com/levragulin/cursor-sql-studio/actions/workflows/ci.yml)
 [![License: Beerware](https://img.shields.io/badge/License-Beerware-blue.svg)](LICENSE)
 [![VS Code](https://img.shields.io/badge/VS%20Code-1.85%2B-blue)](https://code.visualstudio.com/)
 
