@@ -9,14 +9,25 @@ interface Props {
 
 export function QueryError({ error, compact = false }: Props) {
   const parsed = useMemo(() => parseQueryError(error), [error]);
-  const [copied, setCopied] = useState(false);
+  const [copiedError, setCopiedError] = useState(false);
+  const [copiedFull, setCopiedFull] = useState(false);
   const stackLines = parsed.stackTrace?.split("\n").length ?? 0;
 
-  const handleCopy = async () => {
+  const handleCopyError = async () => {
+    try {
+      await navigator.clipboard.writeText(parsed.message);
+      setCopiedError(true);
+      window.setTimeout(() => setCopiedError(false), 2000);
+    } catch {
+      getVsCodeApi()?.postMessage({ type: "copyError", text: parsed.message });
+    }
+  };
+
+  const handleCopyFull = async () => {
     try {
       await navigator.clipboard.writeText(parsed.raw);
-      setCopied(true);
-      window.setTimeout(() => setCopied(false), 2000);
+      setCopiedFull(true);
+      window.setTimeout(() => setCopiedFull(false), 2000);
     } catch {
       getVsCodeApi()?.postMessage({ type: "copyError", text: parsed.raw });
     }
@@ -27,16 +38,26 @@ export function QueryError({ error, compact = false }: Props) {
       {!compact ? (
         <div className="query-error-header">
           <span className="query-error-title">Query failed</span>
-          <button type="button" className="secondary" onClick={handleCopy}>
-            {copied ? "Copied" : "Copy error"}
-          </button>
+          <div className="query-error-actions">
+            <button type="button" className="secondary" onClick={handleCopyError}>
+              {copiedError ? "Copied" : "Copy error"}
+            </button>
+            <button type="button" className="secondary" onClick={handleCopyFull}>
+              {copiedFull ? "Copied" : "Copy full message"}
+            </button>
+          </div>
         </div>
       ) : (
         <div className="query-error-header">
           <span className="query-error-title">Failed</span>
-          <button type="button" className="secondary" onClick={handleCopy}>
-            {copied ? "Copied" : "Copy"}
-          </button>
+          <div className="query-error-actions">
+            <button type="button" className="secondary" onClick={handleCopyError}>
+              {copiedError ? "Copied" : "Copy"}
+            </button>
+            <button type="button" className="secondary" onClick={handleCopyFull}>
+              {copiedFull ? "Copied" : "Copy full"}
+            </button>
+          </div>
         </div>
       )}
 

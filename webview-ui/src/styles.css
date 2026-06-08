@@ -542,6 +542,11 @@ tbody tr:hover:not(.row-selected) td.row-num {
   gap: 12px;
 }
 
+.query-error-actions {
+  display: flex;
+  gap: 8px;
+}
+
 .query-error-title {
   font-size: 1.05em;
   font-weight: 600;

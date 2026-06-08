@@ -3,6 +3,7 @@ export interface ParsedQueryError {
   code: string | null;
   hint: string | null;
   stackTrace: string | null;
+  message: string;
   raw: string;
 }
 
@@ -10,7 +11,7 @@ export interface ParsedQueryError {
 export function parseQueryError(raw: string): ParsedQueryError {
   const text = raw.trim();
   if (!text) {
-    return { summary: "Unknown error", code: null, hint: null, stackTrace: null, raw };
+    return { summary: "Unknown error", code: null, hint: null, stackTrace: null, message: "Unknown error", raw };
   }
 
   const stackStart = findStackTraceStart(text);
@@ -32,15 +33,20 @@ export function parseQueryError(raw: string): ParsedQueryError {
     .replace(/\s*\(version[^)]*\)\s*$/i, "")
     .trim();
 
+  summary = summary.replace(/\.?\s*Stack trace:?\s*$/i, "").trim();
+
   if (!summary) {
-    summary = summaryPart;
+    summary = summaryPart.replace(/\.?\s*Stack trace:?\s*$/i, "").trim();
   }
+
+  const message = summaryPart.replace(/\.?\s*Stack trace:?\s*$/i, "").trim();
 
   return {
     summary,
     code,
     hint,
     stackTrace: stackPart && stackPart.length > 0 ? stackPart : null,
+    message,
     raw: text,
   };
 }
