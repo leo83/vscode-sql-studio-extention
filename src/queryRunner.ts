@@ -4,9 +4,11 @@ import { PythonClient } from "./pythonClient";
 import { ResultsPanel } from "./webview/resultsPanel";
 import {
   buildPreviewSql,
+  getFetchMode,
   getLargeTableRowThreshold,
   getPreviewRowLimit,
   getQueryRowLimit,
+  getServerPageSize,
   isLargeUnboundedSelectWarningEnabled,
   getSessionStatementsBeforeOffset,
   getStatementAtPosition,
@@ -157,13 +159,16 @@ export class QueryRunner {
     if (!(await this.ensureActiveDatabaseConnection(conn))) {
       return undefined;
     }
+    const fetchMode = getFetchMode();
+    const limit = fetchMode === "server" ? getServerPageSize() : getQueryRowLimit();
     return this.executeWithConnection(
       conn,
       sql,
       title ?? conn.name,
-      getQueryRowLimit(),
+      limit,
       options?.showResults !== false,
-      options?.leadingSessionCount
+      options?.leadingSessionCount,
+      fetchMode === "server" ? limit : undefined
     );
   }
 
@@ -417,7 +422,8 @@ export class QueryRunner {
     title: string,
     limit: number,
     showResults = true,
-    leadingSessionCount = 0
+    leadingSessionCount = 0,
+    serverPageSize?: number
   ): Promise<QueryExecutePayload | undefined> {
     const shouldRun = await this.confirmUnboundedLargeTableScan(conn, sql);
     if (!shouldRun) {
@@ -446,6 +452,7 @@ export class QueryRunner {
             connection: toRpcConnection(conn),
             sql,
             limit,
+            ...(serverPageSize !== undefined ? { offset: 0 } : {}),
           });
 
           token.onCancellationRequested(() => {
@@ -460,14 +467,39 @@ export class QueryRunner {
             if (leadingSessionCount > 0) {
               result = this.trimLeadingSessionResults(result, leadingSessionCount);
             }
-            if (showResults) {
-              await this.results.show(result, title);
-            }
-            const truncated = result.statements.some((s) => s.truncated);
-            if (truncated) {
-              vscode.window.showInformationMessage(
-                `Results truncated to ${limit} rows.`
-              );
+            const isServerMode =
+              serverPageSize !== undefined &&
+              result.statements.length === 1 &&
+              !result.statements[0].error;
+            if (isServerMode) {
+              result = { ...result, fetch_mode: "server", server_page_size: serverPageSize };
+              const maxOffset = getQueryRowLimit();
+              const fetchPageCallback = async (
+                offset: number
+              ): Promise<QueryExecutePayload | undefined> => {
+                if (offset >= maxOffset) {
+                  return undefined;
+                }
+                return this.python.request<QueryExecutePayload>("query/execute", {
+                  connection: toRpcConnection(conn),
+                  sql,
+                  limit: serverPageSize,
+                  offset,
+                });
+              };
+              if (showResults) {
+                await this.results.show(result, title, fetchPageCallback);
+              }
+            } else {
+              if (showResults) {
+                await this.results.show(result, title);
+              }
+              const truncated = result.statements.some((s) => s.truncated);
+              if (truncated) {
+                vscode.window.showInformationMessage(
+                  `Results truncated to ${limit} rows.`
+                );
+              }
             }
           } catch (err) {
             if (cancelled || token.isCancellationRequested || this.isCancelledError(err)) {

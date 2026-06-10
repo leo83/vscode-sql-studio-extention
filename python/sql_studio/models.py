@@ -93,6 +93,8 @@ class QueryResult(BaseModel):
     truncated: bool = False
     error: str | None = None
     status_message: str | None = None
+    has_more: bool = False
+    page_offset: int = 0
 
 
 class StatementResult(QueryResult):

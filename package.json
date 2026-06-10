@@ -629,6 +629,22 @@
           "type": "boolean",
           "default": false,
           "description": "PostgreSQL only: run EXPLAIN ANALYZE (executes the query and includes actual timings). Other dialects ignore this setting."
+        },
+        "sqlStudio.fetchMode": {
+          "type": "string",
+          "enum": ["server", "client"],
+          "default": "server",
+          "enumDescriptions": [
+            "Fetch one page at a time from the backend (reduces initial data transfer).",
+            "Fetch all rows at once and paginate in the browser (legacy behavior)."
+          ],
+          "description": "How query results are loaded: page-by-page from the backend ('server'), or all rows at once ('client')."
+        },
+        "sqlStudio.serverPageSize": {
+          "type": "number",
+          "default": 500,
+          "minimum": 50,
+          "description": "Rows per page when sqlStudio.fetchMode is 'server'."
         }
       }
     }

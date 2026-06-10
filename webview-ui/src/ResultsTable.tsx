@@ -15,10 +15,29 @@ import { analyzeColumns, computeColumnSizes, ROW_NUM_COLUMN_WIDTH } from "./resu
 import type { QueryResult } from "./types";
 import { getVsCodeApi } from "./vscodeApi";
 
+interface ColumnFilter {
+  column: string;
+  value: string;
+}
+
+function parseColumnFilters(input: string): ColumnFilter[] | null {
+  const trimmed = input.trim();
+  if (!trimmed.includes("=")) return null;
+  const parts = trimmed.split(/\s+AND\s+/i);
+  const filters: ColumnFilter[] = [];
+  for (const part of parts) {
+    const m = part.trim().match(/^(\w+)=(?:"([^"]*)"|(.*))$/);
+    if (!m) return null;
+    filters.push({ column: m[1], value: (m[2] ?? m[3] ?? "").trim() });
+  }
+  return filters.length > 0 ? filters : null;
+}
+
 interface Props {
   result: QueryResult;
   embedded?: boolean;
   showToolbar?: boolean;
+  fetchMode?: "server" | "client";
 }
 
 function rowToJson(row: Record<string, unknown>): string {
@@ -56,7 +75,7 @@ interface ContextMenuState {
   columnId: string | null;
 }
 
-export function ResultsTable({ result, embedded = false, showToolbar = true }: Props) {
+export function ResultsTable({ result, embedded = false, showToolbar = true, fetchMode }: Props) {
   const [globalFilter, setGlobalFilter] = useState("");
   const [sorting, setSorting] = useState<SortingState>([]);
   const [columnSizing, setColumnSizing] = useState<ColumnSizingState>({});
@@ -86,6 +105,21 @@ export function ResultsTable({ result, embedded = false, showToolbar = true }: P
       }),
     [result.rows, columnNames]
   );
+
+  const colFilters = useMemo(() => parseColumnFilters(globalFilter), [globalFilter]);
+
+  const displayData = useMemo(() => {
+    if (!colFilters) return data;
+    return data.filter((row) =>
+      colFilters.every(({ column, value }) => {
+        const cellValue = row[column];
+        if (cellValue === null || cellValue === undefined) {
+          return value.toLowerCase() === "null" || value === "";
+        }
+        return String(cellValue).toLowerCase().includes(value.toLowerCase());
+      })
+    );
+  }, [data, colFilters]);
 
   const numericColumnNames = useMemo(() => {
     const analyzed = analyzeColumns(data, result.columns);
@@ -133,10 +167,12 @@ export function ResultsTable({ result, embedded = false, showToolbar = true }: P
     [columnNames, defaultColumnSizing]
   );
 
+  const columnNamesKey = useMemo(() => columnNames.join(","), [columnNames]);
+
   const table = useReactTable({
-    data,
+    data: displayData,
     columns,
-    state: { globalFilter, sorting, columnSizing },
+    state: { globalFilter: colFilters ? "" : globalFilter, sorting, columnSizing },
     onGlobalFilterChange: setGlobalFilter,
     onSortingChange: setSorting,
     onColumnSizingChange: setColumnSizing,
@@ -149,18 +185,23 @@ export function ResultsTable({ result, embedded = false, showToolbar = true }: P
     getCoreRowModel: getCoreRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
     getSortedRowModel: getSortedRowModel(),
-    getPaginationRowModel: getPaginationRowModel(),
-    initialState: { pagination: { pageSize: 100 } },
+    ...(fetchMode !== "server"
+      ? { getPaginationRowModel: getPaginationRowModel(), initialState: { pagination: { pageSize: 100 } } }
+      : {}),
   });
 
   const { pageIndex, pageSize } = table.getState().pagination;
   const rows = table.getRowModel().rows;
+  const rowNumOffset = fetchMode === "server" ? (result.page_offset ?? 0) : pageIndex * pageSize;
 
   useEffect(() => {
     setSelectedRowId(null);
     setSelectedColumnId(null);
-    setColumnSizing({});
   }, [result]);
+
+  useEffect(() => {
+    setColumnSizing({});
+  }, [columnNamesKey]);
 
   useEffect(() => {
     if (selectedRowId && !rows.some((row) => row.id === selectedRowId)) {
@@ -353,13 +394,13 @@ export function ResultsTable({ result, embedded = false, showToolbar = true }: P
         <div className="toolbar">
           <input
             className="filter"
-            placeholder="Filter all columns..."
+            placeholder="Filter rows... or col=value AND col2=value2"
             value={globalFilter}
             onChange={(e) => setGlobalFilter(e.target.value)}
           />
           <span className="meta">
             {result.row_count} rows · {result.duration_ms.toFixed(1)} ms
-            {result.truncated ? " · truncated" : ""}
+            {result.has_more ? " · more" : result.truncated ? " · truncated" : ""}
           </span>
           <button type="button" onClick={() => getVsCodeApi()?.postMessage({ type: "exportCsv" })}>
             Export CSV
@@ -372,7 +413,7 @@ export function ResultsTable({ result, embedded = false, showToolbar = true }: P
         <div className="table-toolbar">
           <input
             className="filter"
-            placeholder="Filter all columns..."
+            placeholder="Filter rows... or col=value AND col2=value2"
             value={globalFilter}
             onChange={(e) => setGlobalFilter(e.target.value)}
           />
@@ -438,7 +479,7 @@ export function ResultsTable({ result, embedded = false, showToolbar = true }: P
                 onClick={() => selectRow(row)}
                 onContextMenu={(event) => openContextMenu(event, row, null)}
               >
-                <td className="row-num">{pageIndex * pageSize + row.index + 1}</td>
+                <td className="row-num">{rowNumOffset + row.index + 1}</td>
                 {row.getVisibleCells().map((cell) => {
                   const isSelectedCell =
                     row.id === selectedRowId && cell.column.id === selectedColumnId;
@@ -496,27 +537,59 @@ export function ResultsTable({ result, embedded = false, showToolbar = true }: P
           </div>
         ) : null}
       </div>
-      <div className="pagination">
-        <button type="button" onClick={() => table.previousPage()} disabled={!table.getCanPreviousPage()}>
-          Prev
-        </button>
-        <span>
-          Page {table.getState().pagination.pageIndex + 1} of {table.getPageCount()}
-        </span>
-        <button type="button" onClick={() => table.nextPage()} disabled={!table.getCanNextPage()}>
-          Next
-        </button>
-        <select
-          value={table.getState().pagination.pageSize}
-          onChange={(e) => table.setPageSize(Number(e.target.value))}
-        >
-          {[50, 100, 500, 1000].map((n) => (
-            <option key={n} value={n}>
-              {n} / page
-            </option>
-          ))}
-        </select>
-      </div>
+      {fetchMode === "server" ? (
+        <div className="pagination">
+          <button
+            type="button"
+            onClick={() => {
+              const offset = result.page_offset ?? 0;
+              const prevOffset = Math.max(0, offset - (result.row_count || 1));
+              if (offset > 0) {
+                getVsCodeApi()?.postMessage({ type: "fetchPage", offset: prevOffset });
+              }
+            }}
+            disabled={(result.page_offset ?? 0) === 0}
+          >
+            Prev
+          </button>
+          <span>
+            Rows {(result.page_offset ?? 0) + 1}–{(result.page_offset ?? 0) + result.row_count}
+            {result.has_more ? "+" : ""}
+          </span>
+          <button
+            type="button"
+            onClick={() => {
+              const nextOffset = (result.page_offset ?? 0) + result.row_count;
+              getVsCodeApi()?.postMessage({ type: "fetchPage", offset: nextOffset });
+            }}
+            disabled={!result.has_more}
+          >
+            Next
+          </button>
+        </div>
+      ) : (
+        <div className="pagination">
+          <button type="button" onClick={() => table.previousPage()} disabled={!table.getCanPreviousPage()}>
+            Prev
+          </button>
+          <span>
+            Page {table.getState().pagination.pageIndex + 1} of {table.getPageCount()}
+          </span>
+          <button type="button" onClick={() => table.nextPage()} disabled={!table.getCanNextPage()}>
+            Next
+          </button>
+          <select
+            value={table.getState().pagination.pageSize}
+            onChange={(e) => table.setPageSize(Number(e.target.value))}
+          >
+            {[50, 100, 500, 1000].map((n) => (
+              <option key={n} value={n}>
+                {n} / page
+              </option>
+            ))}
+          </select>
+        </div>
+      )}
     </div>
   );
 }

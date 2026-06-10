@@ -13,9 +13,10 @@ type ViewMode = "table" | "chart";
 interface Props {
   result: QueryResult;
   embedded?: boolean;
+  fetchMode?: "server" | "client";
 }
 
-export function ResultsView({ result, embedded = false }: Props) {
+export function ResultsView({ result, embedded = false, fetchMode }: Props) {
   const [viewMode, setViewMode] = useState<ViewMode>("table");
 
   const records = useMemo(() => queryResultToRecords(result), [result]);
@@ -49,7 +50,7 @@ export function ResultsView({ result, embedded = false }: Props) {
         </div>
         <span className="meta">
           {result.row_count} rows · {result.duration_ms.toFixed(1)} ms
-          {result.truncated ? " · truncated" : ""}
+          {result.has_more ? " · more" : result.truncated ? " · truncated" : ""}
         </span>
         <button type="button" onClick={() => getVsCodeApi()?.postMessage({ type: "exportCsv" })}>
           Export CSV
@@ -60,7 +61,7 @@ export function ResultsView({ result, embedded = false }: Props) {
       </div>
 
       {viewMode === "table" ? (
-        <ResultsTable result={result} embedded={embedded} showToolbar={false} />
+        <ResultsTable result={result} embedded={embedded} showToolbar={false} fetchMode={fetchMode} />
       ) : (
         <div className="results-body-only results-chart-host">
           <Suspense fallback={<div className="chart-empty">Loading chart…</div>}>

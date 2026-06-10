@@ -8,6 +8,9 @@ export class ResultsPanel implements vscode.WebviewViewProvider {
   private view: vscode.WebviewView | undefined;
   private lastResult: QueryExecutePayload | undefined;
   private pendingTitle: string | undefined;
+  private fetchPageCallback:
+    | ((offset: number) => Promise<QueryExecutePayload | undefined>)
+    | undefined;
 
   constructor(
     private readonly context: vscode.ExtensionContext,
@@ -51,6 +54,23 @@ export class ResultsPanel implements vscode.WebviewViewProvider {
         } catch {
           // ignore malformed URLs
         }
+      } else if (msg.type === "fetchPage") {
+        const offset = msg.offset as number;
+        if (this.fetchPageCallback && this.view) {
+          try {
+            const pageResult = await this.fetchPageCallback(offset);
+            if (pageResult && this.view) {
+              const enriched: QueryExecutePayload = {
+                ...pageResult,
+                fetch_mode: this.lastResult?.fetch_mode,
+                server_page_size: this.lastResult?.server_page_size,
+              };
+              this.view.webview.postMessage({ type: "pageData", result: enriched });
+            }
+          } catch {
+            // page fetch failed silently
+          }
+        }
       }
     });
     webviewView.onDidDispose(() => {
@@ -63,9 +83,14 @@ export class ResultsPanel implements vscode.WebviewViewProvider {
     }
   }
 
-  async show(result: QueryExecutePayload, title: string): Promise<void> {
+  async show(
+    result: QueryExecutePayload,
+    title: string,
+    onFetchPage?: (offset: number) => Promise<QueryExecutePayload | undefined>
+  ): Promise<void> {
     this.lastResult = result;
     this.pendingTitle = `Results: ${title}`;
+    this.fetchPageCallback = onFetchPage;
 
     await vscode.commands.executeCommand("sqlStudio.results.focus");
 

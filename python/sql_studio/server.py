@@ -167,6 +167,8 @@ class JsonRpcServer:
         config = ConnectionConfig.model_validate(params["connection"])
         sql = params["sql"]
         limit = params.get("limit", 10_000)
+        is_paged = "offset" in params
+        offset = int(params.get("offset", 0))
         dialect = config.dialect
         statements = sqlglot_service.split_statements(sql, dialect)
         if not statements:
@@ -182,7 +184,23 @@ class JsonRpcServer:
                 setter = getattr(driver, "set_active_database", None)
                 if callable(setter):
                     setter(active_database)
-            result = driver.execute(statement, limit=limit)
+            if is_paged:
+                fetch_limit = offset + limit
+                result = driver.execute(statement, limit=fetch_limit + 1)
+                if result.columns and result.error is None:
+                    has_more = len(result.rows) > offset + limit
+                    page_rows = result.rows[offset : offset + limit]
+                    result = result.model_copy(
+                        update={
+                            "rows": page_rows,
+                            "row_count": len(page_rows),
+                            "truncated": False,
+                            "has_more": has_more,
+                            "page_offset": offset,
+                        }
+                    )
+            else:
+                result = driver.execute(statement, limit=limit)
             total_duration_ms += result.duration_ms
             database = parse_use_database(statement)
             if database and not result.error:

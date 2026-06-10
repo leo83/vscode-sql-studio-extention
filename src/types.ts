@@ -53,6 +53,8 @@ export interface QueryResultPayload {
   truncated?: boolean;
   error?: string | null;
   status_message?: string | null;
+  has_more?: boolean;
+  page_offset?: number;
 }
 
 export interface StatementResultPayload extends QueryResultPayload {
@@ -66,6 +68,8 @@ export interface StatementResultPayload extends QueryResultPayload {
 export interface QueryExecutePayload {
   statements: StatementResultPayload[];
   total_duration_ms: number;
+  fetch_mode?: "server" | "client";
+  server_page_size?: number;
 }
 
 export interface LargeTableWarningPayload {

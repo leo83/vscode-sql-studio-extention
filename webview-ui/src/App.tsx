@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import { BatchResults } from "./BatchResults";
 import { ConnectionDialog } from "./ConnectionDialog";
 import { ErDiagramView } from "./ErDiagramView";
@@ -30,7 +31,25 @@ export function App() {
     return <ErDiagramView init={init} />;
   }
 
-  const batch = window.__SQL_STUDIO_RESULT__ as QueryExecuteResult | undefined;
+  return <ResultsApp />;
+}
+
+function ResultsApp() {
+  const [batch, setBatch] = useState<QueryExecuteResult | undefined>(
+    () => window.__SQL_STUDIO_RESULT__ as QueryExecuteResult | undefined
+  );
+
+  useEffect(() => {
+    const handler = (event: MessageEvent) => {
+      const msg = event.data as { type?: string; result?: QueryExecuteResult };
+      if (msg?.type === "pageData" && msg.result) {
+        setBatch(msg.result);
+      }
+    };
+    window.addEventListener("message", handler);
+    return () => window.removeEventListener("message", handler);
+  }, []);
+
   if (!batch?.statements?.length) {
     return <div className="empty">No query results.</div>;
   }
@@ -49,5 +68,5 @@ export function App() {
   if (result.rows.length === 0 && !result.columns.length) {
     return <QueryStatus result={result} />;
   }
-  return <ResultsView result={result} />;
+  return <ResultsView result={result} fetchMode={batch.fetch_mode} />;
 }

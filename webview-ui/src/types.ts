@@ -28,6 +28,8 @@ export interface QueryResult {
   truncated?: boolean;
   error?: string | null;
   status_message?: string | null;
+  has_more?: boolean;
+  page_offset?: number;
 }
 
 export interface StatementResult extends QueryResult {
@@ -41,6 +43,8 @@ export interface StatementResult extends QueryResult {
 export interface QueryExecuteResult {
   statements: StatementResult[];
   total_duration_ms: number;
+  fetch_mode?: "server" | "client";
+  server_page_size?: number;
 }
 
 export type WebviewMode = "results" | "connection" | "diagram";

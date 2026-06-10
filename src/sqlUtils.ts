@@ -54,6 +54,18 @@ export function getLargeTableRowThreshold(): number {
     .get<number>("largeTableRowThreshold", 5000);
 }
 
+export function getFetchMode(): "server" | "client" {
+  return vscode.workspace
+    .getConfiguration("sqlStudio")
+    .get<"server" | "client">("fetchMode", "server");
+}
+
+export function getServerPageSize(): number {
+  return vscode.workspace
+    .getConfiguration("sqlStudio")
+    .get<number>("serverPageSize", 500);
+}
+
 export interface StatementRange {
   start: number;
   end: number;
