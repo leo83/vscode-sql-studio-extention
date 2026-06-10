@@ -80,16 +80,21 @@ export class ResultsPanel implements vscode.WebviewViewProvider {
             .update("fetchMode", "client", vscode.ConfigurationTarget.Global);
         }
         if (this.loadAllCallback && this.view) {
+          const callback = this.loadAllCallback;
           try {
-            const fullResult = await this.loadAllCallback();
+            const fullResult = await vscode.window.withProgress(
+              { location: vscode.ProgressLocation.Notification, title: "Loading all rows…", cancellable: false },
+              () => callback()
+            );
             if (fullResult && this.view) {
               this.lastResult = fullResult;
               this.fetchPageCallback = undefined;
               this.loadAllCallback = undefined;
               this.view.webview.postMessage({ type: "pageData", result: fullResult });
             }
-          } catch {
-            // load all failed silently
+          } catch (err) {
+            const message = err instanceof Error ? err.message : String(err);
+            vscode.window.showErrorMessage(`Failed to load all rows: ${message}`);
           }
         }
       }
