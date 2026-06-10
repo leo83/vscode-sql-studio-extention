@@ -42,6 +42,15 @@ export class ResultsPanel implements vscode.WebviewViewProvider {
           const message = err instanceof Error ? err.message : String(err);
           vscode.window.showErrorMessage(`Failed to copy to clipboard: ${message}`);
         }
+      } else if (msg.type === "openUrl") {
+        try {
+          const uri = vscode.Uri.parse(msg.url as string, true);
+          if (uri.scheme === "http" || uri.scheme === "https") {
+            await vscode.env.openExternal(uri);
+          }
+        } catch {
+          // ignore malformed URLs
+        }
       }
     });
     webviewView.onDidDispose(() => {

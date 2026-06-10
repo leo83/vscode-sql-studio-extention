@@ -112,7 +112,22 @@ export function ResultsTable({ result, embedded = false, showToolbar = true }: P
           if (v === null || v === undefined) {
             return <span className="null-val">NULL</span>;
           }
-          return String(v);
+          const str = String(v);
+          if (str.startsWith("https://") || str.startsWith("http://")) {
+            return (
+              <a
+                href={str}
+                title={str}
+                onClick={(e) => {
+                  e.preventDefault();
+                  getVsCodeApi()?.postMessage({ type: "openUrl", url: str });
+                }}
+              >
+                {str}
+              </a>
+            );
+          }
+          return str;
         },
       })),
     [columnNames, defaultColumnSizing]

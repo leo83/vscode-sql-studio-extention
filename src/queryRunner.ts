@@ -435,7 +435,13 @@ export class QueryRunner {
           title: `Running on ${conn.name}...`,
           cancellable: true,
         },
-        async (_progress, token) => {
+        async (progress, token) => {
+          const startTime = Date.now();
+          const timerInterval = setInterval(() => {
+            const elapsed = Math.floor((Date.now() - startTime) / 1000);
+            progress.report({ message: `${elapsed}s` });
+          }, 1000);
+
           const executePromise = this.python.request<QueryExecutePayload>("query/execute", {
             connection: toRpcConnection(conn),
             sql,
@@ -487,6 +493,8 @@ export class QueryRunner {
               await this.results.show(errorResult, `${title} (error)`);
             }
             vscode.window.showErrorMessage(`Query failed: ${message}`);
+          } finally {
+            clearInterval(timerInterval);
           }
         }
       );
