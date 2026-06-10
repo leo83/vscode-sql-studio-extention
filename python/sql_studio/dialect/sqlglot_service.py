@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import re
+
 import sqlglot
 from sqlglot import parse_one
 
@@ -155,7 +157,8 @@ def _find_statement_ranges(sql: str) -> list[tuple[int, int]]:
 
 
 def _strip_sql_comments(sql: str) -> str:
-    """Fallback when sqlglot cannot parse: remove line comments, keep SQL."""
+    """Remove block comments (/* ... */) and line comments (--) from SQL."""
+    sql = re.sub(r"/\*.*?\*/", "", sql, flags=re.DOTALL)
     lines: list[str] = []
     for line in sql.splitlines():
         trimmed = line.strip()
