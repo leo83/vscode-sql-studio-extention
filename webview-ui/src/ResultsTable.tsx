@@ -82,6 +82,7 @@ export function ResultsTable({ result, embedded = false, showToolbar = true, fet
   const [selectedRowId, setSelectedRowId] = useState<string | null>(null);
   const [selectedColumnId, setSelectedColumnId] = useState<string | null>(null);
   const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(null);
+  const [altOrShiftHeld, setAltOrShiftHeld] = useState(false);
   const tableWrapRef = useRef<HTMLDivElement>(null);
   const copyRowShortcutLabel = useMemo(() => getCopyRowShortcutLabel(), []);
   const copyValueShortcutLabel = useMemo(() => getCopyValueShortcutLabel(), []);
@@ -277,6 +278,21 @@ export function ResultsTable({ result, embedded = false, showToolbar = true, fet
     },
     [rows, selectedRowId, scrollRowIntoView]
   );
+
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.altKey || e.shiftKey) setAltOrShiftHeld(true);
+    };
+    const onKeyUp = (e: KeyboardEvent) => {
+      if (!e.altKey && !e.shiftKey) setAltOrShiftHeld(false);
+    };
+    window.addEventListener("keydown", onKeyDown);
+    window.addEventListener("keyup", onKeyUp);
+    return () => {
+      window.removeEventListener("keydown", onKeyDown);
+      window.removeEventListener("keyup", onKeyUp);
+    };
+  }, []);
 
   useEffect(() => {
     if (!contextMenu) {
@@ -565,6 +581,16 @@ export function ResultsTable({ result, embedded = false, showToolbar = true, fet
             disabled={!result.has_more}
           >
             Next
+          </button>
+          <button
+            type="button"
+            className="load-all-btn"
+            onClick={(e) => {
+              const permanently = e.altKey || e.shiftKey;
+              getVsCodeApi()?.postMessage({ type: "loadAll", permanently });
+            }}
+          >
+            {altOrShiftHeld ? "Always load all rows" : "Load all rows"}
           </button>
         </div>
       ) : (

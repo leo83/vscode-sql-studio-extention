@@ -487,8 +487,15 @@ export class QueryRunner {
                   offset,
                 });
               };
+              const loadAllCallback = async (): Promise<QueryExecutePayload | undefined> => {
+                return this.python.request<QueryExecutePayload>("query/execute", {
+                  connection: toRpcConnection(conn),
+                  sql,
+                  limit: getQueryRowLimit(),
+                });
+              };
               if (showResults) {
-                await this.results.show(result, title, fetchPageCallback);
+                await this.results.show(result, title, fetchPageCallback, loadAllCallback);
               }
             } else {
               if (showResults) {
