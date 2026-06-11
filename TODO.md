@@ -1,6 +1,5 @@
-- [x] Добавить счетчик времени исполнения в окошко "Running ..." которое выводится пока запрос выполняется.
-- [x] Что с Fetch - достается сразу все? Если да то стоит сделать пагинацию
-  - Реализована серверная пагинация (по умолчанию 500 строк/страница, настройка sqlStudio.fetchMode = "server"). Режим "client" = прежнее поведение (всё сразу + пагинация в браузере). Размер страницы задаётся через sqlStudio.serverPageSize (по умолчанию 500).
-- [x] Для строковых значений в Result если строка начинается с https:// или http:// -> сделать кликабельную ссылку. По клику открывается в браузере.
-- [x] Сохраняя единую строку фильтрации в окне результатов добавить опцию фильтрации по колонке. Механика: пишешь колонка=значение (возможно значение в кавычках если пробелы, можно без кавычек если нет пробелов). Обновление результатов по мере ввода. Так же можно использовать несколько полей например "колонка1=значение1 AND колонка2=значение2".
-  - Примечание: в режиме серверной пагинации фильтр применяется только к загруженной странице данных.
+- [ ] Add Oracle dialect support: dialect, partial fetch, explain analyze, connection settings, DBML and ER diagram.
+- [ ] Add Snowflake dialect support: dialect, partial fetch, explain analyze, connection settings, DBML and ER diagram.
+- [ ] Add GoogleSQL dialect support: dialect, partial fetch, explain analyze, connection settings, DBML and ER diagram.
+- [ ] Raw idea: agent integration — inline generation, query optimizations, etc.
+- [ ] Raw idea: persistent memory about data domains — track encountered entities, their statistics, volume, etc.
