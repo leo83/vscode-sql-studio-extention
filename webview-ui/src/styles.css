@@ -437,6 +437,14 @@ thead th.sorted {
   border-bottom-color: var(--sql-studio-focus, var(--vscode-focusBorder, #007fd4));
 }
 
+thead th.th-dragging {
+  opacity: 0.4;
+}
+
+thead th.th-drop-target {
+  border-left: 2px solid var(--sql-studio-focus, var(--vscode-focusBorder, #007fd4));
+}
+
 th.row-num,
 td.row-num {
   width: 1%;

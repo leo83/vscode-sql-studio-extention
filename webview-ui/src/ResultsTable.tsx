@@ -79,6 +79,10 @@ export function ResultsTable({ result, embedded = false, showToolbar = true, fet
   const [globalFilter, setGlobalFilter] = useState("");
   const [sorting, setSorting] = useState<SortingState>([]);
   const [columnSizing, setColumnSizing] = useState<ColumnSizingState>({});
+  const [columnOrder, setColumnOrder] = useState<string[]>([]);
+  const [draggingColId, setDraggingColId] = useState<string | null>(null);
+  const [dragOverColId, setDragOverColId] = useState<string | null>(null);
+  const draggingColRef = useRef<string | null>(null);
   const [selectedRowId, setSelectedRowId] = useState<string | null>(null);
   const [selectedColumnId, setSelectedColumnId] = useState<string | null>(null);
   const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(null);
@@ -132,6 +136,9 @@ export function ResultsTable({ result, embedded = false, showToolbar = true, fet
     [columnNames, data]
   );
 
+  const effectiveOrderRef = useRef<string[]>([]);
+  effectiveOrderRef.current = columnOrder.length > 0 ? columnOrder : columnNames;
+
   const columns = useMemo<ColumnDef<Record<string, unknown>>[]>(
     () =>
       columnNames.map((name) => ({
@@ -173,10 +180,11 @@ export function ResultsTable({ result, embedded = false, showToolbar = true, fet
   const table = useReactTable({
     data: displayData,
     columns,
-    state: { globalFilter: colFilters ? "" : globalFilter, sorting, columnSizing },
+    state: { globalFilter: colFilters ? "" : globalFilter, sorting, columnSizing, columnOrder },
     onGlobalFilterChange: setGlobalFilter,
     onSortingChange: setSorting,
     onColumnSizingChange: setColumnSizing,
+    onColumnOrderChange: setColumnOrder,
     columnResizeMode: "onChange",
     enableColumnResizing: true,
     defaultColumn: {
@@ -202,6 +210,7 @@ export function ResultsTable({ result, embedded = false, showToolbar = true, fet
 
   useEffect(() => {
     setColumnSizing({});
+    setColumnOrder([]);
   }, [columnNamesKey]);
 
   useEffect(() => {
@@ -455,9 +464,13 @@ export function ResultsTable({ result, embedded = false, showToolbar = true, fet
                 </th>
                 {hg.headers.map((header) => {
                   const isNumeric = numericColumnNames.has(header.column.id);
+                  const isDragging = draggingColId === header.column.id;
+                  const isDropTarget = dragOverColId === header.column.id && !isDragging;
                   const classes = [
                     header.column.getIsSorted() ? "sorted" : "",
                     isNumeric ? "cell-numeric" : "cell-text",
+                    isDragging ? "th-dragging" : "",
+                    isDropTarget ? "th-drop-target" : "",
                   ]
                     .filter(Boolean)
                     .join(" ");
@@ -469,6 +482,41 @@ export function ResultsTable({ result, embedded = false, showToolbar = true, fet
                       onClick={header.column.getToggleSortingHandler()}
                       onContextMenu={(event) => openHeaderContextMenu(event, header.column.id)}
                       className={classes}
+                      draggable={true}
+                      onDragStart={() => {
+                        draggingColRef.current = header.column.id;
+                        setDraggingColId(header.column.id);
+                      }}
+                      onDragOver={(e) => {
+                        e.preventDefault();
+                        if (draggingColRef.current && draggingColRef.current !== header.column.id) {
+                          setDragOverColId(header.column.id);
+                        }
+                      }}
+                      onDragLeave={() => setDragOverColId(null)}
+                      onDrop={(e) => {
+                        e.preventDefault();
+                        const src = draggingColRef.current;
+                        if (!src || src === header.column.id) {
+                          setDragOverColId(null);
+                          return;
+                        }
+                        const current = effectiveOrderRef.current;
+                        const newOrder = [...current];
+                        const fromIdx = newOrder.indexOf(src);
+                        const toIdx = newOrder.indexOf(header.column.id);
+                        if (fromIdx >= 0 && toIdx >= 0) {
+                          newOrder.splice(fromIdx, 1);
+                          newOrder.splice(toIdx, 0, src);
+                          setColumnOrder(newOrder);
+                        }
+                        setDragOverColId(null);
+                      }}
+                      onDragEnd={() => {
+                        draggingColRef.current = null;
+                        setDraggingColId(null);
+                        setDragOverColId(null);
+                      }}
                     >
                       <span className="th-label">
                         {flexRender(header.column.columnDef.header, header.getContext())}
@@ -476,6 +524,7 @@ export function ResultsTable({ result, embedded = false, showToolbar = true, fet
                       </span>
                       <div
                         className={`col-resizer${header.column.getIsResizing() ? " is-resizing" : ""}`}
+                        draggable={false}
                         onMouseDown={header.getResizeHandler()}
                         onTouchStart={header.getResizeHandler()}
                         onClick={(event) => event.stopPropagation()}
