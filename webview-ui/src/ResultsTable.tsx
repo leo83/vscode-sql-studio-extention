@@ -9,6 +9,7 @@ import {
   type ColumnSizingState,
   type Row,
   type SortingState,
+  type VisibilityState,
 } from "@tanstack/react-table";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { analyzeColumns, computeColumnSizes, ROW_NUM_COLUMN_WIDTH } from "./resultData";
@@ -80,6 +81,7 @@ export function ResultsTable({ result, embedded = false, showToolbar = true, fet
   const [sorting, setSorting] = useState<SortingState>([]);
   const [columnSizing, setColumnSizing] = useState<ColumnSizingState>({});
   const [columnOrder, setColumnOrder] = useState<string[]>([]);
+  const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({});
   const [draggingColId, setDraggingColId] = useState<string | null>(null);
   const [dragOverColId, setDragOverColId] = useState<string | null>(null);
   const draggingColRef = useRef<string | null>(null);
@@ -180,11 +182,12 @@ export function ResultsTable({ result, embedded = false, showToolbar = true, fet
   const table = useReactTable({
     data: displayData,
     columns,
-    state: { globalFilter: colFilters ? "" : globalFilter, sorting, columnSizing, columnOrder },
+    state: { globalFilter: colFilters ? "" : globalFilter, sorting, columnSizing, columnOrder, columnVisibility },
     onGlobalFilterChange: setGlobalFilter,
     onSortingChange: setSorting,
     onColumnSizingChange: setColumnSizing,
     onColumnOrderChange: setColumnOrder,
+    onColumnVisibilityChange: setColumnVisibility,
     columnResizeMode: "onChange",
     enableColumnResizing: true,
     defaultColumn: {
@@ -211,6 +214,7 @@ export function ResultsTable({ result, embedded = false, showToolbar = true, fet
   useEffect(() => {
     setColumnSizing({});
     setColumnOrder([]);
+    setColumnVisibility({});
   }, [columnNamesKey]);
 
   useEffect(() => {
@@ -390,6 +394,13 @@ export function ResultsTable({ result, embedded = false, showToolbar = true, fet
     await copyColumnName(columnId);
   };
 
+  const handleContextMenuHideColumn = () => {
+    const columnId = contextMenu?.columnId;
+    setContextMenu(null);
+    if (!columnId) return;
+    table.getColumn(columnId)?.toggleVisibility(false);
+  };
+
   const handleTableKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
     if (event.key === "ArrowDown") {
       event.preventDefault();
@@ -427,6 +438,11 @@ export function ResultsTable({ result, embedded = false, showToolbar = true, fet
             {result.row_count} rows · {result.duration_ms.toFixed(1)} ms
             {result.has_more ? " · more" : result.truncated ? " · truncated" : ""}
           </span>
+          {table.getAllLeafColumns().some((c) => !c.getIsVisible()) ? (
+            <button type="button" onClick={() => table.resetColumnVisibility()}>
+              Show all columns
+            </button>
+          ) : null}
           <button type="button" onClick={() => getVsCodeApi()?.postMessage({ type: "exportCsv" })}>
             Export CSV
           </button>
@@ -483,7 +499,11 @@ export function ResultsTable({ result, embedded = false, showToolbar = true, fet
                       onContextMenu={(event) => openHeaderContextMenu(event, header.column.id)}
                       className={classes}
                       draggable={true}
-                      onDragStart={() => {
+                      onDragStart={(e) => {
+                        if ((e.target as HTMLElement).closest(".col-resizer")) {
+                          e.preventDefault();
+                          return;
+                        }
                         draggingColRef.current = header.column.id;
                         setDraggingColId(header.column.id);
                       }}
@@ -597,6 +617,11 @@ export function ResultsTable({ result, embedded = false, showToolbar = true, fet
             {contextMenu.columnId ? (
               <button type="button" onClick={() => void handleContextMenuCopyColumnName()}>
                 <span>Copy column name</span>
+              </button>
+            ) : null}
+            {contextMenu.columnId ? (
+              <button type="button" onClick={handleContextMenuHideColumn}>
+                <span>Hide column</span>
               </button>
             ) : null}
           </div>
