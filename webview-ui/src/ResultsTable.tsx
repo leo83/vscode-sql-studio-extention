@@ -498,15 +498,6 @@ export function ResultsTable({ result, embedded = false, showToolbar = true, fet
                       onClick={header.column.getToggleSortingHandler()}
                       onContextMenu={(event) => openHeaderContextMenu(event, header.column.id)}
                       className={classes}
-                      draggable={true}
-                      onDragStart={(e) => {
-                        if ((e.target as HTMLElement).closest(".col-resizer")) {
-                          e.preventDefault();
-                          return;
-                        }
-                        draggingColRef.current = header.column.id;
-                        setDraggingColId(header.column.id);
-                      }}
                       onDragOver={(e) => {
                         e.preventDefault();
                         if (draggingColRef.current && draggingColRef.current !== header.column.id) {
@@ -532,19 +523,25 @@ export function ResultsTable({ result, embedded = false, showToolbar = true, fet
                         }
                         setDragOverColId(null);
                       }}
-                      onDragEnd={() => {
-                        draggingColRef.current = null;
-                        setDraggingColId(null);
-                        setDragOverColId(null);
-                      }}
                     >
-                      <span className="th-label">
+                      <span
+                        className="th-label"
+                        draggable={true}
+                        onDragStart={() => {
+                          draggingColRef.current = header.column.id;
+                          setDraggingColId(header.column.id);
+                        }}
+                        onDragEnd={() => {
+                          draggingColRef.current = null;
+                          setDraggingColId(null);
+                          setDragOverColId(null);
+                        }}
+                      >
                         {flexRender(header.column.columnDef.header, header.getContext())}
                         {{ asc: " ▲", desc: " ▼" }[header.column.getIsSorted() as string] ?? ""}
                       </span>
                       <div
                         className={`col-resizer${header.column.getIsResizing() ? " is-resizing" : ""}`}
-                        draggable={false}
                         onMouseDown={header.getResizeHandler()}
                         onTouchStart={header.getResizeHandler()}
                         onClick={(event) => event.stopPropagation()}
