@@ -576,6 +576,7 @@ export function ResultsTable({ result, embedded = false, showToolbar = true, fet
                     ]
                       .filter(Boolean)
                       .join(" ")}
+                    title={cell.getValue() != null ? String(cell.getValue()) : undefined}
                     onClick={(event) => {
                       event.stopPropagation();
                       selectRow(row, cell.column.id);
