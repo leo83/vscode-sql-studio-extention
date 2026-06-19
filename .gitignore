@@ -9,3 +9,4 @@ python/**/__pycache__/
 webview-ui/node_modules/
 webview-ui/dist/
 .vscode-test/
+.pytest_cache/
