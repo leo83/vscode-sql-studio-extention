@@ -145,7 +145,7 @@ export function ResultsTable({ result, embedded = false, showToolbar = true, fet
     () =>
       columnNames.map((name) => ({
         id: name,
-        accessorKey: name,
+        accessorFn: (row) => row[name],
         header: name,
         size: defaultColumnSizing[name] ?? 120,
         minSize: 48,
