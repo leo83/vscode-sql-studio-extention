@@ -12,7 +12,7 @@ import {
   type VisibilityState,
 } from "@tanstack/react-table";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { IconChevronLeft, IconChevronRight, IconDownload, IconExpandAll, IconEye } from "./Icons";
+import { IconChevronLeft, IconChevronRight, IconChevronsLeft, IconChevronsRight, IconDownload, IconExpandAll, IconEye } from "./Icons";
 import { analyzeColumns, computeColumnSizes, ROW_NUM_COLUMN_WIDTH } from "./resultData";
 import type { QueryResult } from "./types";
 import { getVsCodeApi } from "./vscodeApi";
@@ -40,6 +40,9 @@ interface Props {
   embedded?: boolean;
   showToolbar?: boolean;
   fetchMode?: "server" | "client";
+  isBusy?: boolean;
+  elapsedSeconds?: number;
+  onBusyStart?: () => void;
 }
 
 function rowToJson(row: Record<string, unknown>): string {
@@ -77,12 +80,13 @@ interface ContextMenuState {
   columnId: string | null;
 }
 
-export function ResultsTable({ result, embedded = false, showToolbar = true, fetchMode }: Props) {
+export function ResultsTable({ result, embedded = false, showToolbar = true, fetchMode, isBusy = false, elapsedSeconds = 0, onBusyStart }: Props) {
   const [globalFilter, setGlobalFilter] = useState("");
   const [sorting, setSorting] = useState<SortingState>([]);
   const [columnSizing, setColumnSizing] = useState<ColumnSizingState>({});
   const [columnOrder, setColumnOrder] = useState<string[]>([]);
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({});
+  const [pagination, setPagination] = useState({ pageIndex: 0, pageSize: 100 });
   const [draggingColId, setDraggingColId] = useState<string | null>(null);
   const [dragOverColId, setDragOverColId] = useState<string | null>(null);
   const draggingColRef = useRef<string | null>(null);
@@ -183,7 +187,14 @@ export function ResultsTable({ result, embedded = false, showToolbar = true, fet
   const table = useReactTable({
     data: displayData,
     columns,
-    state: { globalFilter: colFilters ? "" : globalFilter, sorting, columnSizing, columnOrder, columnVisibility },
+    state: {
+      globalFilter: colFilters ? "" : globalFilter,
+      sorting,
+      columnSizing,
+      columnOrder,
+      columnVisibility,
+      ...(fetchMode !== "server" ? { pagination } : {}),
+    },
     onGlobalFilterChange: setGlobalFilter,
     onSortingChange: setSorting,
     onColumnSizingChange: setColumnSizing,
@@ -199,17 +210,17 @@ export function ResultsTable({ result, embedded = false, showToolbar = true, fet
     getFilteredRowModel: getFilteredRowModel(),
     getSortedRowModel: getSortedRowModel(),
     ...(fetchMode !== "server"
-      ? { getPaginationRowModel: getPaginationRowModel(), initialState: { pagination: { pageSize: 100 } } }
+      ? { getPaginationRowModel: getPaginationRowModel(), onPaginationChange: setPagination }
       : {}),
   });
 
-  const { pageIndex, pageSize } = table.getState().pagination;
   const rows = table.getRowModel().rows;
-  const rowNumOffset = fetchMode === "server" ? (result.page_offset ?? 0) : pageIndex * pageSize;
+  const rowNumOffset = fetchMode === "server" ? (result.page_offset ?? 0) : 0;
 
   useEffect(() => {
     setSelectedRowId(null);
     setSelectedColumnId(null);
+    setPagination((prev) => ({ ...prev, pageIndex: 0 }));
   }, [result]);
 
   useEffect(() => {
@@ -630,14 +641,24 @@ export function ResultsTable({ result, embedded = false, showToolbar = true, fet
         <div className="pagination">
           <button
             type="button"
+            title="First page"
+            onClick={() => {
+              onBusyStart?.();
+              getVsCodeApi()?.postMessage({ type: "fetchPage", offset: 0 });
+            }}
+            disabled={(result.page_offset ?? 0) === 0 || isBusy}
+          >
+            <IconChevronsLeft />First
+          </button>
+          <button
+            type="button"
             onClick={() => {
               const offset = result.page_offset ?? 0;
               const prevOffset = Math.max(0, offset - (result.row_count || 1));
-              if (offset > 0) {
-                getVsCodeApi()?.postMessage({ type: "fetchPage", offset: prevOffset });
-              }
+              onBusyStart?.();
+              getVsCodeApi()?.postMessage({ type: "fetchPage", offset: prevOffset });
             }}
-            disabled={(result.page_offset ?? 0) === 0}
+            disabled={(result.page_offset ?? 0) === 0 || isBusy}
           >
             <IconChevronLeft />Prev
           </button>
@@ -649,17 +670,21 @@ export function ResultsTable({ result, embedded = false, showToolbar = true, fet
             type="button"
             onClick={() => {
               const nextOffset = (result.page_offset ?? 0) + result.row_count;
+              onBusyStart?.();
               getVsCodeApi()?.postMessage({ type: "fetchPage", offset: nextOffset });
             }}
-            disabled={!result.has_more}
+            disabled={!result.has_more || isBusy}
           >
             Next<IconChevronRight />
           </button>
+          {isBusy && <span className="pagination-loading">{elapsedSeconds}s…</span>}
           <button
             type="button"
             className="load-all-btn"
+            disabled={isBusy}
             onClick={(e) => {
               const permanently = e.altKey || e.shiftKey;
+              onBusyStart?.();
               getVsCodeApi()?.postMessage({ type: "loadAll", permanently });
             }}
           >
@@ -668,17 +693,33 @@ export function ResultsTable({ result, embedded = false, showToolbar = true, fet
         </div>
       ) : (
         <div className="pagination">
+          <button
+            type="button"
+            title="First page"
+            onClick={() => table.setPageIndex(0)}
+            disabled={!table.getCanPreviousPage()}
+          >
+            <IconChevronsLeft />First
+          </button>
           <button type="button" onClick={() => table.previousPage()} disabled={!table.getCanPreviousPage()}>
             <IconChevronLeft />Prev
           </button>
           <span>
-            Page {table.getState().pagination.pageIndex + 1} of {table.getPageCount()}
+            Page {pagination.pageIndex + 1} of {table.getPageCount()}
           </span>
           <button type="button" onClick={() => table.nextPage()} disabled={!table.getCanNextPage()}>
             Next<IconChevronRight />
           </button>
+          <button
+            type="button"
+            title="Last page"
+            onClick={() => table.setPageIndex(table.getPageCount() - 1)}
+            disabled={!table.getCanNextPage()}
+          >
+            Last<IconChevronsRight />
+          </button>
           <select
-            value={table.getState().pagination.pageSize}
+            value={pagination.pageSize}
             onChange={(e) => table.setPageSize(Number(e.target.value))}
           >
             {[50, 100, 500, 1000].map((n) => (

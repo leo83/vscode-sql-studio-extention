@@ -1,4 +1,4 @@
-import { lazy, Suspense, useMemo, useState } from "react";
+import { lazy, Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { IconBarChart, IconDownload, IconRefresh, IconTable } from "./Icons";
 import { ResultsTable } from "./ResultsTable";
 import { analyzeColumns, queryResultToRecords } from "./resultData";
@@ -19,10 +19,38 @@ interface Props {
 
 export function ResultsView({ result, embedded = false, fetchMode }: Props) {
   const [viewMode, setViewMode] = useState<ViewMode>("table");
+  const [isBusy, setIsBusy] = useState(false);
+  const [elapsedSeconds, setElapsedSeconds] = useState(0);
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const records = useMemo(() => queryResultToRecords(result), [result]);
   const columns = useMemo(() => analyzeColumns(records, result.columns), [records, result.columns]);
   const canChart = records.length > 0 && columns.length > 0;
+
+  // Reset busy state when new result arrives (page fetched or refresh completed)
+  useEffect(() => {
+    setIsBusy(false);
+  }, [result]);
+
+  // Start/stop seconds counter
+  useEffect(() => {
+    if (isBusy) {
+      setElapsedSeconds(0);
+      timerRef.current = setInterval(() => setElapsedSeconds((s) => s + 1), 1000);
+    } else {
+      if (timerRef.current) {
+        clearInterval(timerRef.current);
+        timerRef.current = null;
+      }
+      setElapsedSeconds(0);
+    }
+    return () => {
+      if (timerRef.current) {
+        clearInterval(timerRef.current);
+        timerRef.current = null;
+      }
+    };
+  }, [isBusy]);
 
   return (
     <div className={`results${embedded ? " results-embedded" : ""}`}>
@@ -63,14 +91,26 @@ export function ResultsView({ result, embedded = false, fetchMode }: Props) {
           type="button"
           className="secondary"
           title="Re-run the same query"
-          onClick={() => getVsCodeApi()?.postMessage({ type: "refresh" })}
+          disabled={isBusy}
+          onClick={() => {
+            setIsBusy(true);
+            getVsCodeApi()?.postMessage({ type: "refresh" });
+          }}
         >
           <IconRefresh />Refresh
         </button>
       </div>
 
       {viewMode === "table" ? (
-        <ResultsTable result={result} embedded={embedded} showToolbar={false} fetchMode={fetchMode} />
+        <ResultsTable
+          result={result}
+          embedded={embedded}
+          showToolbar={false}
+          fetchMode={fetchMode}
+          isBusy={isBusy}
+          elapsedSeconds={elapsedSeconds}
+          onBusyStart={() => setIsBusy(true)}
+        />
       ) : (
         <div className="results-body-only results-chart-host">
           <Suspense fallback={<div className="chart-empty">Loading chart…</div>}>

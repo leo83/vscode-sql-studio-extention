@@ -535,6 +535,12 @@ tbody tr:hover:not(.row-selected) td.row-num {
   border-top: 1px solid var(--vscode-panel-border, #444);
 }
 
+.pagination-loading {
+  font-size: 0.85em;
+  opacity: 0.7;
+  font-variant-numeric: tabular-nums;
+}
+
 .empty {
   padding: 16px;
 }

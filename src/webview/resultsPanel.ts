@@ -13,6 +13,7 @@ export class ResultsPanel implements vscode.WebviewViewProvider {
     | undefined;
   private loadAllCallback: (() => Promise<QueryExecutePayload | undefined>) | undefined;
   private refreshCallback: (() => Promise<void>) | undefined;
+  private isRefreshing = false;
 
   constructor(
     private readonly context: vscode.ExtensionContext,
@@ -74,8 +75,11 @@ export class ResultsPanel implements vscode.WebviewViewProvider {
           }
         }
       } else if (msg.type === "refresh") {
-        if (this.refreshCallback) {
-          void this.refreshCallback();
+        if (this.refreshCallback && !this.isRefreshing) {
+          this.isRefreshing = true;
+          void this.refreshCallback().finally(() => {
+            this.isRefreshing = false;
+          });
         }
       } else if (msg.type === "loadAll") {
         const permanently = msg.permanently as boolean;
@@ -126,6 +130,7 @@ export class ResultsPanel implements vscode.WebviewViewProvider {
     this.fetchPageCallback = onFetchPage;
     this.loadAllCallback = onLoadAll;
     this.refreshCallback = onRefresh;
+    this.isRefreshing = false;
 
     await vscode.commands.executeCommand("sqlStudio.results.focus");
 
