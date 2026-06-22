@@ -9,6 +9,14 @@ from openpyxl import Workbook
 from openpyxl.utils import get_column_letter
 
 
+def _cell_value(v: Any) -> Any:
+    if v is None:
+        return ""
+    if isinstance(v, (list, dict, tuple)):
+        return str(v)
+    return v
+
+
 def export_xlsx(
     path: str | Path,
     columns: Sequence[str],
@@ -21,7 +29,7 @@ def export_xlsx(
     ws.title = "Results"
     ws.append(list(columns))
     for row in rows:
-        ws.append(["" if v is None else v for v in row])
+        ws.append([_cell_value(v) for v in row])
     ws.freeze_panes = "A2"
     for idx, col in enumerate(columns, start=1):
         letter = get_column_letter(idx)
