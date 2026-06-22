@@ -12,7 +12,7 @@ import {
   type VisibilityState,
 } from "@tanstack/react-table";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { IconDownload, IconEye } from "./Icons";
+import { IconChevronLeft, IconChevronRight, IconDownload, IconExpandAll, IconEye } from "./Icons";
 import { analyzeColumns, computeColumnSizes, ROW_NUM_COLUMN_WIDTH } from "./resultData";
 import type { QueryResult } from "./types";
 import { getVsCodeApi } from "./vscodeApi";
@@ -639,7 +639,7 @@ export function ResultsTable({ result, embedded = false, showToolbar = true, fet
             }}
             disabled={(result.page_offset ?? 0) === 0}
           >
-            Prev
+            <IconChevronLeft />Prev
           </button>
           <span>
             Rows {(result.page_offset ?? 0) + 1}–{(result.page_offset ?? 0) + result.row_count}
@@ -653,7 +653,7 @@ export function ResultsTable({ result, embedded = false, showToolbar = true, fet
             }}
             disabled={!result.has_more}
           >
-            Next
+            Next<IconChevronRight />
           </button>
           <button
             type="button"
@@ -663,19 +663,19 @@ export function ResultsTable({ result, embedded = false, showToolbar = true, fet
               getVsCodeApi()?.postMessage({ type: "loadAll", permanently });
             }}
           >
-            {altOrShiftHeld ? "Always load all rows" : "Load all rows"}
+            <IconExpandAll />{altOrShiftHeld ? "Always load all rows" : "Load all rows"}
           </button>
         </div>
       ) : (
         <div className="pagination">
           <button type="button" onClick={() => table.previousPage()} disabled={!table.getCanPreviousPage()}>
-            Prev
+            <IconChevronLeft />Prev
           </button>
           <span>
             Page {table.getState().pagination.pageIndex + 1} of {table.getPageCount()}
           </span>
           <button type="button" onClick={() => table.nextPage()} disabled={!table.getCanNextPage()}>
-            Next
+            Next<IconChevronRight />
           </button>
           <select
             value={table.getState().pagination.pageSize}
