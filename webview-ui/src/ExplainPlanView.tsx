@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { IconCode, IconCollapseAll, IconCopy, IconExpandAll, IconRefresh, IconTable, IconTree } from "./Icons";
 import { PlanTableView } from "./PlanTableView";
 import { PlanTreeView } from "./PlanTreeView";
 import {
@@ -10,6 +11,7 @@ import {
 } from "./planTreeUtils";
 import { ResultsTable } from "./ResultsTable";
 import type { StatementResult } from "./types";
+import { getVsCodeApi } from "./vscodeApi";
 
 interface Props {
   result: StatementResult;
@@ -135,7 +137,7 @@ export function ExplainPlanView({ result }: Props) {
             disabled={!hasTree}
             onClick={() => setViewMode("tree")}
           >
-            Tree
+            <IconTree />&nbsp;Tree
           </button>
           <button
             type="button"
@@ -145,7 +147,7 @@ export function ExplainPlanView({ result }: Props) {
             disabled={!hasTree && !hasTableColumns}
             onClick={() => setViewMode("table")}
           >
-            Table
+            <IconTable />&nbsp;Table
           </button>
           <button
             type="button"
@@ -154,7 +156,7 @@ export function ExplainPlanView({ result }: Props) {
             className={viewMode === "raw" ? "active" : ""}
             onClick={() => setViewMode("raw")}
           >
-            Raw
+            <IconCode />&nbsp;Raw
           </button>
         </div>
 
@@ -170,10 +172,10 @@ export function ExplainPlanView({ result }: Props) {
         {viewMode === "tree" && hasTree ? (
           <>
             <button type="button" onClick={() => setExpandAllSignal((value) => value + 1)}>
-              Expand all
+              <IconExpandAll />Expand all
             </button>
             <button type="button" onClick={() => setCollapseAllSignal((value) => value + 1)}>
-              Collapse all
+              <IconCollapseAll />Collapse all
             </button>
           </>
         ) : null}
@@ -184,7 +186,7 @@ export function ExplainPlanView({ result }: Props) {
             void copyText(planText).then(() => showCopyMessage("Raw copied"));
           }}
         >
-          Copy raw
+          <IconCopy />Copy raw
         </button>
         {hasTree ? (
           <button
@@ -195,9 +197,17 @@ export function ExplainPlanView({ result }: Props) {
               );
             }}
           >
-            Copy JSON
+            <IconCopy />Copy JSON
           </button>
         ) : null}
+        <button
+          type="button"
+          className="secondary"
+          title="Re-run the same query"
+          onClick={() => getVsCodeApi()?.postMessage({ type: "refresh" })}
+        >
+          <IconRefresh />Refresh
+        </button>
       </div>
 
       <div className="explain-plan-body">

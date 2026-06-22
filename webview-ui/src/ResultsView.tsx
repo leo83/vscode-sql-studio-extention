@@ -1,4 +1,5 @@
 import { lazy, Suspense, useMemo, useState } from "react";
+import { IconBarChart, IconDownload, IconRefresh, IconTable } from "./Icons";
 import { ResultsTable } from "./ResultsTable";
 import { analyzeColumns, queryResultToRecords } from "./resultData";
 import type { QueryResult } from "./types";
@@ -34,7 +35,7 @@ export function ResultsView({ result, embedded = false, fetchMode }: Props) {
             className={viewMode === "table" ? "active" : ""}
             onClick={() => setViewMode("table")}
           >
-            Table
+            <IconTable />&nbsp;Table
           </button>
           <button
             type="button"
@@ -45,7 +46,7 @@ export function ResultsView({ result, embedded = false, fetchMode }: Props) {
             disabled={!canChart}
             title={canChart ? undefined : "No data to chart"}
           >
-            Chart
+            <IconBarChart />&nbsp;Chart
           </button>
         </div>
         <span className="meta">
@@ -53,10 +54,18 @@ export function ResultsView({ result, embedded = false, fetchMode }: Props) {
           {result.has_more ? " · more" : result.truncated ? " · truncated" : ""}
         </span>
         <button type="button" onClick={() => getVsCodeApi()?.postMessage({ type: "exportCsv" })}>
-          Export CSV
+          <IconDownload />Export CSV
         </button>
         <button type="button" onClick={() => getVsCodeApi()?.postMessage({ type: "exportXlsx" })}>
-          Export Excel
+          <IconDownload />Export Excel
+        </button>
+        <button
+          type="button"
+          className="secondary"
+          title="Re-run the same query"
+          onClick={() => getVsCodeApi()?.postMessage({ type: "refresh" })}
+        >
+          <IconRefresh />Refresh
         </button>
       </div>
 

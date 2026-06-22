@@ -12,6 +12,7 @@ import {
   type VisibilityState,
 } from "@tanstack/react-table";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { IconDownload, IconEye } from "./Icons";
 import { analyzeColumns, computeColumnSizes, ROW_NUM_COLUMN_WIDTH } from "./resultData";
 import type { QueryResult } from "./types";
 import { getVsCodeApi } from "./vscodeApi";
@@ -440,14 +441,14 @@ export function ResultsTable({ result, embedded = false, showToolbar = true, fet
           </span>
           {table.getAllLeafColumns().some((c) => !c.getIsVisible()) ? (
             <button type="button" onClick={() => table.resetColumnVisibility()}>
-              Show all columns
+              <IconEye />Show all columns
             </button>
           ) : null}
           <button type="button" onClick={() => getVsCodeApi()?.postMessage({ type: "exportCsv" })}>
-            Export CSV
+            <IconDownload />Export CSV
           </button>
           <button type="button" onClick={() => getVsCodeApi()?.postMessage({ type: "exportXlsx" })}>
-            Export Excel
+            <IconDownload />Export Excel
           </button>
         </div>
       ) : (

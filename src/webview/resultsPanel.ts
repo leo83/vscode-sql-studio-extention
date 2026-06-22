@@ -12,6 +12,7 @@ export class ResultsPanel implements vscode.WebviewViewProvider {
     | ((offset: number) => Promise<QueryExecutePayload | undefined>)
     | undefined;
   private loadAllCallback: (() => Promise<QueryExecutePayload | undefined>) | undefined;
+  private refreshCallback: (() => Promise<void>) | undefined;
 
   constructor(
     private readonly context: vscode.ExtensionContext,
@@ -72,6 +73,10 @@ export class ResultsPanel implements vscode.WebviewViewProvider {
             // page fetch failed silently
           }
         }
+      } else if (msg.type === "refresh") {
+        if (this.refreshCallback) {
+          void this.refreshCallback();
+        }
       } else if (msg.type === "loadAll") {
         const permanently = msg.permanently as boolean;
         if (permanently) {
@@ -113,12 +118,14 @@ export class ResultsPanel implements vscode.WebviewViewProvider {
     result: QueryExecutePayload,
     title: string,
     onFetchPage?: (offset: number) => Promise<QueryExecutePayload | undefined>,
-    onLoadAll?: () => Promise<QueryExecutePayload | undefined>
+    onLoadAll?: () => Promise<QueryExecutePayload | undefined>,
+    onRefresh?: () => Promise<void>
   ): Promise<void> {
     this.lastResult = result;
     this.pendingTitle = `Results: ${title}`;
     this.fetchPageCallback = onFetchPage;
     this.loadAllCallback = onLoadAll;
+    this.refreshCallback = onRefresh;
 
     await vscode.commands.executeCommand("sqlStudio.results.focus");
 

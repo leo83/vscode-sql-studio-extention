@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { IconCheck, IconCopy, IconRefresh } from "./Icons";
 import { parseQueryError } from "./parseQueryError";
 import { getVsCodeApi } from "./vscodeApi";
 
@@ -40,10 +41,13 @@ export function QueryError({ error, compact = false }: Props) {
           <span className="query-error-title">Query failed</span>
           <div className="query-error-actions">
             <button type="button" className="secondary" onClick={handleCopyError}>
-              {copiedError ? "Copied" : "Copy error"}
+              {copiedError ? <><IconCheck />Copied</> : <><IconCopy />Copy error</>}
             </button>
             <button type="button" className="secondary" onClick={handleCopyFull}>
-              {copiedFull ? "Copied" : "Copy full message"}
+              {copiedFull ? <><IconCheck />Copied</> : <><IconCopy />Copy full message</>}
+            </button>
+            <button type="button" className="secondary" title="Re-run the same query" onClick={() => getVsCodeApi()?.postMessage({ type: "refresh" })}>
+              <IconRefresh />Retry
             </button>
           </div>
         </div>
@@ -52,10 +56,13 @@ export function QueryError({ error, compact = false }: Props) {
           <span className="query-error-title">Failed</span>
           <div className="query-error-actions">
             <button type="button" className="secondary" onClick={handleCopyError}>
-              {copiedError ? "Copied" : "Copy"}
+              {copiedError ? <><IconCheck />Copied</> : <><IconCopy />Copy</>}
             </button>
             <button type="button" className="secondary" onClick={handleCopyFull}>
-              {copiedFull ? "Copied" : "Copy full"}
+              {copiedFull ? <><IconCheck />Copied</> : <><IconCopy />Full</>}
+            </button>
+            <button type="button" className="secondary" title="Re-run the same query" onClick={() => getVsCodeApi()?.postMessage({ type: "refresh" })}>
+              <IconRefresh />Retry
             </button>
           </div>
         </div>

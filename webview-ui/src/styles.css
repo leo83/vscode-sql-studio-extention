@@ -299,6 +299,12 @@ select {
   cursor: pointer;
 }
 
+button {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
 button:disabled {
   opacity: 0.5;
   cursor: default;

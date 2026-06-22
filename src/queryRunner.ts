@@ -324,6 +324,10 @@ export class QueryRunner {
     title: string,
     analyze: boolean
   ): Promise<QueryExecutePayload | undefined> {
+    const refreshCallback = async (): Promise<void> => {
+      await this.explainWithConnection(conn, sql, title, analyze);
+    };
+
     let result: QueryExecutePayload | undefined;
     let cancelled = false;
     this.runningConnectionId = conn.id;
@@ -352,7 +356,7 @@ export class QueryRunner {
 
           try {
             result = await explainPromise;
-            await this.results.show(result, `Plan: ${title}`);
+            await this.results.show(result, `Plan: ${title}`, undefined, undefined, refreshCallback);
           } catch (err) {
             if (cancelled || token.isCancellationRequested || this.isCancelledError(err)) {
               cancelled = true;
@@ -373,7 +377,7 @@ export class QueryRunner {
               ],
               total_duration_ms: 0,
             };
-            await this.results.show(errorResult, `Plan: ${title} (error)`);
+            await this.results.show(errorResult, `Plan: ${title} (error)`, undefined, undefined, refreshCallback);
             vscode.window.showErrorMessage(`Execution plan failed: ${message}`);
           }
         }
@@ -429,6 +433,10 @@ export class QueryRunner {
     if (!shouldRun) {
       return undefined;
     }
+
+    const refreshCallback = async (): Promise<void> => {
+      await this.executeWithConnection(conn, sql, title, limit, showResults, leadingSessionCount, serverPageSize);
+    };
 
     let result: QueryExecutePayload | undefined;
     let cancelled = false;
@@ -495,11 +503,11 @@ export class QueryRunner {
                 });
               };
               if (showResults) {
-                await this.results.show(result, title, fetchPageCallback, loadAllCallback);
+                await this.results.show(result, title, fetchPageCallback, loadAllCallback, refreshCallback);
               }
             } else {
               if (showResults) {
-                await this.results.show(result, title);
+                await this.results.show(result, title, undefined, undefined, refreshCallback);
               }
               const truncated = result.statements.some((s) => s.truncated);
               if (truncated) {
@@ -529,7 +537,7 @@ export class QueryRunner {
               total_duration_ms: 0,
             };
             if (showResults) {
-              await this.results.show(errorResult, `${title} (error)`);
+              await this.results.show(errorResult, `${title} (error)`, undefined, undefined, refreshCallback);
             }
             vscode.window.showErrorMessage(`Query failed: ${message}`);
           } finally {
