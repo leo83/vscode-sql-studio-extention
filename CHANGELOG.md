@@ -4,6 +4,8 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.2.0] — 2026-06-22
+
 ### Added
 
 - **Connection tags** — color-coded labels on connections; edit in connection dialog or **Manage Tags**; shown in Explorer description and composite icons
@@ -22,6 +24,14 @@ All notable changes to this project will be documented in this file.
 - `CONTRIBUTING.md`, `SECURITY.md`, GitHub issue/PR templates, CI workflow
 - Marketplace metadata in `package.json` (`repository`, `keywords`, `galleryBanner`)
 - Screenshot placeholder guide in `docs/images/README.md`
+- **Refresh button** in results, execution plan, and error panels — re-runs the same SQL without returning to the editor; toolbar SVG icons added to all buttons (Table, Chart, Download, Refresh, Copy, Tree, Raw, Expand/Collapse all)
+
+### Fixed
+
+- XLSX export crash on `array`/`list` column values (e.g. PostgreSQL arrays): non-scalar types now converted to string, matching CSV behaviour
+- Dotted column names (e.g. `f.message_pk`) incorrectly shown as `NULL` in results table
+- Column resize interrupted when pointer left the drag handle — draggable logic moved to `th-label`
+- Cell value tooltip now shown on hover when text is truncated
 
 ### Changed
 
