@@ -4,6 +4,18 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.1.2] — 2026-06-23
+
+### Added
+
+- Server mode: page size selector in results panel
+- Pagination: smart "Load All" reads from cache when results are already fully loaded
+
+### Fixed
+
+- Multiple pagination navigation bugs (page counter, boundary conditions)
+- Refresh icon corrected; toolbar icons added to pagination buttons
+
 ## [0.1.1] — 2026-06-22
 
 ### Added
