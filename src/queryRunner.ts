@@ -483,7 +483,8 @@ export class QueryRunner {
               result = { ...result, fetch_mode: "server", server_page_size: serverPageSize };
               const maxOffset = getQueryRowLimit();
               const fetchPageCallback = async (
-                offset: number
+                offset: number,
+                limit?: number
               ): Promise<QueryExecutePayload | undefined> => {
                 if (offset >= maxOffset) {
                   return undefined;
@@ -491,7 +492,7 @@ export class QueryRunner {
                 return this.python.request<QueryExecutePayload>("query/execute", {
                   connection: toRpcConnection(conn),
                   sql,
-                  limit: serverPageSize,
+                  limit: limit ?? serverPageSize,
                   offset,
                 });
               };

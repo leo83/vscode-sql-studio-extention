@@ -40,9 +40,13 @@ interface Props {
   embedded?: boolean;
   showToolbar?: boolean;
   fetchMode?: "server" | "client";
+  serverPageSize?: number;
   isBusy?: boolean;
   elapsedSeconds?: number;
   onBusyStart?: () => void;
+  onFetchPage?: (offset: number, setBusy: () => void) => void;
+  onPageSizeChange?: (pageSize: number, setBusy: () => void) => void;
+  onLoadAll?: (permanently: boolean, setBusy: () => void) => void;
 }
 
 function rowToJson(row: Record<string, unknown>): string {
@@ -80,7 +84,7 @@ interface ContextMenuState {
   columnId: string | null;
 }
 
-export function ResultsTable({ result, embedded = false, showToolbar = true, fetchMode, isBusy = false, elapsedSeconds = 0, onBusyStart }: Props) {
+export function ResultsTable({ result, embedded = false, showToolbar = true, fetchMode, serverPageSize, isBusy = false, elapsedSeconds = 0, onBusyStart, onFetchPage, onPageSizeChange, onLoadAll }: Props) {
   const [globalFilter, setGlobalFilter] = useState("");
   const [sorting, setSorting] = useState<SortingState>([]);
   const [columnSizing, setColumnSizing] = useState<ColumnSizingState>({});
@@ -436,6 +440,12 @@ export function ResultsTable({ result, embedded = false, showToolbar = true, fet
     }
   };
 
+  const serverPageSizeOptions = (() => {
+    const base = [50, 100, 500, 1000];
+    const current = serverPageSize ?? 500;
+    return base.includes(current) ? base : [...base, current].sort((a, b) => a - b);
+  })();
+
   return (
     <div className={`results${embedded ? " results-embedded" : ""}${showToolbar ? "" : " results-body-only"}`}>
       {showToolbar ? (
@@ -643,8 +653,12 @@ export function ResultsTable({ result, embedded = false, showToolbar = true, fet
             type="button"
             title="First page"
             onClick={() => {
-              onBusyStart?.();
-              getVsCodeApi()?.postMessage({ type: "fetchPage", offset: 0 });
+              if (onFetchPage) {
+                onFetchPage(0, () => onBusyStart?.());
+              } else {
+                onBusyStart?.();
+                getVsCodeApi()?.postMessage({ type: "fetchPage", offset: 0 });
+              }
             }}
             disabled={(result.page_offset ?? 0) === 0 || isBusy}
           >
@@ -654,9 +668,14 @@ export function ResultsTable({ result, embedded = false, showToolbar = true, fet
             type="button"
             onClick={() => {
               const offset = result.page_offset ?? 0;
-              const prevOffset = Math.max(0, offset - (result.row_count || 1));
-              onBusyStart?.();
-              getVsCodeApi()?.postMessage({ type: "fetchPage", offset: prevOffset });
+              const pageSize = serverPageSize ?? (result.row_count || 1);
+              const prevOffset = Math.max(0, offset - pageSize);
+              if (onFetchPage) {
+                onFetchPage(prevOffset, () => onBusyStart?.());
+              } else {
+                onBusyStart?.();
+                getVsCodeApi()?.postMessage({ type: "fetchPage", offset: prevOffset });
+              }
             }}
             disabled={(result.page_offset ?? 0) === 0 || isBusy}
           >
@@ -670,22 +689,41 @@ export function ResultsTable({ result, embedded = false, showToolbar = true, fet
             type="button"
             onClick={() => {
               const nextOffset = (result.page_offset ?? 0) + result.row_count;
-              onBusyStart?.();
-              getVsCodeApi()?.postMessage({ type: "fetchPage", offset: nextOffset });
+              if (onFetchPage) {
+                onFetchPage(nextOffset, () => onBusyStart?.());
+              } else {
+                onBusyStart?.();
+                getVsCodeApi()?.postMessage({ type: "fetchPage", offset: nextOffset });
+              }
             }}
             disabled={!result.has_more || isBusy}
           >
             Next<IconChevronRight />
           </button>
           {isBusy && <span className="pagination-loading">{elapsedSeconds}s…</span>}
+          {onPageSizeChange != null && (
+            <select
+              value={serverPageSize ?? 500}
+              disabled={isBusy}
+              onChange={(e) => onPageSizeChange(Number(e.target.value), () => onBusyStart?.())}
+            >
+              {serverPageSizeOptions.map((n) => (
+                <option key={n} value={n}>{n} / page</option>
+              ))}
+            </select>
+          )}
           <button
             type="button"
             className="load-all-btn"
             disabled={isBusy}
             onClick={(e) => {
               const permanently = e.altKey || e.shiftKey;
-              onBusyStart?.();
-              getVsCodeApi()?.postMessage({ type: "loadAll", permanently });
+              if (onLoadAll) {
+                onLoadAll(permanently, () => onBusyStart?.());
+              } else {
+                onBusyStart?.();
+                getVsCodeApi()?.postMessage({ type: "loadAll", permanently });
+              }
             }}
           >
             <IconExpandAll />{altOrShiftHeld ? "Always load all rows" : "Load all rows"}

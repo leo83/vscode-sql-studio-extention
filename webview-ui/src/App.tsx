@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { BatchResults } from "./BatchResults";
 import { ConnectionDialog } from "./ConnectionDialog";
 import { ErDiagramView } from "./ErDiagramView";
@@ -11,6 +11,7 @@ import type {
   QueryExecuteResult,
   SchemaDiagramInit,
 } from "./types";
+import { getVsCodeApi } from "./vscodeApi";
 
 export function App() {
   const mode = window.__SQL_STUDIO_MODE__ ?? "results";
@@ -39,16 +40,78 @@ function ResultsApp() {
     () => window.__SQL_STUDIO_RESULT__ as QueryExecuteResult | undefined
   );
 
+  const pageCacheRef = useRef(new Map<number, QueryExecuteResult>());
+
+  useEffect(() => {
+    const initial = window.__SQL_STUDIO_RESULT__ as QueryExecuteResult | undefined;
+    if (initial) {
+      pageCacheRef.current.set(initial.statements?.[0]?.page_offset ?? 0, initial);
+    }
+  }, []);
+
   useEffect(() => {
     const handler = (event: MessageEvent) => {
       const msg = event.data as { type?: string; result?: QueryExecuteResult };
       if (msg?.type === "pageData" && msg.result) {
+        const offset = msg.result.statements?.[0]?.page_offset ?? 0;
+        pageCacheRef.current.set(offset, msg.result);
         setBatch(msg.result);
       }
     };
     window.addEventListener("message", handler);
     return () => window.removeEventListener("message", handler);
   }, []);
+
+  const handleFetchPage = useCallback((offset: number, setBusy: () => void) => {
+    const cached = pageCacheRef.current.get(offset);
+    if (cached) {
+      setBatch(cached);
+    } else {
+      setBusy();
+      getVsCodeApi()?.postMessage({ type: "fetchPage", offset });
+    }
+  }, []);
+
+  const handlePageSizeChange = useCallback((pageSize: number, setBusy: () => void) => {
+    pageCacheRef.current.clear();
+    setBusy();
+    getVsCodeApi()?.postMessage({ type: "fetchPage", offset: 0, limit: pageSize });
+  }, []);
+
+  const handleLoadAll = useCallback((permanently: boolean, setBusy: () => void) => {
+    if (!permanently) {
+      const pageSize = batch?.server_page_size ?? 500;
+      const pages: typeof batch[] = [];
+      let offset = 0;
+      let allCached = false;
+      while (true) {
+        const page = pageCacheRef.current.get(offset);
+        if (!page) break;
+        pages.push(page);
+        if (!page.statements[0]?.has_more) { allCached = true; break; }
+        offset += pageSize;
+      }
+      if (allCached && pages.length > 0) {
+        const first = pages[0]!;
+        const allRows = pages.flatMap(p => p!.statements[0]?.rows ?? []);
+        setBatch({
+          ...first,
+          fetch_mode: "client",
+          server_page_size: undefined,
+          statements: [{
+            ...first.statements[0],
+            rows: allRows,
+            row_count: allRows.length,
+            has_more: false,
+            page_offset: 0,
+          }],
+        });
+        return;
+      }
+    }
+    setBusy();
+    getVsCodeApi()?.postMessage({ type: "loadAll", permanently });
+  }, [batch?.server_page_size]);
 
   if (!batch?.statements?.length) {
     return <div className="empty">No query results.</div>;
@@ -68,5 +131,5 @@ function ResultsApp() {
   if (result.rows.length === 0 && !result.columns.length) {
     return <QueryStatus result={result} />;
   }
-  return <ResultsView result={result} fetchMode={batch.fetch_mode} />;
+  return <ResultsView result={result} fetchMode={batch.fetch_mode} serverPageSize={batch.server_page_size} onFetchPage={handleFetchPage} onPageSizeChange={handlePageSizeChange} onLoadAll={handleLoadAll} />;
 }

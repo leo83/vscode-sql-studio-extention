@@ -15,9 +15,13 @@ interface Props {
   result: QueryResult;
   embedded?: boolean;
   fetchMode?: "server" | "client";
+  serverPageSize?: number;
+  onFetchPage?: (offset: number, setBusy: () => void) => void;
+  onPageSizeChange?: (pageSize: number, setBusy: () => void) => void;
+  onLoadAll?: (permanently: boolean, setBusy: () => void) => void;
 }
 
-export function ResultsView({ result, embedded = false, fetchMode }: Props) {
+export function ResultsView({ result, embedded = false, fetchMode, serverPageSize, onFetchPage, onPageSizeChange, onLoadAll }: Props) {
   const [viewMode, setViewMode] = useState<ViewMode>("table");
   const [isBusy, setIsBusy] = useState(false);
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
@@ -107,9 +111,13 @@ export function ResultsView({ result, embedded = false, fetchMode }: Props) {
           embedded={embedded}
           showToolbar={false}
           fetchMode={fetchMode}
+          serverPageSize={serverPageSize}
           isBusy={isBusy}
           elapsedSeconds={elapsedSeconds}
           onBusyStart={() => setIsBusy(true)}
+          onFetchPage={onFetchPage}
+          onPageSizeChange={onPageSizeChange}
+          onLoadAll={onLoadAll}
         />
       ) : (
         <div className="results-body-only results-chart-host">

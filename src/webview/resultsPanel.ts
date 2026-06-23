@@ -9,7 +9,7 @@ export class ResultsPanel implements vscode.WebviewViewProvider {
   private lastResult: QueryExecutePayload | undefined;
   private pendingTitle: string | undefined;
   private fetchPageCallback:
-    | ((offset: number) => Promise<QueryExecutePayload | undefined>)
+    | ((offset: number, limit?: number) => Promise<QueryExecutePayload | undefined>)
     | undefined;
   private loadAllCallback: (() => Promise<QueryExecutePayload | undefined>) | undefined;
   private refreshCallback: (() => Promise<void>) | undefined;
@@ -59,14 +59,19 @@ export class ResultsPanel implements vscode.WebviewViewProvider {
         }
       } else if (msg.type === "fetchPage") {
         const offset = msg.offset as number;
+        const limit = msg.limit as number | undefined;
         if (this.fetchPageCallback && this.view) {
           try {
-            const pageResult = await this.fetchPageCallback(offset);
+            const pageResult = await this.fetchPageCallback(offset, limit);
             if (pageResult && this.view) {
+              const newPageSize = limit ?? this.lastResult?.server_page_size;
+              if (limit && this.lastResult) {
+                this.lastResult = { ...this.lastResult, server_page_size: limit };
+              }
               const enriched: QueryExecutePayload = {
                 ...pageResult,
                 fetch_mode: this.lastResult?.fetch_mode,
-                server_page_size: this.lastResult?.server_page_size,
+                server_page_size: newPageSize,
               };
               this.view.webview.postMessage({ type: "pageData", result: enriched });
             }
