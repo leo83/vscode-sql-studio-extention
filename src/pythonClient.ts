@@ -62,7 +62,15 @@ export class PythonClient implements vscode.Disposable {
     return new Promise((resolve, reject) => {
       const child = spawn(uv, args, {
         cwd: this.extensionPath,
-        env: { ...process.env, PYTHONUNBUFFERED: "1" },
+        env: {
+          ...process.env,
+          PYTHONUNBUFFERED: "1",
+          // Force UTF-8 stdio so non-ASCII (e.g. Cyrillic) query text is not
+          // mangled by the locale code page on Windows. The backend also
+          // reconfigures its streams; this is belt-and-suspenders.
+          PYTHONUTF8: "1",
+          PYTHONIOENCODING: "utf-8",
+        },
         stdio: "pipe",
       });
 

@@ -402,7 +402,29 @@ class JsonRpcServer:
         return ExportResult(path=path, row_count=count).model_dump()
 
 
+def _force_utf8_stdio() -> None:
+    """Ensure stdin/stdout use UTF-8.
+
+    On Windows the stdio streams of a piped child process default to the
+    locale ANSI code page (e.g. cp1251 on Russian Windows) with the
+    ``surrogateescape`` error handler. The extension always writes UTF-8
+    JSON, so any non-ASCII byte (Cyrillic, etc.) gets decoded into a lone
+    surrogate such as ``\\udc98``. That surrogate later blows up when the
+    query is re-encoded to UTF-8 for the database with::
+
+        'utf-8' codec can't encode character '\\udc98': surrogates not allowed
+
+    Forcing UTF-8 with the default ``strict`` handler keeps the line
+    protocol honest: valid UTF-8 in, no silent surrogate smuggling.
+    """
+    for stream in (sys.stdin, sys.stdout):
+        reconfigure = getattr(stream, "reconfigure", None)
+        if reconfigure is not None:
+            reconfigure(encoding="utf-8")
+
+
 def main() -> None:
+    _force_utf8_stdio()
     JsonRpcServer().run()
 
 

@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.1.3] — 2026-06-25
+
+### Fixed
+
+- Windows: ClickHouse query failing with `'utf-8' codec can't encode character '\udc98': surrogates not allowed` — backend stdio is now forced to UTF-8 so non-ASCII (e.g. Cyrillic) query text is no longer mangled by the locale code page
+
 ## [0.1.2] — 2026-06-23
 
 ### Added
