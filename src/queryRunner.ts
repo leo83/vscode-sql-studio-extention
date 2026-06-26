@@ -435,7 +435,24 @@ export class QueryRunner {
     }
 
     const refreshCallback = async (): Promise<void> => {
-      await this.executeWithConnection(conn, sql, title, limit, showResults, leadingSessionCount, serverPageSize);
+      const currentFetchMode = getFetchMode();
+      const currentLimit = currentFetchMode === "server" ? getServerPageSize() : getQueryRowLimit();
+      await this.executeWithConnection(
+        conn, sql, title, currentLimit, showResults, leadingSessionCount,
+        currentFetchMode === "server" ? currentLimit : undefined
+      );
+    };
+
+    // Re-run this query once with an explicit row limit (single-shot, client display).
+    // Used by the "Increase limit" button; does not touch settings or the fetch mode.
+    const rerunWithLimitCallback = async (
+      newLimit: number
+    ): Promise<QueryExecutePayload | undefined> => {
+      return this.python.request<QueryExecutePayload>("query/execute", {
+        connection: toRpcConnection(conn),
+        sql,
+        limit: newLimit,
+      });
     };
 
     let result: QueryExecutePayload | undefined;
@@ -504,11 +521,11 @@ export class QueryRunner {
                 });
               };
               if (showResults) {
-                await this.results.show(result, title, fetchPageCallback, loadAllCallback, refreshCallback);
+                await this.results.show(result, title, fetchPageCallback, loadAllCallback, refreshCallback, rerunWithLimitCallback);
               }
             } else {
               if (showResults) {
-                await this.results.show(result, title, undefined, undefined, refreshCallback);
+                await this.results.show(result, title, undefined, undefined, refreshCallback, rerunWithLimitCallback);
               }
               const truncated = result.statements.some((s) => s.truncated);
               if (truncated) {

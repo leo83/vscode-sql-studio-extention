@@ -97,7 +97,6 @@ export function ResultsTable({ result, embedded = false, showToolbar = true, fet
   const [selectedRowId, setSelectedRowId] = useState<string | null>(null);
   const [selectedColumnId, setSelectedColumnId] = useState<string | null>(null);
   const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(null);
-  const [altOrShiftHeld, setAltOrShiftHeld] = useState(false);
   const tableWrapRef = useRef<HTMLDivElement>(null);
   const copyRowShortcutLabel = useMemo(() => getCopyRowShortcutLabel(), []);
   const copyValueShortcutLabel = useMemo(() => getCopyValueShortcutLabel(), []);
@@ -307,21 +306,6 @@ export function ResultsTable({ result, embedded = false, showToolbar = true, fet
     },
     [rows, selectedRowId, scrollRowIntoView]
   );
-
-  useEffect(() => {
-    const onKeyDown = (e: KeyboardEvent) => {
-      if (e.altKey || e.shiftKey) setAltOrShiftHeld(true);
-    };
-    const onKeyUp = (e: KeyboardEvent) => {
-      if (!e.altKey && !e.shiftKey) setAltOrShiftHeld(false);
-    };
-    window.addEventListener("keydown", onKeyDown);
-    window.addEventListener("keyup", onKeyUp);
-    return () => {
-      window.removeEventListener("keydown", onKeyDown);
-      window.removeEventListener("keyup", onKeyUp);
-    };
-  }, []);
 
   useEffect(() => {
     if (!contextMenu) {
@@ -716,17 +700,10 @@ export function ResultsTable({ result, embedded = false, showToolbar = true, fet
             type="button"
             className="load-all-btn"
             disabled={isBusy}
-            onClick={(e) => {
-              const permanently = e.altKey || e.shiftKey;
-              if (onLoadAll) {
-                onLoadAll(permanently, () => onBusyStart?.());
-              } else {
-                onBusyStart?.();
-                getVsCodeApi()?.postMessage({ type: "loadAll", permanently });
-              }
-            }}
+            title="Choose how many rows to load"
+            onClick={() => getVsCodeApi()?.postMessage({ type: "changeLimit" })}
           >
-            <IconExpandAll />{altOrShiftHeld ? "Always load all rows" : "Load all rows"}
+            <IconExpandAll />Load all rows
           </button>
         </div>
       ) : (
@@ -766,6 +743,16 @@ export function ResultsTable({ result, embedded = false, showToolbar = true, fet
               </option>
             ))}
           </select>
+          {result.truncated && (
+            <button
+              type="button"
+              className="load-all-btn"
+              title="Choose how many rows to load"
+              onClick={() => getVsCodeApi()?.postMessage({ type: "changeLimit" })}
+            >
+              <IconExpandAll />Load all rows
+            </button>
+          )}
         </div>
       )}
     </div>

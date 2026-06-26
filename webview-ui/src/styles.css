@@ -5,6 +5,8 @@
   background: var(--vscode-editor-background, #1e1e1e);
   font-family: var(--vscode-font-family, system-ui, sans-serif);
   font-size: var(--vscode-font-size, 13px);
+  /* Default accent: SQL Studio purple (from the extension icon). Overridden by sqlStudio.accentColor. */
+  --sql-studio-accent-default: #8815b4;
 }
 
 html,
@@ -45,8 +47,8 @@ body {
 }
 
 .view-mode-toggle button.active {
-  background: var(--sql-studio-accent, var(--vscode-button-background, #0e639c));
-  color: var(--sql-studio-accent-foreground, var(--vscode-button-foreground, #fff));
+  background: var(--sql-studio-accent, var(--sql-studio-accent-default));
+  color: var(--sql-studio-accent-foreground, #fff);
 }
 
 .view-mode-toggle button:not(:last-child) {
@@ -291,8 +293,8 @@ body {
 
 button,
 select {
-  background: var(--sql-studio-accent, var(--vscode-button-background, #0e639c));
-  color: var(--sql-studio-accent-foreground, var(--vscode-button-foreground, #fff));
+  background: var(--sql-studio-accent, var(--sql-studio-accent-default));
+  color: var(--sql-studio-accent-foreground, #fff);
   border: none;
   border-radius: 3px;
   padding: 4px 10px;
@@ -303,6 +305,10 @@ button {
   display: inline-flex;
   align-items: center;
   gap: 5px;
+}
+
+button:hover:not(:disabled) {
+  filter: brightness(1.18);
 }
 
 button:disabled {
