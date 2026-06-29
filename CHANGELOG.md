@@ -4,6 +4,16 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.1.8] — 2026-06-29
+
+### Added
+
+- Results filter now supports `col is null` / `col is not null` (case-insensitive), equivalent to `col=null` / `col!=null`
+
+### Fixed
+
+- Last results row is no longer hidden behind the horizontal scrollbar (added bottom padding so the macOS overlay scrollbar doesn't cover it)
+
 ## [0.1.7] — 2026-06-29
 
 ### Fixed

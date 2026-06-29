@@ -111,6 +111,26 @@ describe("quoting and null handling", () => {
     expect(matches('city="null"', { city: null })).toBe(false);
     expect(matches('city="null"', { city: "null" })).toBe(true);
   });
+
+  it("is null matches NULL, is not null matches non-null", () => {
+    expect(matches("city is null", { city: null })).toBe(true);
+    expect(matches("city is null", { city: undefined })).toBe(true);
+    expect(matches("city is null", { city: "Almaty" })).toBe(false);
+    expect(matches("city is not null", { city: "Almaty" })).toBe(true);
+    expect(matches("city is not null", { city: null })).toBe(false);
+  });
+
+  it("IS NULL is case-insensitive and combines with AND/OR", () => {
+    expect(matches("CITY IS NULL", { city: null })).toBe(true);
+    expect(matches("city is null AND status=ok", { city: null, status: "ok" })).toBe(true);
+    expect(matches("city is not null OR status=ok", { city: null, status: "ok" })).toBe(true);
+  });
+
+  it("falls back when `is` is not followed by null", () => {
+    expect(parseColumnFilter("city is Almaty", COLS)).toBeNull();
+    expect(parseColumnFilter("city is", COLS)).toBeNull();
+    expect(parseColumnFilter("city is not Almaty", COLS)).toBeNull();
+  });
 });
 
 describe("distinctValuesForColumn", () => {

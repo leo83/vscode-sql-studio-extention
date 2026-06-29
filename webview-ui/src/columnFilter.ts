@@ -5,11 +5,13 @@
 //   orGroup   := cond ( "AND" cond )*
 //   cond      := column op value
 //              | column ("in" | "not" "in") "(" value ("," value)* ")"
+//              | column "is" "not"? "null"
 //   op        := "=" | "!=" | "~" | "!~"
 //
 // "=" / "!=" are exact (case-insensitive, trimmed); "~" / "!~" are substring
 // (contains / not-contains). The bare word `null` (unquoted) is the NULL sentinel:
-// `col=null` matches NULL cells, `col!=null` matches non-NULL cells.
+// `col=null` (or `col is null`) matches NULL cells, `col!=null` (or
+// `col is not null`) matches non-NULL cells.
 //
 // Parsing is all-or-nothing: the whole input must parse into conditions whose
 // columns are real, otherwise the caller falls back to free-text search.
@@ -38,6 +40,7 @@ type Tok =
   | { t: "and" }
   | { t: "or" }
   | { t: "in" }
+  | { t: "is" }
   | { t: "not" }
   | { t: "op"; v: "=" | "!=" | "~" | "!~" }
   | { t: "lp" }
@@ -131,6 +134,7 @@ function tokenize(input: string): Tok[] | null {
     if (lower === "and") toks.push({ t: "and" });
     else if (lower === "or") toks.push({ t: "or" });
     else if (lower === "in") toks.push({ t: "in" });
+    else if (lower === "is") toks.push({ t: "is" });
     else if (lower === "not") toks.push({ t: "not" });
     else toks.push({ t: "word", v: w });
   }
@@ -187,6 +191,23 @@ export function parseColumnFilter(input: string, columnNames: string[]): FilterE
       const op: FilterOp =
         next.v === "=" ? "eq" : next.v === "!=" ? "neq" : next.v === "~" ? "contains" : "ncontains";
       return { column: resolved, op, values: [val] };
+    }
+
+    if (next.t === "is") {
+      pos++;
+      let negate = false;
+      if (peek()?.t === "not") {
+        pos++;
+        negate = true;
+      }
+      // `is`/`is not` is only meaningful with `null`.
+      const nullTok = peek();
+      if (!nullTok || nullTok.t !== "word" || nullTok.v.toLowerCase() !== "null") {
+        return null;
+      }
+      pos++;
+      const nullVal: FilterValue = { text: nullTok.v, isNull: true };
+      return { column: resolved, op: negate ? "neq" : "eq", values: [nullVal] };
     }
 
     if (next.t === "in" || next.t === "not") {

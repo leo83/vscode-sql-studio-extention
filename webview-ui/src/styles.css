@@ -321,6 +321,9 @@ button:disabled {
   flex: 1;
   outline: none;
   position: relative;
+  /* Leave room below the last row so the (overlay) horizontal scrollbar
+     doesn't cover it when scrolled to the bottom. */
+  padding-bottom: 14px;
 }
 
 .row-context-menu {
