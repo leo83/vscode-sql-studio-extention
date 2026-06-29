@@ -175,7 +175,8 @@ export class ResultsPanel implements vscode.WebviewViewProvider {
     onFetchPage?: (offset: number) => Promise<QueryExecutePayload | undefined>,
     onLoadAll?: () => Promise<QueryExecutePayload | undefined>,
     onRefresh?: () => Promise<void>,
-    onRerunWithLimit?: (limit: number) => Promise<QueryExecutePayload | undefined>
+    onRerunWithLimit?: (limit: number) => Promise<QueryExecutePayload | undefined>,
+    options?: { reuse?: boolean }
   ): Promise<void> {
     this.lastResult = result;
     this.pendingTitle = `Results: ${title}`;
@@ -184,6 +185,16 @@ export class ResultsPanel implements vscode.WebviewViewProvider {
     this.rerunWithLimitCallback = onRerunWithLimit;
     this.refreshCallback = onRefresh;
     this.isRefreshing = false;
+
+    // Refresh of the same query: keep the existing webview mounted so front-end
+    // state (filters, view mode, sorting) survives. Push fresh data and reset the
+    // page cache instead of rebuilding the HTML (which would remount React).
+    if (options?.reuse && this.view) {
+      this.view.title = this.pendingTitle;
+      this.view.show?.(true);
+      this.view.webview.postMessage({ type: "pageData", result, reset: true });
+      return;
+    }
 
     await vscode.commands.executeCommand("sqlStudio.results.focus");
 

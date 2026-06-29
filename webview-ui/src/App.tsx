@@ -51,8 +51,12 @@ function ResultsApp() {
 
   useEffect(() => {
     const handler = (event: MessageEvent) => {
-      const msg = event.data as { type?: string; result?: QueryExecuteResult };
+      const msg = event.data as { type?: string; result?: QueryExecuteResult; reset?: boolean };
       if (msg?.type === "pageData" && msg.result) {
+        // Refresh re-runs the query: drop stale cached pages before caching the new one.
+        if (msg.reset) {
+          pageCacheRef.current.clear();
+        }
         const offset = msg.result.statements?.[0]?.page_offset ?? 0;
         pageCacheRef.current.set(offset, msg.result);
         setBatch(msg.result);

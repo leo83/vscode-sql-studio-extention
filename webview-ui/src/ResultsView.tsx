@@ -35,10 +35,15 @@ export function ResultsView({ result, embedded = false, fetchMode, serverPageSiz
 
   const [chartSettings, setChartSettings] = useState<ChartSettings>(() => defaultChartSettings(columns));
 
-  // Reset chart settings when a new query result arrives (columns identity changes)
+  // Stable signature of the column shape — a refresh of the same query produces a new
+  // `columns` array identity but the same signature, so the chart config is preserved.
+  const columnsKey = useMemo(() => columns.map((c) => `${c.name}:${c.kind}`).join("|"), [columns]);
+
+  // Reset chart settings only when the column structure actually changes (new query).
   useEffect(() => {
     setChartSettings(defaultChartSettings(columns));
-  }, [columns]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [columnsKey]);
 
   // Reset busy state when new result arrives (page fetched or refresh completed)
   useEffect(() => {

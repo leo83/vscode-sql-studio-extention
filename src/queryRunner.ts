@@ -427,7 +427,8 @@ export class QueryRunner {
     limit: number,
     showResults = true,
     leadingSessionCount = 0,
-    serverPageSize?: number
+    serverPageSize?: number,
+    isRefresh = false
   ): Promise<QueryExecutePayload | undefined> {
     const shouldRun = await this.confirmUnboundedLargeTableScan(conn, sql);
     if (!shouldRun) {
@@ -439,7 +440,8 @@ export class QueryRunner {
       const currentLimit = currentFetchMode === "server" ? getServerPageSize() : getQueryRowLimit();
       await this.executeWithConnection(
         conn, sql, title, currentLimit, showResults, leadingSessionCount,
-        currentFetchMode === "server" ? currentLimit : undefined
+        currentFetchMode === "server" ? currentLimit : undefined,
+        true
       );
     };
 
@@ -521,11 +523,11 @@ export class QueryRunner {
                 });
               };
               if (showResults) {
-                await this.results.show(result, title, fetchPageCallback, loadAllCallback, refreshCallback, rerunWithLimitCallback);
+                await this.results.show(result, title, fetchPageCallback, loadAllCallback, refreshCallback, rerunWithLimitCallback, { reuse: isRefresh });
               }
             } else {
               if (showResults) {
-                await this.results.show(result, title, undefined, undefined, refreshCallback, rerunWithLimitCallback);
+                await this.results.show(result, title, undefined, undefined, refreshCallback, rerunWithLimitCallback, { reuse: isRefresh });
               }
               const truncated = result.statements.some((s) => s.truncated);
               if (truncated) {

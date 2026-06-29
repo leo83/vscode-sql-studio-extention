@@ -4,6 +4,8 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.1.6] — 2026-06-29
+
 ### Added
 
 - Results filter now supports `!=`, `~` / `!~` (contains / not-contains), `in (…)` / `not in (…)`, and combining conditions with `AND` / `OR` (AND binds tighter than OR)
@@ -14,6 +16,7 @@ All notable changes to this project will be documented in this file.
 
 - `col!=value` filters no longer silently fall back to free-text search (the filter parser only understood `=`); `=` / `!=` now match exactly (case-insensitive), use `~` for substring search. Filtering still applies to loaded rows only
 - Row counter now shows `<matched> of <total> rows` while a filter is active (previously it showed only the total, so the number looked wrong after **Load all rows** with a filter applied)
+- **Refresh** no longer wipes front-end state: the active filter, the current view (Table/Chart), sorting, and column order are now preserved. Refresh pushes fresh data into the mounted webview instead of rebuilding it. Chart settings also survive a refresh as long as the column shape is unchanged
 
 ## [0.1.3] — 2026-06-25
 
