@@ -13,27 +13,20 @@ import {
 } from "@tanstack/react-table";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { IconChevronLeft, IconChevronRight, IconChevronsLeft, IconChevronsRight, IconDownload, IconExpandAll, IconEye } from "./Icons";
+import {
+  appendEqualsClause,
+  distinctValuesForColumn,
+  parseColumnFilter,
+  rowMatchesFilter,
+} from "./columnFilter";
 import { analyzeColumns, computeColumnSizes, ROW_NUM_COLUMN_WIDTH } from "./resultData";
 import type { QueryResult } from "./types";
 import { getVsCodeApi } from "./vscodeApi";
 
-interface ColumnFilter {
-  column: string;
-  value: string;
-}
+// Max distinct values for which the right-click "Filter values" submenu is offered.
+const FILTER_VALUES_LIMIT = 50;
 
-function parseColumnFilters(input: string): ColumnFilter[] | null {
-  const trimmed = input.trim();
-  if (!trimmed.includes("=")) return null;
-  const parts = trimmed.split(/\s+AND\s+/i);
-  const filters: ColumnFilter[] = [];
-  for (const part of parts) {
-    const m = part.trim().match(/^(\w+)=(?:"([^"]*)"|(.*))$/);
-    if (!m) return null;
-    filters.push({ column: m[1], value: (m[2] ?? m[3] ?? "").trim() });
-  }
-  return filters.length > 0 ? filters : null;
-}
+const FILTER_PLACEHOLDER = 'Filter rows… or col=value, col!=v, col in (a,b), AND / OR';
 
 interface Props {
   result: QueryResult;
@@ -47,6 +40,7 @@ interface Props {
   onFetchPage?: (offset: number, setBusy: () => void) => void;
   onPageSizeChange?: (pageSize: number, setBusy: () => void) => void;
   onLoadAll?: (permanently: boolean, setBusy: () => void) => void;
+  onFilterStateChange?: (state: { isFiltered: boolean; filteredCount: number }) => void;
 }
 
 function rowToJson(row: Record<string, unknown>): string {
@@ -84,7 +78,7 @@ interface ContextMenuState {
   columnId: string | null;
 }
 
-export function ResultsTable({ result, embedded = false, showToolbar = true, fetchMode, serverPageSize, isBusy = false, elapsedSeconds = 0, onBusyStart, onFetchPage, onPageSizeChange, onLoadAll }: Props) {
+export function ResultsTable({ result, embedded = false, showToolbar = true, fetchMode, serverPageSize, isBusy = false, elapsedSeconds = 0, onBusyStart, onFetchPage, onPageSizeChange, onLoadAll, onFilterStateChange }: Props) {
   const [globalFilter, setGlobalFilter] = useState("");
   const [sorting, setSorting] = useState<SortingState>([]);
   const [columnSizing, setColumnSizing] = useState<ColumnSizingState>({});
@@ -97,6 +91,7 @@ export function ResultsTable({ result, embedded = false, showToolbar = true, fet
   const [selectedRowId, setSelectedRowId] = useState<string | null>(null);
   const [selectedColumnId, setSelectedColumnId] = useState<string | null>(null);
   const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(null);
+  const [valuesSubmenuOpen, setValuesSubmenuOpen] = useState(false);
   const tableWrapRef = useRef<HTMLDivElement>(null);
   const copyRowShortcutLabel = useMemo(() => getCopyRowShortcutLabel(), []);
   const copyValueShortcutLabel = useMemo(() => getCopyValueShortcutLabel(), []);
@@ -121,20 +116,22 @@ export function ResultsTable({ result, embedded = false, showToolbar = true, fet
     [result.rows, columnNames]
   );
 
-  const colFilters = useMemo(() => parseColumnFilters(globalFilter), [globalFilter]);
+  const colFilter = useMemo(
+    () => parseColumnFilter(globalFilter, columnNames),
+    [globalFilter, columnNames]
+  );
 
   const displayData = useMemo(() => {
-    if (!colFilters) return data;
-    return data.filter((row) =>
-      colFilters.every(({ column, value }) => {
-        const cellValue = row[column];
-        if (cellValue === null || cellValue === undefined) {
-          return value.toLowerCase() === "null" || value === "";
-        }
-        return String(cellValue).toLowerCase().includes(value.toLowerCase());
-      })
-    );
-  }, [data, colFilters]);
+    if (!colFilter) return data;
+    return data.filter((row) => rowMatchesFilter(row, colFilter));
+  }, [data, colFilter]);
+
+  const isFiltered = colFilter !== null;
+  const filteredCount = displayData.length;
+
+  useEffect(() => {
+    onFilterStateChange?.({ isFiltered, filteredCount });
+  }, [isFiltered, filteredCount, onFilterStateChange]);
 
   const numericColumnNames = useMemo(() => {
     const analyzed = analyzeColumns(data, result.columns);
@@ -191,7 +188,7 @@ export function ResultsTable({ result, embedded = false, showToolbar = true, fet
     data: displayData,
     columns,
     state: {
-      globalFilter: colFilters ? "" : globalFilter,
+      globalFilter: colFilter ? "" : globalFilter,
       sorting,
       columnSizing,
       columnOrder,
@@ -311,7 +308,10 @@ export function ResultsTable({ result, embedded = false, showToolbar = true, fet
     if (!contextMenu) {
       return;
     }
-    const closeMenu = () => setContextMenu(null);
+    const closeMenu = () => {
+      setContextMenu(null);
+      setValuesSubmenuOpen(false);
+    };
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key === "Escape") {
         closeMenu();
@@ -346,6 +346,7 @@ export function ResultsTable({ result, embedded = false, showToolbar = true, fet
       (row.id === selectedRowId ? selectedColumnId : null);
 
     selectRow(row, columnId ?? undefined);
+    setValuesSubmenuOpen(false);
     setContextMenu({
       x: event.clientX,
       y: event.clientY,
@@ -358,6 +359,7 @@ export function ResultsTable({ result, embedded = false, showToolbar = true, fet
     event.preventDefault();
     event.stopPropagation();
     setSelectedColumnId(columnId);
+    setValuesSubmenuOpen(false);
     setContextMenu({
       x: event.clientX,
       y: event.clientY,
@@ -401,6 +403,19 @@ export function ResultsTable({ result, embedded = false, showToolbar = true, fet
     table.getColumn(columnId)?.toggleVisibility(false);
   };
 
+  const menuColumnId = contextMenu?.columnId ?? null;
+  const filterableValues = useMemo(
+    () => (menuColumnId ? distinctValuesForColumn(data, menuColumnId, FILTER_VALUES_LIMIT) : null),
+    [menuColumnId, data]
+  );
+
+  const applyValueFilter = (value: string | null) => {
+    if (!menuColumnId) return;
+    setGlobalFilter((current) => appendEqualsClause(current, menuColumnId, value, columnNames));
+    setContextMenu(null);
+    setValuesSubmenuOpen(false);
+  };
+
   const handleTableKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
     if (event.key === "ArrowDown") {
       event.preventDefault();
@@ -436,12 +451,15 @@ export function ResultsTable({ result, embedded = false, showToolbar = true, fet
         <div className="toolbar">
           <input
             className="filter"
-            placeholder="Filter rows... or col=value AND col2=value2"
+            placeholder={FILTER_PLACEHOLDER}
             value={globalFilter}
             onChange={(e) => setGlobalFilter(e.target.value)}
           />
           <span className="meta">
-            {result.row_count} rows · {result.duration_ms.toFixed(1)} ms
+            {isFiltered
+              ? `${filteredCount} of ${result.row_count} rows`
+              : `${result.row_count} rows`}{" "}
+            · {result.duration_ms.toFixed(1)} ms
             {result.has_more ? " · more" : result.truncated ? " · truncated" : ""}
           </span>
           {table.getAllLeafColumns().some((c) => !c.getIsVisible()) ? (
@@ -460,7 +478,7 @@ export function ResultsTable({ result, embedded = false, showToolbar = true, fet
         <div className="table-toolbar">
           <input
             className="filter"
-            placeholder="Filter rows... or col=value AND col2=value2"
+            placeholder={FILTER_PLACEHOLDER}
             value={globalFilter}
             onChange={(e) => setGlobalFilter(e.target.value)}
           />
@@ -627,6 +645,48 @@ export function ResultsTable({ result, embedded = false, showToolbar = true, fet
               <button type="button" onClick={handleContextMenuHideColumn}>
                 <span>Hide column</span>
               </button>
+            ) : null}
+            {contextMenu.columnId ? (
+              filterableValues ? (
+                <div
+                  className="row-context-submenu-item"
+                  onMouseEnter={() => setValuesSubmenuOpen(true)}
+                  onMouseLeave={() => setValuesSubmenuOpen(false)}
+                >
+                  <button type="button" onClick={() => setValuesSubmenuOpen((v) => !v)}>
+                    <span>Filter values</span>
+                    <span className="row-context-menu-shortcut">▸</span>
+                  </button>
+                  {valuesSubmenuOpen ? (
+                    <div
+                      className={`row-context-submenu${
+                        contextMenu.x > window.innerWidth - 320 ? " submenu-left" : ""
+                      }${
+                        // "Filter values" is the last menu item (~130px below the click),
+                        // so flip the value list upward well before the raw click nears the edge.
+                        contextMenu.y > window.innerHeight - 480 ? " submenu-up" : ""
+                      }`}
+                    >
+                      <div className="row-context-submenu-hint">loaded rows</div>
+                      {filterableValues.hasNull ? (
+                        <button type="button" onClick={() => applyValueFilter(null)}>
+                          <span className="null-val">NULL</span>
+                        </button>
+                      ) : null}
+                      {filterableValues.values.map((value) => (
+                        <button key={value} type="button" onClick={() => applyValueFilter(value)}>
+                          <span>{value === "" ? "(empty)" : value}</span>
+                        </button>
+                      ))}
+                    </div>
+                  ) : null}
+                </div>
+              ) : (
+                <button type="button" disabled>
+                  <span>Filter values</span>
+                  <span className="row-context-menu-shortcut">{FILTER_VALUES_LIMIT}+</span>
+                </button>
+              )
             ) : null}
           </div>
         ) : null}

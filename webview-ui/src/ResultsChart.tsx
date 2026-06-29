@@ -6,6 +6,7 @@ import { ChartTypePicker } from "./ChartTypePicker";
 import {
   AGGREGATION_OPTIONS,
   BAR_LAYOUT_OPTIONS,
+  VALUE_LABEL_OPTIONS,
   aggregationOptionsForChart,
   buildChartOption,
   type BarLayout,
@@ -275,6 +276,17 @@ export function ResultsChart({ records, columns, settings, onSettingsChange: set
             options={aggregationOptions}
             onChange={(value) =>
               update({ aggregation: value as ChartSettings["aggregation"] })
+            }
+          />
+        ) : null}
+
+        {!isScatter && !isHeatmap ? (
+          <FieldSelect
+            label="Value labels"
+            value={settings.valueLabels}
+            options={VALUE_LABEL_OPTIONS}
+            onChange={(value) =>
+              update({ valueLabels: value as ChartSettings["valueLabels"] })
             }
           />
         ) : null}

@@ -4,6 +4,17 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added
+
+- Results filter now supports `!=`, `~` / `!~` (contains / not-contains), `in (…)` / `not in (…)`, and combining conditions with `AND` / `OR` (AND binds tighter than OR)
+- Right-click a column → **Filter values** lists the distinct values of low-cardinality (classifier) columns; picking one appends `column=value` to the filter
+- Charts: **Value labels** control (Off / Value / Percent) draws values directly on bars, lines, and pie slices instead of only on hover
+
+### Fixed
+
+- `col!=value` filters no longer silently fall back to free-text search (the filter parser only understood `=`); `=` / `!=` now match exactly (case-insensitive), use `~` for substring search. Filtering still applies to loaded rows only
+- Row counter now shows `<matched> of <total> rows` while a filter is active (previously it showed only the total, so the number looked wrong after **Load all rows** with a filter applied)
+
 ## [0.1.3] — 2026-06-25
 
 ### Fixed

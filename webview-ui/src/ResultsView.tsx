@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect, useMemo, useRef, useState } from "react";
+import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { IconBarChart, IconDownload, IconRefresh, IconTable } from "./Icons";
 import { ResultsTable } from "./ResultsTable";
 import { analyzeColumns, queryResultToRecords } from "./resultData";
@@ -24,6 +24,7 @@ interface Props {
 
 export function ResultsView({ result, embedded = false, fetchMode, serverPageSize, onFetchPage, onPageSizeChange, onLoadAll }: Props) {
   const [viewMode, setViewMode] = useState<ViewMode>("table");
+  const [filterState, setFilterState] = useState({ isFiltered: false, filteredCount: 0 });
   const [isBusy, setIsBusy] = useState(false);
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -43,6 +44,18 @@ export function ResultsView({ result, embedded = false, fetchMode, serverPageSiz
   useEffect(() => {
     setIsBusy(false);
   }, [result]);
+
+  // Stable + idempotent so the child's report effect cannot trigger a render loop.
+  const handleFilterStateChange = useCallback(
+    (state: { isFiltered: boolean; filteredCount: number }) => {
+      setFilterState((prev) =>
+        prev.isFiltered === state.isFiltered && prev.filteredCount === state.filteredCount
+          ? prev
+          : state
+      );
+    },
+    []
+  );
 
   // Start/stop seconds counter
   useEffect(() => {
@@ -90,7 +103,10 @@ export function ResultsView({ result, embedded = false, fetchMode, serverPageSiz
           </button>
         </div>
         <span className="meta">
-          {result.row_count} rows · {result.duration_ms.toFixed(1)} ms
+          {viewMode === "table" && filterState.isFiltered
+            ? `${filterState.filteredCount} of ${result.row_count} rows`
+            : `${result.row_count} rows`}{" "}
+          · {result.duration_ms.toFixed(1)} ms
           {result.has_more ? " · more" : result.truncated ? " · truncated" : ""}
         </span>
         <button type="button" onClick={() => getVsCodeApi()?.postMessage({ type: "exportCsv" })}>
@@ -126,6 +142,7 @@ export function ResultsView({ result, embedded = false, fetchMode, serverPageSiz
           onFetchPage={onFetchPage}
           onPageSizeChange={onPageSizeChange}
           onLoadAll={onLoadAll}
+          onFilterStateChange={handleFilterStateChange}
         />
       ) : (
         <div className="results-body-only results-chart-host">

@@ -4,6 +4,7 @@ import { formatAxisLabel, toNumber, type ColumnInfo } from "./resultData";
 export type ChartType = "line" | "bar" | "scatter" | "area" | "pie" | "heatmap";
 export type Aggregation = "none" | "count" | "sum" | "avg" | "min" | "max";
 export type BarLayout = "columns" | "horizontal-scroll";
+export type ValueLabelMode = "off" | "value" | "percent";
 
 export interface ChartSettings {
   chartType: ChartType;
@@ -14,6 +15,7 @@ export interface ChartSettings {
   valueColumn: string;
   aggregation: Aggregation;
   barLayout: BarLayout;
+  valueLabels: ValueLabelMode;
 }
 
 export const CHART_TYPE_OPTIONS: { value: ChartType; label: string }[] = [
@@ -28,6 +30,12 @@ export const CHART_TYPE_OPTIONS: { value: ChartType; label: string }[] = [
 export const BAR_LAYOUT_OPTIONS: { value: BarLayout; label: string }[] = [
   { value: "columns", label: "Columns" },
   { value: "horizontal-scroll", label: "Horizontal (scroll)" },
+];
+
+export const VALUE_LABEL_OPTIONS: { value: ValueLabelMode; label: string }[] = [
+  { value: "off", label: "Off" },
+  { value: "value", label: "Value" },
+  { value: "percent", label: "Percent" },
 ];
 
 const HORIZONTAL_SCROLL_VISIBLE_CATEGORIES = 30;
@@ -75,7 +83,50 @@ export function defaultChartSettings(columns: ColumnInfo[]): ChartSettings {
     valueColumn: yColumn,
     aggregation: "sum",
     barLayout: "columns",
+    valueLabels: "value",
   };
+}
+
+/** Compact numeric formatting for on-chart value labels. */
+export function formatChartValue(value: number): string {
+  if (!Number.isFinite(value)) {
+    return String(value);
+  }
+  if (Number.isInteger(value)) {
+    return value.toLocaleString();
+  }
+  return value.toLocaleString(undefined, { maximumFractionDigits: 2 });
+}
+
+/** Cartesian-series (bar/line/area) label config for the chosen value-label mode. */
+function cartesianValueLabel(
+  mode: ValueLabelMode,
+  theme: ThemeColors,
+  position: "top" | "right",
+  total: number
+): Record<string, unknown> | undefined {
+  if (mode === "off") {
+    return undefined;
+  }
+  return {
+    show: true,
+    position,
+    color: theme.text,
+    formatter: (params: { value: number | string }) => {
+      const value = typeof params.value === "number" ? params.value : Number(params.value);
+      if (!Number.isFinite(value)) {
+        return "";
+      }
+      if (mode === "percent") {
+        return total ? `${((value / total) * 100).toFixed(1)}%` : "0%";
+      }
+      return formatChartValue(value);
+    },
+  };
+}
+
+function sumValues(values: number[]): number {
+  return values.reduce((sum, value) => sum + value, 0);
 }
 
 function aggregateValues(values: unknown[], aggregation: Aggregation): number {
@@ -276,8 +327,11 @@ function buildGroupedSeries(
 
   const manyCategoriesNotice = barManyCategoriesNotice(settings, orderedLabels.length);
 
+  const labelMode = settings.valueLabels;
+
   if (seriesNames.length === 0) {
     const data = orderedLabels.map((label) => valueForLabel(label));
+    const total = sumValues(data);
 
     if (useHorizontalScroll) {
       return {
@@ -285,6 +339,7 @@ function buildGroupedSeries(
           {
             type: "bar",
             data,
+            label: cartesianValueLabel(labelMode, theme, "right", total),
           },
         ]),
         ...manyCategoriesNotice,
@@ -306,19 +361,24 @@ function buildGroupedSeries(
           data,
           areaStyle,
           smooth,
+          label: cartesianValueLabel(labelMode, theme, "top", total),
         },
       ] as EChartsOption["series"],
     };
     return { option, ...manyCategoriesNotice };
   }
 
-  const series = seriesNames.map((name) => ({
-    name,
-    type: seriesType,
-    data: orderedLabels.map((label) => valueForLabel(label, name)),
-    areaStyle,
-    smooth,
-  }));
+  const series = seriesNames.map((name) => {
+    const data = orderedLabels.map((label) => valueForLabel(label, name));
+    return {
+      name,
+      type: seriesType,
+      data,
+      areaStyle,
+      smooth,
+      label: cartesianValueLabel(labelMode, theme, useHorizontalScroll ? "right" : "top", sumValues(data)),
+    };
+  });
 
   if (useHorizontalScroll) {
     return {
@@ -519,7 +579,16 @@ function buildPie(
           data,
           animation: false,
           animationDurationUpdate: 0,
-          label: { show: showSliceLabels, color: theme.text },
+          label: {
+            show: showSliceLabels,
+            color: theme.text,
+            formatter:
+              settings.valueLabels === "percent"
+                ? "{b}: {d}%"
+                : settings.valueLabels === "value"
+                  ? "{b}: {c}"
+                  : "{b}",
+          },
           labelLine: { show: showSliceLabels },
         },
       ],

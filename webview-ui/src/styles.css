@@ -369,6 +369,71 @@ button:disabled {
   cursor: default;
 }
 
+.row-context-submenu-item {
+  position: relative;
+}
+
+.row-context-submenu {
+  position: absolute;
+  top: -4px;
+  left: 100%;
+  z-index: 21;
+  min-width: 140px;
+  max-height: 320px;
+  overflow-y: auto;
+  margin-left: 2px;
+  padding: 4px;
+  border: 1px solid var(--vscode-menu-border, #454545);
+  border-radius: 4px;
+  background: var(--vscode-menu-background, #252526);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.36);
+}
+
+.row-context-submenu.submenu-left {
+  left: auto;
+  right: 100%;
+  margin-left: 0;
+  margin-right: 2px;
+}
+
+.row-context-submenu.submenu-up {
+  top: auto;
+  bottom: -4px;
+}
+
+.row-context-submenu button {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  box-sizing: border-box;
+  padding: 5px 12px;
+  border: none;
+  border-radius: 3px;
+  background: transparent;
+  color: var(--vscode-menu-foreground, #ccc);
+  text-align: left;
+  cursor: pointer;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.row-context-submenu button span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.row-context-submenu button:hover:not(:disabled) {
+  background: var(--sql-studio-selection, var(--vscode-menu-selectionBackground, #094771));
+  color: var(--sql-studio-selection-foreground, var(--vscode-menu-selectionForeground, #fff));
+}
+
+.row-context-submenu-hint {
+  padding: 2px 12px 6px;
+  font-size: 0.85em;
+  opacity: 0.55;
+}
+
 .table-wrap:focus-visible {
   outline: 1px solid var(--sql-studio-focus, var(--vscode-focusBorder, #007fd4));
   outline-offset: -1px;
