@@ -127,7 +127,11 @@ export function ResultsView({ result, embedded = false, fetchMode, serverPageSiz
           disabled={isBusy}
           onClick={() => {
             setIsBusy(true);
-            getVsCodeApi()?.postMessage({ type: "refresh" });
+            // Preserve the current scope: if we're showing all loaded rows (client
+            // display), refresh should reload everything rather than revert to the
+            // first server page.
+            const loadAll = fetchMode !== "server";
+            getVsCodeApi()?.postMessage({ type: "refresh", loadAll });
           }}
         >
           <IconRefresh />Refresh

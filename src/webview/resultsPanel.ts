@@ -15,7 +15,7 @@ export class ResultsPanel implements vscode.WebviewViewProvider {
   private rerunWithLimitCallback:
     | ((limit: number) => Promise<QueryExecutePayload | undefined>)
     | undefined;
-  private refreshCallback: (() => Promise<void>) | undefined;
+  private refreshCallback: ((opts?: { loadAll?: boolean }) => Promise<void>) | undefined;
   private isRefreshing = false;
 
   constructor(
@@ -85,7 +85,7 @@ export class ResultsPanel implements vscode.WebviewViewProvider {
       } else if (msg.type === "refresh") {
         if (this.refreshCallback && !this.isRefreshing) {
           this.isRefreshing = true;
-          void this.refreshCallback().finally(() => {
+          void this.refreshCallback({ loadAll: msg.loadAll === true }).finally(() => {
             this.isRefreshing = false;
           });
         }

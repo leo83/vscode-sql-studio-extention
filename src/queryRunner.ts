@@ -435,12 +435,16 @@ export class QueryRunner {
       return undefined;
     }
 
-    const refreshCallback = async (): Promise<void> => {
-      const currentFetchMode = getFetchMode();
-      const currentLimit = currentFetchMode === "server" ? getServerPageSize() : getQueryRowLimit();
+    const refreshCallback = async (opts?: { loadAll?: boolean }): Promise<void> => {
+      // Preserve the currently-displayed scope. When the user has loaded all rows
+      // (client display), refresh must reload everything and stay in client mode —
+      // otherwise it reverts to the first server page, which both shrinks the result
+      // and (via the client→server flip) wipes the active filter.
+      const serverMode = !opts?.loadAll && getFetchMode() === "server";
+      const reloadLimit = serverMode ? getServerPageSize() : getQueryRowLimit();
       await this.executeWithConnection(
-        conn, sql, title, currentLimit, showResults, leadingSessionCount,
-        currentFetchMode === "server" ? currentLimit : undefined,
+        conn, sql, title, reloadLimit, showResults, leadingSessionCount,
+        serverMode ? reloadLimit : undefined,
         true
       );
     };

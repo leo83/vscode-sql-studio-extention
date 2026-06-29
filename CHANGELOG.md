@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.1.7] — 2026-06-29
+
+### Fixed
+
+- **Refresh after "Load all rows"** no longer reverts to the first page and no longer clears the active filter. Refresh now preserves the loaded scope: if all rows were loaded (client display), it reloads them all and stays in client mode instead of flipping back to the first server page (the flip also wiped the filter text). Hardened the results grid so an internal table reset can never silently clear a structured filter
+
 ## [0.1.6] — 2026-06-29
 
 ### Added

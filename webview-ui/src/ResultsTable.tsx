@@ -195,7 +195,19 @@ export function ResultsTable({ result, embedded = false, showToolbar = true, fet
       columnVisibility,
       ...(fetchMode !== "server" ? { pagination } : {}),
     },
-    onGlobalFilterChange: setGlobalFilter,
+    onGlobalFilterChange: (updater) => {
+      const current = colFilter ? "" : globalFilter;
+      const next = typeof updater === "function" ? (updater as (old: string) => string)(current) : updater;
+      // While a structured filter is active we feed TanStack an empty global filter,
+      // so a table reconfiguration (e.g. fetch-mode change) can echo "" back here.
+      // Ignore that — the user's typed expression must not be silently cleared.
+      // The visible filter input calls setGlobalFilter directly, so explicit clears
+      // still work.
+      if (colFilter && next === "") {
+        return;
+      }
+      setGlobalFilter(next);
+    },
     onSortingChange: setSorting,
     onColumnSizingChange: setColumnSizing,
     onColumnOrderChange: setColumnOrder,
