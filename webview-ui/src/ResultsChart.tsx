@@ -1,13 +1,13 @@
 import ReactECharts from "echarts-for-react";
 import type { EChartsType } from "echarts";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import type React from "react";
 import { ChartTypePicker } from "./ChartTypePicker";
 import {
   AGGREGATION_OPTIONS,
   BAR_LAYOUT_OPTIONS,
   aggregationOptionsForChart,
   buildChartOption,
-  defaultChartSettings,
   type BarLayout,
   type ChartSettings,
   type ChartType,
@@ -18,6 +18,8 @@ import type { ColumnInfo } from "./resultData";
 interface Props {
   records: Record<string, unknown>[];
   columns: ColumnInfo[];
+  settings: ChartSettings;
+  onSettingsChange: React.Dispatch<React.SetStateAction<ChartSettings>>;
 }
 
 function FieldSelect({
@@ -50,18 +52,13 @@ function FieldSelect({
   );
 }
 
-export function ResultsChart({ records, columns }: Props) {
-  const [settings, setSettings] = useState<ChartSettings>(() => defaultChartSettings(columns));
+export function ResultsChart({ records, columns, settings, onSettingsChange: setSettings }: Props) {
   const [pieScale, setPieScale] = useState(1);
   const chartRef = useRef<ReactECharts>(null);
   const canvasWrapRef = useRef<HTMLDivElement>(null);
   const pieScaleRef = useRef(pieScale);
   const pieGesturesRef = useRef<PieGestureHandlers | null>(null);
   pieScaleRef.current = pieScale;
-
-  useEffect(() => {
-    setSettings(defaultChartSettings(columns));
-  }, [columns]);
 
   const isHeatmap = settings.chartType === "heatmap";
   const isPie = settings.chartType === "pie";

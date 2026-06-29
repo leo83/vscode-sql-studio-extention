@@ -4,6 +4,7 @@ import { ResultsTable } from "./ResultsTable";
 import { analyzeColumns, queryResultToRecords } from "./resultData";
 import type { QueryResult } from "./types";
 import { getVsCodeApi } from "./vscodeApi";
+import { defaultChartSettings, type ChartSettings } from "./chartConfig";
 
 const ResultsChart = lazy(() =>
   import("./ResultsChart").then((module) => ({ default: module.ResultsChart }))
@@ -30,6 +31,13 @@ export function ResultsView({ result, embedded = false, fetchMode, serverPageSiz
   const records = useMemo(() => queryResultToRecords(result), [result]);
   const columns = useMemo(() => analyzeColumns(records, result.columns), [records, result.columns]);
   const canChart = records.length > 0 && columns.length > 0;
+
+  const [chartSettings, setChartSettings] = useState<ChartSettings>(() => defaultChartSettings(columns));
+
+  // Reset chart settings when a new query result arrives (columns identity changes)
+  useEffect(() => {
+    setChartSettings(defaultChartSettings(columns));
+  }, [columns]);
 
   // Reset busy state when new result arrives (page fetched or refresh completed)
   useEffect(() => {
@@ -122,7 +130,7 @@ export function ResultsView({ result, embedded = false, fetchMode, serverPageSiz
       ) : (
         <div className="results-body-only results-chart-host">
           <Suspense fallback={<div className="chart-empty">Loading chart…</div>}>
-            <ResultsChart records={records} columns={columns} />
+            <ResultsChart records={records} columns={columns} settings={chartSettings} onSettingsChange={setChartSettings} />
           </Suspense>
         </div>
       )}
