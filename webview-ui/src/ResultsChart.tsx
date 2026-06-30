@@ -9,6 +9,9 @@ import {
   VALUE_LABEL_OPTIONS,
   aggregationOptionsForChart,
   buildChartOption,
+  defaultPieAggregation,
+  defaultPieValueLabels,
+  pieChartDefaults,
   type BarLayout,
   type ChartSettings,
   type ChartType,
@@ -69,6 +72,15 @@ export function ResultsChart({ records, columns, settings, onSettingsChange: set
   useEffect(() => {
     setPieScale(1);
   }, [settings.chartType, records]);
+
+  // Smart pie defaults are applied once per query (stable column shape), so a
+  // column-filter change — which swaps the `records` identity — doesn't clobber
+  // the user's tweaks. A new query (new signature) re-arms them.
+  const columnsKey = useMemo(
+    () => columns.map((col) => `${col.name}:${col.kind}`).join("|"),
+    [columns]
+  );
+  const pieDefaultsKeyRef = useRef<string | null>(null);
 
   const columnOptions = useMemo(
     () =>
@@ -171,13 +183,25 @@ export function ResultsChart({ records, columns, settings, onSettingsChange: set
 
   const onChartTypeChange = (chartType: ChartType) => {
     setPieScale(1);
+    const applyPieDefaults =
+      chartType === "pie" && pieDefaultsKeyRef.current !== columnsKey;
+    if (applyPieDefaults) {
+      pieDefaultsKeyRef.current = columnsKey;
+    }
     setSettings((prev) => {
       const next: ChartSettings = { ...prev, chartType };
       const aggs = aggregationOptionsForChart(chartType);
       if (!aggs.includes(next.aggregation)) {
         next.aggregation = aggs[0] ?? "sum";
       }
-      if (chartType === "pie" && !next.valueColumn) {
+      if (applyPieDefaults) {
+        const { xColumn, valueColumn } = pieChartDefaults(records, columns);
+        next.xColumn = xColumn;
+        next.valueColumn = valueColumn;
+        next.yColumn = valueColumn;
+        next.aggregation = defaultPieAggregation;
+        next.valueLabels = defaultPieValueLabels;
+      } else if (chartType === "pie" && !next.valueColumn) {
         next.valueColumn = next.yColumn;
       }
       return next;

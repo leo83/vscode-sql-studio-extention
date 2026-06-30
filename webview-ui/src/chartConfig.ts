@@ -87,6 +87,64 @@ export function defaultChartSettings(columns: ColumnInfo[]): ChartSettings {
   };
 }
 
+const PIE_CARDINALITY_SAMPLE = 2000;
+
+/** Distinct-value count for a column, capped — used only to rank columns. */
+function distinctCount(records: Record<string, unknown>[], name: string): number {
+  const seen = new Set<string>();
+  const limit = Math.min(records.length, PIE_CARDINALITY_SAMPLE);
+  for (let index = 0; index < limit; index += 1) {
+    seen.add(formatAxisLabel(records[index][name]));
+  }
+  return seen.size;
+}
+
+/**
+ * Smart defaults for a freshly-opened pie chart: a low-cardinality column makes
+ * the most readable label (few slices), and a high-cardinality column — preferring
+ * numeric — is the natural measure to aggregate. Aggregation defaults to `count`
+ * and labels to `percent` (see {@link defaultPieAggregation} / {@link defaultPieValueLabels}),
+ * which renders something meaningful regardless of the chosen value column.
+ */
+export function pieChartDefaults(
+  records: Record<string, unknown>[],
+  columns: ColumnInfo[]
+): { xColumn: string; valueColumn: string } {
+  if (columns.length === 0) {
+    return { xColumn: "", valueColumn: "" };
+  }
+
+  const ranked = columns.map((col) => ({ col, distinct: distinctCount(records, col.name) }));
+
+  // Label: lowest cardinality with at least two slices; prefer non-numeric on ties.
+  const labelRanked = [...ranked].sort((a, b) => {
+    const aUseless = a.distinct < 2 ? 1 : 0;
+    const bUseless = b.distinct < 2 ? 1 : 0;
+    if (aUseless !== bUseless) return aUseless - bUseless;
+    if (a.distinct !== b.distinct) return a.distinct - b.distinct;
+    const aNumeric = a.col.kind === "numeric" ? 1 : 0;
+    const bNumeric = b.col.kind === "numeric" ? 1 : 0;
+    return aNumeric - bNumeric;
+  });
+  const labelColumn = labelRanked[0].col;
+
+  // Value: highest cardinality; prefer numeric, and differ from the label column.
+  const valueRanked = [...ranked]
+    .filter((entry) => entry.col.name !== labelColumn.name)
+    .sort((a, b) => {
+      const aNumeric = a.col.kind === "numeric" ? 1 : 0;
+      const bNumeric = b.col.kind === "numeric" ? 1 : 0;
+      if (aNumeric !== bNumeric) return bNumeric - aNumeric;
+      return b.distinct - a.distinct;
+    });
+  const valueColumn = valueRanked[0]?.col ?? labelColumn;
+
+  return { xColumn: labelColumn.name, valueColumn: valueColumn.name };
+}
+
+export const defaultPieAggregation: Aggregation = "count";
+export const defaultPieValueLabels: ValueLabelMode = "percent";
+
 /** Compact numeric formatting for on-chart value labels. */
 export function formatChartValue(value: number): string {
   if (!Number.isFinite(value)) {

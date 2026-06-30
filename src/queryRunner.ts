@@ -630,12 +630,25 @@ export class QueryRunner {
       }
 
       const detail = check.warnings.map((warning) => warning.message).join("\n");
+      const RUN_ANYWAY = "Run anyway";
+      const RUN_NO_WARN = "Run, don't warn again";
       const picked = await vscode.window.showWarningMessage(
         `Unbounded SELECT without WHERE may scan large tables:\n${detail}`,
         { modal: true },
-        "Run anyway"
+        RUN_ANYWAY,
+        RUN_NO_WARN
       );
-      return picked === "Run anyway";
+      if (picked === RUN_NO_WARN) {
+        await vscode.workspace
+          .getConfiguration("sqlStudio")
+          .update(
+            "warnOnLargeUnboundedSelect",
+            false,
+            vscode.ConfigurationTarget.Global
+          );
+        return true;
+      }
+      return picked === RUN_ANYWAY;
     } catch {
       return true;
     }

@@ -4,6 +4,17 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.1.9] — 2026-06-30
+
+### Added
+
+- Unbounded-SELECT warning now offers "Run, don't warn again", which disables `sqlStudio.warnOnLargeUnboundedSelect` so the check stays off
+- Pie charts open with smart defaults: a low-cardinality column as the label, a high-cardinality (numeric-preferred) column as the value, `count` aggregation, and `percent` value labels
+
+### Changed
+
+- The results column filter is now shared between the table and chart views: it survives switching to the chart and the chart renders the same filtered subset
+
 ## [0.1.8] — 2026-06-29
 
 ### Added

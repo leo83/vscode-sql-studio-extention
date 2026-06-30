@@ -1,7 +1,8 @@
-import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { lazy, Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { IconBarChart, IconDownload, IconRefresh, IconTable } from "./Icons";
 import { ResultsTable } from "./ResultsTable";
 import { analyzeColumns, queryResultToRecords } from "./resultData";
+import { parseColumnFilter, rowMatchesFilter } from "./columnFilter";
 import type { QueryResult } from "./types";
 import { getVsCodeApi } from "./vscodeApi";
 import { defaultChartSettings, type ChartSettings } from "./chartConfig";
@@ -24,7 +25,9 @@ interface Props {
 
 export function ResultsView({ result, embedded = false, fetchMode, serverPageSize, onFetchPage, onPageSizeChange, onLoadAll }: Props) {
   const [viewMode, setViewMode] = useState<ViewMode>("table");
-  const [filterState, setFilterState] = useState({ isFiltered: false, filteredCount: 0 });
+  // Owned here (not inside ResultsTable) so the filter survives switching to the
+  // chart view and back, and so the chart can render the same filtered subset.
+  const [globalFilter, setGlobalFilter] = useState("");
   const [isBusy, setIsBusy] = useState(false);
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -32,6 +35,17 @@ export function ResultsView({ result, embedded = false, fetchMode, serverPageSiz
   const records = useMemo(() => queryResultToRecords(result), [result]);
   const columns = useMemo(() => analyzeColumns(records, result.columns), [records, result.columns]);
   const canChart = records.length > 0 && columns.length > 0;
+
+  const columnNames = useMemo(() => columns.map((col) => col.name), [columns]);
+  const colFilter = useMemo(
+    () => parseColumnFilter(globalFilter, columnNames),
+    [globalFilter, columnNames]
+  );
+  const isFiltered = colFilter !== null;
+  const filteredRecords = useMemo(
+    () => (colFilter ? records.filter((row) => rowMatchesFilter(row, colFilter)) : records),
+    [records, colFilter]
+  );
 
   const [chartSettings, setChartSettings] = useState<ChartSettings>(() => defaultChartSettings(columns));
 
@@ -49,18 +63,6 @@ export function ResultsView({ result, embedded = false, fetchMode, serverPageSiz
   useEffect(() => {
     setIsBusy(false);
   }, [result]);
-
-  // Stable + idempotent so the child's report effect cannot trigger a render loop.
-  const handleFilterStateChange = useCallback(
-    (state: { isFiltered: boolean; filteredCount: number }) => {
-      setFilterState((prev) =>
-        prev.isFiltered === state.isFiltered && prev.filteredCount === state.filteredCount
-          ? prev
-          : state
-      );
-    },
-    []
-  );
 
   // Start/stop seconds counter
   useEffect(() => {
@@ -108,8 +110,8 @@ export function ResultsView({ result, embedded = false, fetchMode, serverPageSiz
           </button>
         </div>
         <span className="meta">
-          {viewMode === "table" && filterState.isFiltered
-            ? `${filterState.filteredCount} of ${result.row_count} rows`
+          {isFiltered
+            ? `${filteredRecords.length} of ${result.row_count} rows`
             : `${result.row_count} rows`}{" "}
           · {result.duration_ms.toFixed(1)} ms
           {result.has_more ? " · more" : result.truncated ? " · truncated" : ""}
@@ -151,12 +153,13 @@ export function ResultsView({ result, embedded = false, fetchMode, serverPageSiz
           onFetchPage={onFetchPage}
           onPageSizeChange={onPageSizeChange}
           onLoadAll={onLoadAll}
-          onFilterStateChange={handleFilterStateChange}
+          globalFilter={globalFilter}
+          setGlobalFilter={setGlobalFilter}
         />
       ) : (
         <div className="results-body-only results-chart-host">
           <Suspense fallback={<div className="chart-empty">Loading chart…</div>}>
-            <ResultsChart records={records} columns={columns} settings={chartSettings} onSettingsChange={setChartSettings} />
+            <ResultsChart records={filteredRecords} columns={columns} settings={chartSettings} onSettingsChange={setChartSettings} />
           </Suspense>
         </div>
       )}

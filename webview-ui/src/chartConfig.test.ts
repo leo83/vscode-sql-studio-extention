@@ -2,9 +2,49 @@ import { describe, expect, it } from "vitest";
 import {
   pieBaseRadius,
   pieCenter,
+  pieChartDefaults,
   pieUsesScrollLegend,
   scalePieRadius,
 } from "./chartConfig";
+import type { ColumnInfo } from "./resultData";
+
+describe("pieChartDefaults", () => {
+  const columns: ColumnInfo[] = [
+    { name: "status", kind: "category" },
+    { name: "amount", kind: "numeric" },
+    { name: "id", kind: "category" },
+  ];
+  const records = Array.from({ length: 6 }, (_, i) => ({
+    status: i % 2 === 0 ? "open" : "closed",
+    amount: i * 10,
+    id: `row-${i}`,
+  }));
+
+  it("picks the low-cardinality column as label and a high-cardinality numeric as value", () => {
+    expect(pieChartDefaults(records, columns)).toEqual({
+      xColumn: "status",
+      valueColumn: "amount",
+    });
+  });
+
+  it("avoids single-value columns as the label", () => {
+    const cols: ColumnInfo[] = [
+      { name: "constant", kind: "category" },
+      { name: "label", kind: "category" },
+      { name: "value", kind: "numeric" },
+    ];
+    const rows = [
+      { constant: "x", label: "a", value: 1 },
+      { constant: "x", label: "b", value: 2 },
+      { constant: "x", label: "c", value: 3 },
+    ];
+    expect(pieChartDefaults(rows, cols).xColumn).toBe("label");
+  });
+
+  it("returns empty columns when there are none", () => {
+    expect(pieChartDefaults([], [])).toEqual({ xColumn: "", valueColumn: "" });
+  });
+});
 
 describe("pieUsesScrollLegend", () => {
   it("enables scroll legend for large category sets", () => {

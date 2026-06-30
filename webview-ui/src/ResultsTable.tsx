@@ -11,7 +11,7 @@ import {
   type SortingState,
   type VisibilityState,
 } from "@tanstack/react-table";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type Dispatch, type SetStateAction } from "react";
 import { IconChevronLeft, IconChevronRight, IconChevronsLeft, IconChevronsRight, IconDownload, IconExpandAll, IconEye } from "./Icons";
 import {
   appendEqualsClause,
@@ -40,7 +40,11 @@ interface Props {
   onFetchPage?: (offset: number, setBusy: () => void) => void;
   onPageSizeChange?: (pageSize: number, setBusy: () => void) => void;
   onLoadAll?: (permanently: boolean, setBusy: () => void) => void;
-  onFilterStateChange?: (state: { isFiltered: boolean; filteredCount: number }) => void;
+  // Optional controlled filter state. When provided, the filter text is owned by
+  // the parent so it survives this component unmounting (e.g. switching to the
+  // chart view) and can be shared with the chart. Falls back to internal state.
+  globalFilter?: string;
+  setGlobalFilter?: Dispatch<SetStateAction<string>>;
 }
 
 function rowToJson(row: Record<string, unknown>): string {
@@ -78,8 +82,10 @@ interface ContextMenuState {
   columnId: string | null;
 }
 
-export function ResultsTable({ result, embedded = false, showToolbar = true, fetchMode, serverPageSize, isBusy = false, elapsedSeconds = 0, onBusyStart, onFetchPage, onPageSizeChange, onLoadAll, onFilterStateChange }: Props) {
-  const [globalFilter, setGlobalFilter] = useState("");
+export function ResultsTable({ result, embedded = false, showToolbar = true, fetchMode, serverPageSize, isBusy = false, elapsedSeconds = 0, onBusyStart, onFetchPage, onPageSizeChange, onLoadAll, globalFilter: controlledFilter, setGlobalFilter: controlledSetFilter }: Props) {
+  const [internalFilter, setInternalFilter] = useState("");
+  const globalFilter = controlledFilter !== undefined ? controlledFilter : internalFilter;
+  const setGlobalFilter = controlledSetFilter ?? setInternalFilter;
   const [sorting, setSorting] = useState<SortingState>([]);
   const [columnSizing, setColumnSizing] = useState<ColumnSizingState>({});
   const [columnOrder, setColumnOrder] = useState<string[]>([]);
@@ -128,10 +134,6 @@ export function ResultsTable({ result, embedded = false, showToolbar = true, fet
 
   const isFiltered = colFilter !== null;
   const filteredCount = displayData.length;
-
-  useEffect(() => {
-    onFilterStateChange?.({ isFiltered, filteredCount });
-  }, [isFiltered, filteredCount, onFilterStateChange]);
 
   const numericColumnNames = useMemo(() => {
     const analyzed = analyzeColumns(data, result.columns);
