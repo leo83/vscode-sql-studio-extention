@@ -231,7 +231,7 @@ export function ResultsChart({ records, columns, settings, onSettingsChange: set
         {isPie ? (
           <>
             <FieldSelect
-              label="Label column"
+              label="Group by column"
               value={settings.xColumn}
               options={columnOptions}
               onChange={(value) => update({ xColumn: value })}
