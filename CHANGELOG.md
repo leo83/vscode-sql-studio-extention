@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.1.10] — 2026-07-01
+
+### Changed
+
+- The default button accent now follows the VSCode/Cursor theme's native button color (`--vscode-button-background`) instead of the SQL Studio purple; `sqlStudio.accentColor` still overrides it
+
 ## [0.1.9] — 2026-06-30
 
 ### Added
