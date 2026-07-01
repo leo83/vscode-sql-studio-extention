@@ -116,10 +116,10 @@ export function ResultsView({ result, embedded = false, fetchMode, serverPageSiz
           · {result.duration_ms.toFixed(1)} ms
           {result.has_more ? " · more" : result.truncated ? " · truncated" : ""}
         </span>
-        <button type="button" onClick={() => getVsCodeApi()?.postMessage({ type: "exportCsv" })}>
+        <button type="button" className="secondary" onClick={() => getVsCodeApi()?.postMessage({ type: "exportCsv" })}>
           <IconDownload />Export CSV
         </button>
-        <button type="button" onClick={() => getVsCodeApi()?.postMessage({ type: "exportXlsx" })}>
+        <button type="button" className="secondary" onClick={() => getVsCodeApi()?.postMessage({ type: "exportXlsx" })}>
           <IconDownload />Export Excel
         </button>
         <button

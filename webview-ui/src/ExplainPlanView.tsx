@@ -171,10 +171,10 @@ export function ExplainPlanView({ result }: Props) {
 
         {viewMode === "tree" && hasTree ? (
           <>
-            <button type="button" onClick={() => setExpandAllSignal((value) => value + 1)}>
+            <button type="button" className="secondary" onClick={() => setExpandAllSignal((value) => value + 1)}>
               <IconExpandAll />Expand all
             </button>
-            <button type="button" onClick={() => setCollapseAllSignal((value) => value + 1)}>
+            <button type="button" className="secondary" onClick={() => setCollapseAllSignal((value) => value + 1)}>
               <IconCollapseAll />Collapse all
             </button>
           </>
@@ -182,6 +182,7 @@ export function ExplainPlanView({ result }: Props) {
 
         <button
           type="button"
+          className="secondary"
           onClick={() => {
             void copyText(planText).then(() => showCopyMessage("Raw copied"));
           }}
@@ -191,6 +192,7 @@ export function ExplainPlanView({ result }: Props) {
         {hasTree ? (
           <button
             type="button"
+            className="secondary"
             onClick={() => {
               void copyText(planTreeToJson(result.plan_tree ?? [])).then(() =>
                 showCopyMessage("JSON copied")
