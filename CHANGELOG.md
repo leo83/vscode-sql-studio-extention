@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.1.11] — 2026-07-02
+
+### Added
+
+- The results filter box now has a clear (×) button to reset the filter with one click
+
 ## [0.1.10] — 2026-07-01
 
 ### Changed

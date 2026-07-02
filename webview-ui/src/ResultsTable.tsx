@@ -463,12 +463,25 @@ export function ResultsTable({ result, embedded = false, showToolbar = true, fet
     <div className={`results${embedded ? " results-embedded" : ""}${showToolbar ? "" : " results-body-only"}`}>
       {showToolbar ? (
         <div className="toolbar">
-          <input
-            className="filter"
-            placeholder={FILTER_PLACEHOLDER}
-            value={globalFilter}
-            onChange={(e) => setGlobalFilter(e.target.value)}
-          />
+          <div className="filter-wrap">
+            <input
+              className="filter"
+              placeholder={FILTER_PLACEHOLDER}
+              value={globalFilter}
+              onChange={(e) => setGlobalFilter(e.target.value)}
+            />
+            {globalFilter ? (
+              <button
+                type="button"
+                className="filter-clear"
+                title="Clear filter"
+                aria-label="Clear filter"
+                onClick={() => setGlobalFilter("")}
+              >
+                ×
+              </button>
+            ) : null}
+          </div>
           <span className="meta">
             {isFiltered
               ? `${filteredCount} of ${result.row_count} rows`
@@ -490,12 +503,25 @@ export function ResultsTable({ result, embedded = false, showToolbar = true, fet
         </div>
       ) : (
         <div className="table-toolbar">
-          <input
-            className="filter"
-            placeholder={FILTER_PLACEHOLDER}
-            value={globalFilter}
-            onChange={(e) => setGlobalFilter(e.target.value)}
-          />
+          <div className="filter-wrap">
+            <input
+              className="filter"
+              placeholder={FILTER_PLACEHOLDER}
+              value={globalFilter}
+              onChange={(e) => setGlobalFilter(e.target.value)}
+            />
+            {globalFilter ? (
+              <button
+                type="button"
+                className="filter-clear"
+                title="Clear filter"
+                aria-label="Clear filter"
+                onClick={() => setGlobalFilter("")}
+              >
+                ×
+              </button>
+            ) : null}
+          </div>
         </div>
       )}
       <div

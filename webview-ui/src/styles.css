@@ -61,6 +61,10 @@ body {
   border-bottom: 1px solid var(--vscode-panel-border, #444);
 }
 
+.table-toolbar .filter-wrap {
+  width: 100%;
+}
+
 .table-toolbar .filter {
   width: 100%;
   box-sizing: border-box;
@@ -285,6 +289,45 @@ body {
   background: var(--vscode-input-background, #3c3c3c);
   color: var(--vscode-input-foreground, #ccc);
   border: 1px solid var(--vscode-input-border, #555);
+}
+
+.filter-wrap {
+  position: relative;
+  display: flex;
+  flex: 1;
+  min-width: 160px;
+  align-items: center;
+}
+
+.filter-wrap .filter {
+  flex: 1;
+  min-width: 0;
+  padding-right: 26px;
+}
+
+.filter-clear {
+  position: absolute;
+  right: 4px;
+  top: 50%;
+  transform: translateY(-50%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  font-size: 14px;
+  line-height: 1;
+  border-radius: 3px;
+  background: transparent;
+  color: var(--vscode-input-foreground, #ccc);
+  opacity: 0.7;
+  cursor: pointer;
+}
+
+.filter-clear:hover {
+  opacity: 1;
+  background: var(--vscode-toolbar-hoverBackground, rgba(128, 128, 128, 0.25));
 }
 
 .meta {
