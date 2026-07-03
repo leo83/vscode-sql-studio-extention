@@ -4,6 +4,13 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.1.12] — 2026-07-03
+
+### Added
+
+- SQL Results toolbar now shows the query that produced the results, truncated with an ellipsis and expandable via a scrollable hover popover
+- Refresh is now the primary toolbar action, positioned before Export CSV/Export Excel
+
 ## [0.1.11] — 2026-07-02
 
 ### Added

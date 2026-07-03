@@ -335,6 +335,42 @@ body {
   white-space: nowrap;
 }
 
+.toolbar-sql {
+  /* flex-basis: 0 (not auto) keeps this out of the wrap-line-collection pass, so a
+     long query is squeezed to fit the current row instead of pushing to a new line. */
+  flex: 1 1 0%;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-style: italic;
+  opacity: 0.65;
+  text-align: right;
+  cursor: default;
+}
+
+.sql-preview-popover {
+  position: fixed;
+  z-index: 50;
+  min-width: 320px;
+  max-height: 60vh;
+  overflow: auto;
+  background: var(--vscode-editorHoverWidget-background, #252526);
+  color: var(--vscode-editorHoverWidget-foreground, #ccc);
+  border: 1px solid var(--vscode-editorHoverWidget-border, #454545);
+  border-radius: 4px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+}
+
+.sql-preview-popover pre {
+  margin: 0;
+  padding: 8px 10px;
+  white-space: pre-wrap;
+  word-break: break-word;
+  font-family: var(--vscode-editor-font-family, monospace);
+  font-size: 0.9em;
+}
+
 button,
 select {
   background: var(--sql-studio-accent, var(--sql-studio-accent-default));

@@ -3,7 +3,7 @@ import { IconBarChart, IconDownload, IconRefresh, IconTable } from "./Icons";
 import { ResultsTable } from "./ResultsTable";
 import { analyzeColumns, queryResultToRecords } from "./resultData";
 import { parseColumnFilter, rowMatchesFilter } from "./columnFilter";
-import type { QueryResult } from "./types";
+import type { StatementResult } from "./types";
 import { getVsCodeApi } from "./vscodeApi";
 import { defaultChartSettings, type ChartSettings } from "./chartConfig";
 
@@ -14,7 +14,7 @@ const ResultsChart = lazy(() =>
 type ViewMode = "table" | "chart";
 
 interface Props {
-  result: QueryResult;
+  result: StatementResult;
   embedded?: boolean;
   fetchMode?: "server" | "client";
   serverPageSize?: number;
@@ -31,6 +31,34 @@ export function ResultsView({ result, embedded = false, fetchMode, serverPageSiz
   const [isBusy, setIsBusy] = useState(false);
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  const [sqlPreview, setSqlPreview] = useState<{ top: number; left: number; maxWidth: number } | null>(null);
+  const sqlAnchorRef = useRef<HTMLSpanElement | null>(null);
+  const sqlPreviewCloseTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const cancelSqlPreviewClose = () => {
+    if (sqlPreviewCloseTimer.current) {
+      clearTimeout(sqlPreviewCloseTimer.current);
+      sqlPreviewCloseTimer.current = null;
+    }
+  };
+  const openSqlPreview = () => {
+    cancelSqlPreviewClose();
+    const rect = sqlAnchorRef.current?.getBoundingClientRect();
+    if (!rect) return;
+    setSqlPreview({
+      top: rect.bottom + 4,
+      left: Math.max(8, rect.left),
+      maxWidth: Math.max(320, window.innerWidth - rect.left - 16),
+    });
+  };
+  // Small delay before closing so the pointer can travel from the trigger onto
+  // the popover itself (e.g. to scroll a long query) without it disappearing.
+  const scheduleSqlPreviewClose = () => {
+    cancelSqlPreviewClose();
+    sqlPreviewCloseTimer.current = setTimeout(() => setSqlPreview(null), 150);
+  };
+  useEffect(() => () => cancelSqlPreviewClose(), []);
 
   const records = useMemo(() => queryResultToRecords(result), [result]);
   const columns = useMemo(() => analyzeColumns(records, result.columns), [records, result.columns]);
@@ -116,15 +144,8 @@ export function ResultsView({ result, embedded = false, fetchMode, serverPageSiz
           · {result.duration_ms.toFixed(1)} ms
           {result.has_more ? " · more" : result.truncated ? " · truncated" : ""}
         </span>
-        <button type="button" className="secondary" onClick={() => getVsCodeApi()?.postMessage({ type: "exportCsv" })}>
-          <IconDownload />Export CSV
-        </button>
-        <button type="button" className="secondary" onClick={() => getVsCodeApi()?.postMessage({ type: "exportXlsx" })}>
-          <IconDownload />Export Excel
-        </button>
         <button
           type="button"
-          className="secondary"
           title="Re-run the same query"
           disabled={isBusy}
           onClick={() => {
@@ -138,7 +159,34 @@ export function ResultsView({ result, embedded = false, fetchMode, serverPageSiz
         >
           <IconRefresh />Refresh
         </button>
+        <button type="button" className="secondary" onClick={() => getVsCodeApi()?.postMessage({ type: "exportCsv" })}>
+          <IconDownload />Export CSV
+        </button>
+        <button type="button" className="secondary" onClick={() => getVsCodeApi()?.postMessage({ type: "exportXlsx" })}>
+          <IconDownload />Export Excel
+        </button>
+        {result.sql ? (
+          <span
+            className="toolbar-sql"
+            ref={sqlAnchorRef}
+            onMouseEnter={openSqlPreview}
+            onMouseLeave={scheduleSqlPreviewClose}
+          >
+            {result.sql}
+          </span>
+        ) : null}
       </div>
+
+      {result.sql && sqlPreview ? (
+        <div
+          className="sql-preview-popover"
+          style={{ top: sqlPreview.top, left: sqlPreview.left, maxWidth: sqlPreview.maxWidth }}
+          onMouseEnter={cancelSqlPreviewClose}
+          onMouseLeave={scheduleSqlPreviewClose}
+        >
+          <pre>{result.sql}</pre>
+        </div>
+      ) : null}
 
       {viewMode === "table" ? (
         <ResultsTable
