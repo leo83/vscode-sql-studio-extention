@@ -145,6 +145,17 @@ export function ResultsChart({ records, columns, settings, onSettingsChange: set
   const onChartReady = useCallback(
     (chart: EChartsType) => {
       attachPieGestures(chart);
+      // echarts-for-react measures the container size on mount via a temporary
+      // instance before this callback fires, but that measurement can race
+      // container layout (e.g. right after switching to the Chart tab), baking
+      // in a stale size. This mainly breaks the pie scroll legend, which needs
+      // an accurate width to lay out and paginate. Re-resize a frame later once
+      // layout has definitely settled.
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          chart.resize();
+        });
+      });
     },
     [attachPieGestures]
   );

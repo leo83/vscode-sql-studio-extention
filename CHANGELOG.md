@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.1.14] — 2026-07-03
+
+### Fixed
+
+- Pie chart legend could fail to appear on charts with many categories (scroll legend), caused by a container-size measurement race on first render; the chart now re-measures its size once layout has settled
+
 ## [0.1.12] — 2026-07-03
 
 ### Added

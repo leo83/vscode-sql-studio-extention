@@ -2,7 +2,7 @@
   "name": "cursor-sql-studio",
   "displayName": "SQL Studio",
   "description": "Write SQL, explore databases, and view query results with agent integration",
-  "version": "0.1.12",
+  "version": "0.1.14",
   "publisher": "LevRagulin",
   "license": "Beerware-1.0",
   "author": "Lev Ragulin <leo@levragulin.ru>",
