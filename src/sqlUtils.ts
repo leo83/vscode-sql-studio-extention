@@ -1,33 +1,40 @@
 import * as vscode from "vscode";
 import type { Dialect } from "./types";
 
-/** Build SELECT for table preview with dialect-safe quoting. */
+/**
+ * Build SELECT for table preview with dialect-safe quoting. `limit` is baked into
+ * the SQL text only when given — pass it when the result is a static query template
+ * (e.g. a new SQL document); omit it to let the caller cap rows via the execute RPC's
+ * `limit` param instead, which keeps truncation detection and "load all rows" working.
+ */
 export function buildPreviewSql(
   dialect: Dialect,
   qualifiedName: string,
-  limit: number
+  limit?: number
 ): string {
+  const limitClause = limit !== undefined ? ` LIMIT ${limit}` : "";
   const parts = qualifiedName.split(".");
   if (parts.length !== 2) {
-    return `SELECT * FROM ${qualifiedName} LIMIT ${limit}`;
+    return `SELECT * FROM ${qualifiedName}${limitClause}`;
   }
   const [schema, table] = parts;
   if (dialect === "postgres") {
-    return `SELECT * FROM "${schema}"."${table}" LIMIT ${limit}`;
+    return `SELECT * FROM "${schema}"."${table}"${limitClause}`;
   }
   if (dialect === "mssql") {
-    return `SELECT TOP ${limit} * FROM [${schema}].[${table}]`;
+    const top = limit !== undefined ? `TOP ${limit} ` : "";
+    return `SELECT ${top}* FROM [${schema}].[${table}]`;
   }
   if (dialect === "mysql" || dialect === "clickhouse") {
-    return `SELECT * FROM \`${schema}\`.\`${table}\` LIMIT ${limit}`;
+    return `SELECT * FROM \`${schema}\`.\`${table}\`${limitClause}`;
   }
   if (dialect === "sqlite") {
     if (schema === "main") {
-      return `SELECT * FROM "${table}" LIMIT ${limit}`;
+      return `SELECT * FROM "${table}"${limitClause}`;
     }
-    return `SELECT * FROM "${schema}"."${table}" LIMIT ${limit}`;
+    return `SELECT * FROM "${schema}"."${table}"${limitClause}`;
   }
-  return `SELECT * FROM \`${schema}\`.\`${table}\` LIMIT ${limit}`;
+  return `SELECT * FROM \`${schema}\`.\`${table}\`${limitClause}`;
 }
 
 export function getPreviewRowLimit(): number {

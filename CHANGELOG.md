@@ -9,6 +9,7 @@ All notable changes to this project will be documented in this file.
 ### Added
 
 - The results filter now supports comparison operators `>`, `>=`, `<`, `<=` (e.g. `date_at>2025-01-01`), comparing numerically, by date, or lexicographically depending on the values
+- Table preview now supports loading all rows / paging like a regular query, instead of always being capped at the preview row limit
 
 ## [0.1.14] — 2026-07-03
 

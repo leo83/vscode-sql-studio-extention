@@ -189,14 +189,18 @@ export class QueryRunner {
     if (!(await this.ensureActiveDatabaseConnection(conn))) {
       return;
     }
-    const limit = getPreviewRowLimit();
-    const sql = buildPreviewSql(conn.dialect, qualifiedName, limit);
+    const sql = buildPreviewSql(conn.dialect, qualifiedName);
+    const fetchMode = getFetchMode();
+    const limit = fetchMode === "server" ? getServerPageSize() : getPreviewRowLimit();
     await this.connections.setActiveConnectionId(connectionId);
     await this.executeWithConnection(
       conn,
       sql,
       `Preview: ${qualifiedName}`,
-      limit
+      limit,
+      true,
+      0,
+      fetchMode === "server" ? limit : undefined
     );
   }
 
