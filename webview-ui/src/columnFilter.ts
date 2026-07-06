@@ -6,17 +6,29 @@
 //   cond      := column op value
 //              | column ("in" | "not" "in") "(" value ("," value)* ")"
 //              | column "is" "not"? "null"
-//   op        := "=" | "!=" | "~" | "!~"
+//   op        := "=" | "!=" | "~" | "!~" | ">" | ">=" | "<" | "<="
 //
 // "=" / "!=" are exact (case-insensitive, trimmed); "~" / "!~" are substring
-// (contains / not-contains). The bare word `null` (unquoted) is the NULL sentinel:
-// `col=null` (or `col is null`) matches NULL cells, `col!=null` (or
+// (contains / not-contains). ">" / ">=" / "<" / "<=" compare numerically when
+// both sides parse as numbers, by date when both sides parse as ISO-ish dates,
+// and lexicographically otherwise. The bare word `null` (unquoted) is the NULL
+// sentinel: `col=null` (or `col is null`) matches NULL cells, `col!=null` (or
 // `col is not null`) matches non-NULL cells.
 //
 // Parsing is all-or-nothing: the whole input must parse into conditions whose
 // columns are real, otherwise the caller falls back to free-text search.
 
-export type FilterOp = "eq" | "neq" | "contains" | "ncontains" | "in" | "nin";
+export type FilterOp =
+  | "eq"
+  | "neq"
+  | "contains"
+  | "ncontains"
+  | "in"
+  | "nin"
+  | "gt"
+  | "gte"
+  | "lt"
+  | "lte";
 
 export interface ColumnCondition {
   column: string;
@@ -42,12 +54,27 @@ type Tok =
   | { t: "in" }
   | { t: "is" }
   | { t: "not" }
-  | { t: "op"; v: "=" | "!=" | "~" | "!~" }
+  | { t: "op"; v: "=" | "!=" | "~" | "!~" | ">" | ">=" | "<" | "<=" }
   | { t: "lp" }
   | { t: "rp" }
   | { t: "comma" };
 
-const WORD_STOP = new Set([" ", "\t", "\n", "\r", "(", ")", ",", "=", "!", "~", '"', "'"]);
+const WORD_STOP = new Set([
+  " ",
+  "\t",
+  "\n",
+  "\r",
+  "(",
+  ")",
+  ",",
+  "=",
+  "!",
+  "~",
+  ">",
+  "<",
+  '"',
+  "'",
+]);
 
 function tokenize(input: string): Tok[] | null {
   const toks: Tok[] = [];
@@ -116,6 +143,26 @@ function tokenize(input: string): Tok[] | null {
     }
     if (ch === "~") {
       toks.push({ t: "op", v: "~" });
+      i++;
+      continue;
+    }
+    if (ch === ">" && input[i + 1] === "=") {
+      toks.push({ t: "op", v: ">=" });
+      i += 2;
+      continue;
+    }
+    if (ch === "<" && input[i + 1] === "=") {
+      toks.push({ t: "op", v: "<=" });
+      i += 2;
+      continue;
+    }
+    if (ch === ">") {
+      toks.push({ t: "op", v: ">" });
+      i++;
+      continue;
+    }
+    if (ch === "<") {
+      toks.push({ t: "op", v: "<" });
       i++;
       continue;
     }
@@ -188,9 +235,17 @@ export function parseColumnFilter(input: string, columnNames: string[]): FilterE
       pos++;
       const val = parseValue();
       if (!val) return null;
-      const op: FilterOp =
-        next.v === "=" ? "eq" : next.v === "!=" ? "neq" : next.v === "~" ? "contains" : "ncontains";
-      return { column: resolved, op, values: [val] };
+      const OP_MAP: Record<string, FilterOp> = {
+        "=": "eq",
+        "!=": "neq",
+        "~": "contains",
+        "!~": "ncontains",
+        ">": "gt",
+        ">=": "gte",
+        "<": "lt",
+        "<=": "lte",
+      };
+      return { column: resolved, op: OP_MAP[next.v], values: [val] };
     }
 
     if (next.t === "is") {
@@ -280,6 +335,34 @@ function containsValue(cell: unknown, value: FilterValue): boolean {
   return String(cell).toLowerCase().includes(value.text.toLowerCase());
 }
 
+// ISO-ish date/datetime, e.g. 2025-01-01 or 2025-01-01T10:30:00.
+const DATE_LIKE_RE = /^\d{4}-\d{2}-\d{2}([ T]\d{2}:\d{2}(:\d{2})?(\.\d+)?)?(Z|[+-]\d{2}:?\d{2})?$/;
+
+type Comparable = { kind: "num"; n: number } | { kind: "date"; t: number } | { kind: "str"; s: string };
+
+function toComparable(v: unknown): Comparable {
+  if (typeof v === "number" && Number.isFinite(v)) return { kind: "num", n: v };
+  const s = String(v).trim();
+  if (s !== "" && Number.isFinite(Number(s))) return { kind: "num", n: Number(s) };
+  if (DATE_LIKE_RE.test(s)) {
+    const t = Date.parse(s);
+    if (!Number.isNaN(t)) return { kind: "date", t };
+  }
+  return { kind: "str", s: s.toLowerCase() };
+}
+
+/** Order cell vs. value: negative/0/positive, or null when not comparable (e.g. cell is NULL). */
+function compareValues(cell: unknown, value: FilterValue): number | null {
+  if (value.isNull || cell === null || cell === undefined) return null;
+  const a = toComparable(cell);
+  const b = toComparable(value.text);
+  if (a.kind === "num" && b.kind === "num") return a.n - b.n;
+  if (a.kind === "date" && b.kind === "date") return a.t - b.t;
+  const as = a.kind === "str" ? a.s : String(cell).trim().toLowerCase();
+  const bs = value.text.trim().toLowerCase();
+  return as < bs ? -1 : as > bs ? 1 : 0;
+}
+
 function condMatches(row: Record<string, unknown>, cond: ColumnCondition): boolean {
   const cell = row[cond.column];
   switch (cond.op) {
@@ -295,6 +378,22 @@ function condMatches(row: Record<string, unknown>, cond: ColumnCondition): boole
       return cond.values.some((v) => eqValue(cell, v));
     case "nin":
       return !cond.values.some((v) => eqValue(cell, v));
+    case "gt": {
+      const c = compareValues(cell, cond.values[0]);
+      return c !== null && c > 0;
+    }
+    case "gte": {
+      const c = compareValues(cell, cond.values[0]);
+      return c !== null && c >= 0;
+    }
+    case "lt": {
+      const c = compareValues(cell, cond.values[0]);
+      return c !== null && c < 0;
+    }
+    case "lte": {
+      const c = compareValues(cell, cond.values[0]);
+      return c !== null && c <= 0;
+    }
     default:
       return true;
   }
@@ -337,7 +436,7 @@ export function distinctValuesForColumn(
   return { values, hasNull, count: values.length + (hasNull ? 1 : 0) };
 }
 
-const NEEDS_QUOTE_RE = /[\s(),"'=!~]/;
+const NEEDS_QUOTE_RE = /[\s(),"'=!~<>]/;
 
 /** Render a `column=value` clause, quoting the value when needed. */
 export function buildEqualsClause(column: string, value: string | null): string {

@@ -73,6 +73,34 @@ describe("operators", () => {
     expect(matches("city not in (Almaty, Astana)", { city: "Shymkent" })).toBe(true);
     expect(matches("city not in (Almaty, Astana)", { city: "Almaty" })).toBe(false);
   });
+
+  it(">, >=, <, <= compare numerically", () => {
+    expect(matches("amount>10", { amount: 15 })).toBe(true);
+    expect(matches("amount>10", { amount: 10 })).toBe(false);
+    expect(matches("amount>=10", { amount: 10 })).toBe(true);
+    expect(matches("amount<10", { amount: 5 })).toBe(true);
+    expect(matches("amount<10", { amount: 10 })).toBe(false);
+    expect(matches("amount<=10", { amount: 10 })).toBe(true);
+  });
+
+  it(">, <, etc. compare dates when both sides look like dates", () => {
+    expect(matches("ticket_param>2025-01-01", { ticket_param: "2025-06-15" })).toBe(true);
+    expect(matches("ticket_param>2025-01-01", { ticket_param: "2024-12-31" })).toBe(false);
+    expect(matches("ticket_param<2025-01-01", { ticket_param: "2024-12-31" })).toBe(true);
+    expect(
+      matches("ticket_param>=2025-01-01", { ticket_param: "2025-01-01T10:00:00" })
+    ).toBe(true);
+  });
+
+  it(">, <, etc. fall back to lexicographic comparison for non-numeric, non-date strings", () => {
+    expect(matches("city>Almaty", { city: "Astana" })).toBe(true);
+    expect(matches("city<Almaty", { city: "Astana" })).toBe(false);
+  });
+
+  it(">, <, etc. never match NULL cells or the null sentinel", () => {
+    expect(matches("amount>10", { amount: null })).toBe(false);
+    expect(matches("amount>null", { amount: 5 })).toBe(false);
+  });
 });
 
 describe("precedence and logic", () => {

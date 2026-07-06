@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.1.15] — 2026-07-06
+
+### Added
+
+- The results filter now supports comparison operators `>`, `>=`, `<`, `<=` (e.g. `date_at>2025-01-01`), comparing numerically, by date, or lexicographically depending on the values
+
 ## [0.1.14] — 2026-07-03
 
 ### Fixed

@@ -26,7 +26,7 @@ import { getVsCodeApi } from "./vscodeApi";
 // Max distinct values for which the right-click "Filter values" submenu is offered.
 const FILTER_VALUES_LIMIT = 50;
 
-const FILTER_PLACEHOLDER = 'Filter rows… or col=value, col!=v, col in (a,b), AND / OR';
+const FILTER_PLACEHOLDER = 'Filter rows… or col=value, col>v, col in (a,b), AND / OR';
 
 interface Props {
   result: QueryResult;
