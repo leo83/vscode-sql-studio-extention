@@ -5,7 +5,7 @@
 //   orGroup   := cond ( "AND" cond )*
 //   cond      := column op value
 //              | column ("in" | "not" "in") "(" value ("," value)* ")"
-//              | column "is" "not"? "null"
+//              | column "is" "not"? ("null" | "empty")
 //   op        := "=" | "!=" | "~" | "!~" | ">" | ">=" | "<" | "<="
 //
 // "=" / "!=" are exact (case-insensitive, trimmed); "~" / "!~" are substring
@@ -14,6 +14,10 @@
 // and lexicographically otherwise. The bare word `null` (unquoted) is the NULL
 // sentinel: `col=null` (or `col is null`) matches NULL cells, `col!=null` (or
 // `col is not null`) matches non-NULL cells.
+//
+// `col is empty` matches NULL *and* empty/whitespace-only strings (`col is not
+// empty` the complement). This is the one to reach for with engines like
+// ClickHouse where a "blank" non-nullable String cell is `''`, not SQL NULL.
 //
 // Parsing is all-or-nothing: the whole input must parse into conditions whose
 // columns are real, otherwise the caller falls back to free-text search.
@@ -28,7 +32,9 @@ export type FilterOp =
   | "gt"
   | "gte"
   | "lt"
-  | "lte";
+  | "lte"
+  | "empty"
+  | "nempty";
 
 export interface ColumnCondition {
   column: string;
@@ -255,14 +261,20 @@ export function parseColumnFilter(input: string, columnNames: string[]): FilterE
         pos++;
         negate = true;
       }
-      // `is`/`is not` is only meaningful with `null`.
-      const nullTok = peek();
-      if (!nullTok || nullTok.t !== "word" || nullTok.v.toLowerCase() !== "null") {
-        return null;
+      // `is`/`is not` is only meaningful with `null` or `empty`.
+      const kwTok = peek();
+      if (!kwTok || kwTok.t !== "word") return null;
+      const kw = kwTok.v.toLowerCase();
+      if (kw === "null") {
+        pos++;
+        const nullVal: FilterValue = { text: kwTok.v, isNull: true };
+        return { column: resolved, op: negate ? "neq" : "eq", values: [nullVal] };
       }
-      pos++;
-      const nullVal: FilterValue = { text: nullTok.v, isNull: true };
-      return { column: resolved, op: negate ? "neq" : "eq", values: [nullVal] };
+      if (kw === "empty") {
+        pos++;
+        return { column: resolved, op: negate ? "nempty" : "empty", values: [] };
+      }
+      return null;
     }
 
     if (next.t === "in" || next.t === "not") {
@@ -329,6 +341,13 @@ function eqValue(cell: unknown, value: FilterValue): boolean {
   return String(cell).trim().toLowerCase() === value.text.trim().toLowerCase();
 }
 
+// NULL, or a string that is empty / whitespace-only once trimmed. Matches what
+// renders as a blank cell — including ClickHouse's empty-string `''` non-nulls.
+function isEmptyCell(cell: unknown): boolean {
+  if (cell === null || cell === undefined) return true;
+  return String(cell).trim() === "";
+}
+
 function containsValue(cell: unknown, value: FilterValue): boolean {
   if (value.isNull) return cell === null || cell === undefined;
   if (cell === null || cell === undefined) return false;
@@ -378,6 +397,10 @@ function condMatches(row: Record<string, unknown>, cond: ColumnCondition): boole
       return cond.values.some((v) => eqValue(cell, v));
     case "nin":
       return !cond.values.some((v) => eqValue(cell, v));
+    case "empty":
+      return isEmptyCell(cell);
+    case "nempty":
+      return !isEmptyCell(cell);
     case "gt": {
       const c = compareValues(cell, cond.values[0]);
       return c !== null && c > 0;

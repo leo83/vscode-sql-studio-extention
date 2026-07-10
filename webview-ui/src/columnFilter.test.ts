@@ -154,7 +154,29 @@ describe("quoting and null handling", () => {
     expect(matches("city is not null OR status=ok", { city: null, status: "ok" })).toBe(true);
   });
 
-  it("falls back when `is` is not followed by null", () => {
+  it("is empty matches NULL and blank/whitespace strings, is not empty the complement", () => {
+    expect(matches("city is empty", { city: null })).toBe(true);
+    expect(matches("city is empty", { city: undefined })).toBe(true);
+    expect(matches("city is empty", { city: "" })).toBe(true);
+    expect(matches("city is empty", { city: "   " })).toBe(true);
+    expect(matches("city is empty", { city: "Almaty" })).toBe(false);
+    expect(matches("city is not empty", { city: "Almaty" })).toBe(true);
+    expect(matches("city is not empty", { city: "" })).toBe(false);
+    expect(matches("city is not empty", { city: null })).toBe(false);
+  });
+
+  it("is null stays strict — an empty string is NOT null", () => {
+    expect(matches("city is null", { city: "" })).toBe(false);
+    expect(matches("city is not null", { city: "" })).toBe(true);
+  });
+
+  it("IS EMPTY is case-insensitive and combines with AND/OR", () => {
+    expect(matches("CITY IS EMPTY", { city: "" })).toBe(true);
+    expect(matches("city is empty AND status=ok", { city: "", status: "ok" })).toBe(true);
+    expect(matches("city is not empty OR status=ok", { city: "", status: "ok" })).toBe(true);
+  });
+
+  it("falls back when `is` is not followed by null/empty", () => {
     expect(parseColumnFilter("city is Almaty", COLS)).toBeNull();
     expect(parseColumnFilter("city is", COLS)).toBeNull();
     expect(parseColumnFilter("city is not Almaty", COLS)).toBeNull();

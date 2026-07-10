@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.1.16] — 2026-07-10
+
+### Added
+
+- Results filter now supports `col is empty` / `col is not empty`, which match NULL **and** empty/whitespace-only strings. Use this for engines like ClickHouse where a "blank" non-nullable String cell is the empty string `''`, not SQL NULL (`col is null` stays strict and only matches real NULLs)
+
 ## [0.1.15] — 2026-07-06
 
 ### Added
