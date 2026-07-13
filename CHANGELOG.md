@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.1.17] — 2026-07-13
+
+### Fixed
+
+- Switching from the results Table view to Chart and back now preserves the table's scroll position (both rows and columns) instead of jumping back to the top-left
+
 ## [0.1.16] — 2026-07-10
 
 ### Added

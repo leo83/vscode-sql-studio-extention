@@ -1,4 +1,5 @@
 import { lazy, Suspense, useEffect, useMemo, useRef, useState } from "react";
+import type { TableScrollState } from "./ResultsTable";
 import { IconBarChart, IconDownload, IconRefresh, IconTable } from "./Icons";
 import { ResultsTable } from "./ResultsTable";
 import { analyzeColumns, queryResultToRecords } from "./resultData";
@@ -31,6 +32,10 @@ export function ResultsView({ result, embedded = false, fetchMode, serverPageSiz
   const [isBusy, setIsBusy] = useState(false);
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  // Scroll offset of the table's scroll container, owned here so it survives the
+  // ResultsTable unmounting when switching to the chart view and back.
+  const tableScrollRef = useRef<TableScrollState>({ top: 0, left: 0 });
 
   const [sqlPreview, setSqlPreview] = useState<{ top: number; left: number; maxWidth: number } | null>(null);
   const sqlAnchorRef = useRef<HTMLSpanElement | null>(null);
@@ -203,6 +208,7 @@ export function ResultsView({ result, embedded = false, fetchMode, serverPageSiz
           onLoadAll={onLoadAll}
           globalFilter={globalFilter}
           setGlobalFilter={setGlobalFilter}
+          scrollStateRef={tableScrollRef}
         />
       ) : (
         <div className="results-body-only results-chart-host">

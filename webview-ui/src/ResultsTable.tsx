@@ -11,7 +11,7 @@ import {
   type SortingState,
   type VisibilityState,
 } from "@tanstack/react-table";
-import { useCallback, useEffect, useMemo, useRef, useState, type Dispatch, type SetStateAction } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type Dispatch, type MutableRefObject, type SetStateAction } from "react";
 import { IconChevronLeft, IconChevronRight, IconChevronsLeft, IconChevronsRight, IconDownload, IconExpandAll, IconEye } from "./Icons";
 import {
   appendEqualsClause,
@@ -46,6 +46,15 @@ interface Props {
   // chart view) and can be shared with the chart. Falls back to internal state.
   globalFilter?: string;
   setGlobalFilter?: Dispatch<SetStateAction<string>>;
+  // Optional external store for the scroll container's offset. When provided, the
+  // scroll position is persisted here so it survives this component unmounting
+  // (e.g. switching to the chart view) and is restored on remount.
+  scrollStateRef?: MutableRefObject<TableScrollState>;
+}
+
+export interface TableScrollState {
+  top: number;
+  left: number;
 }
 
 function rowToJson(row: Record<string, unknown>): string {
@@ -83,7 +92,7 @@ interface ContextMenuState {
   columnId: string | null;
 }
 
-export function ResultsTable({ result, embedded = false, showToolbar = true, fetchMode, serverPageSize, isBusy = false, elapsedSeconds = 0, onBusyStart, onFetchPage, onPageSizeChange, onLoadAll, globalFilter: controlledFilter, setGlobalFilter: controlledSetFilter }: Props) {
+export function ResultsTable({ result, embedded = false, showToolbar = true, fetchMode, serverPageSize, isBusy = false, elapsedSeconds = 0, onBusyStart, onFetchPage, onPageSizeChange, onLoadAll, globalFilter: controlledFilter, setGlobalFilter: controlledSetFilter, scrollStateRef }: Props) {
   const [internalFilter, setInternalFilter] = useState("");
   const globalFilter = controlledFilter !== undefined ? controlledFilter : internalFilter;
   const setGlobalFilter = controlledSetFilter ?? setInternalFilter;
@@ -249,6 +258,25 @@ export function ResultsTable({ result, embedded = false, showToolbar = true, fet
       setSelectedRowId(null);
     }
   }, [rows, selectedRowId]);
+
+  // Restore the previously saved scroll offset on mount (before paint, so there
+  // is no visible jump). Rows render synchronously in the same commit, so the
+  // full scroll height already exists when this runs.
+  useLayoutEffect(() => {
+    const el = tableWrapRef.current;
+    if (el && scrollStateRef) {
+      el.scrollTop = scrollStateRef.current.top;
+      el.scrollLeft = scrollStateRef.current.left;
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const handleTableScroll = useCallback(() => {
+    const el = tableWrapRef.current;
+    if (el && scrollStateRef) {
+      scrollStateRef.current = { top: el.scrollTop, left: el.scrollLeft };
+    }
+  }, [scrollStateRef]);
 
   const scrollRowIntoView = useCallback((rowId: string) => {
     const el = tableWrapRef.current?.querySelector(`tr[data-row-id="${rowId}"]`);
@@ -529,6 +557,7 @@ export function ResultsTable({ result, embedded = false, showToolbar = true, fet
         ref={tableWrapRef}
         className="table-wrap"
         tabIndex={0}
+        onScroll={handleTableScroll}
         onKeyDown={handleTableKeyDown}
         onContextMenu={(event) => event.preventDefault()}
       >
