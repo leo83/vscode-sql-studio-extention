@@ -1,9 +1,10 @@
-import { lazy, Suspense, useEffect, useMemo, useRef, useState } from "react";
-import type { TableScrollState } from "./ResultsTable";
+import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import type { ExportSnapshot, TableScrollState } from "./ResultsTable";
 import { IconBarChart, IconDownload, IconRefresh, IconTable } from "./Icons";
 import { ResultsTable } from "./ResultsTable";
 import { analyzeColumns, queryResultToRecords } from "./resultData";
 import { parseColumnFilter, rowMatchesFilter } from "./columnFilter";
+import { hashSql } from "./tableLayout";
 import type { StatementResult } from "./types";
 import { getVsCodeApi } from "./vscodeApi";
 import { defaultChartSettings, type ChartSettings } from "./chartConfig";
@@ -37,6 +38,11 @@ export function ResultsView({ result, embedded = false, fetchMode, serverPageSiz
   // ResultsTable unmounting when switching to the chart view and back.
   const tableScrollRef = useRef<TableScrollState>({ top: 0, left: 0 });
 
+  // Populated by the mounted ResultsTable to export exactly what the grid shows
+  // (filter + sort + column order/visibility). Null while showing the chart, where
+  // export falls back to the filtered records with all columns in original order.
+  const exportRef = useRef<(() => ExportSnapshot) | null>(null);
+
   const [sqlPreview, setSqlPreview] = useState<{ top: number; left: number; maxWidth: number } | null>(null);
   const sqlAnchorRef = useRef<HTMLSpanElement | null>(null);
   const sqlPreviewCloseTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -65,6 +71,11 @@ export function ResultsView({ result, embedded = false, fetchMode, serverPageSiz
   };
   useEffect(() => () => cancelSqlPreviewClose(), []);
 
+  // Per-query key for persisting the table layout (column order/width/visibility,
+  // sorting). Undefined when there is no query text (e.g. table previews without
+  // an associated statement) — persistence is simply disabled in that case.
+  const layoutKey = useMemo(() => (result.sql ? hashSql(result.sql) : undefined), [result.sql]);
+
   const records = useMemo(() => queryResultToRecords(result), [result]);
   const columns = useMemo(() => analyzeColumns(records, result.columns), [records, result.columns]);
   const canChart = records.length > 0 && columns.length > 0;
@@ -78,6 +89,21 @@ export function ResultsView({ result, embedded = false, fetchMode, serverPageSiz
   const filteredRecords = useMemo(
     () => (colFilter ? records.filter((row) => rowMatchesFilter(row, colFilter)) : records),
     [records, colFilter]
+  );
+
+  const handleExport = useCallback(
+    (kind: "exportCsv" | "exportXlsx") => {
+      // Prefer the table's live snapshot (honors sort + column order/visibility).
+      // In chart view the table is unmounted, so fall back to the filtered records
+      // with every column in its original order — matching what the chart shows.
+      const snapshot =
+        exportRef.current?.() ?? {
+          columns: columnNames,
+          rows: filteredRecords.map((row) => columnNames.map((name) => row[name])),
+        };
+      getVsCodeApi()?.postMessage({ type: kind, columns: snapshot.columns, rows: snapshot.rows });
+    },
+    [columnNames, filteredRecords]
   );
 
   const [chartSettings, setChartSettings] = useState<ChartSettings>(() => defaultChartSettings(columns));
@@ -164,10 +190,10 @@ export function ResultsView({ result, embedded = false, fetchMode, serverPageSiz
         >
           <IconRefresh />Refresh
         </button>
-        <button type="button" className="secondary" onClick={() => getVsCodeApi()?.postMessage({ type: "exportCsv" })}>
+        <button type="button" className="secondary" onClick={() => handleExport("exportCsv")}>
           <IconDownload />Export CSV
         </button>
-        <button type="button" className="secondary" onClick={() => getVsCodeApi()?.postMessage({ type: "exportXlsx" })}>
+        <button type="button" className="secondary" onClick={() => handleExport("exportXlsx")}>
           <IconDownload />Export Excel
         </button>
         {result.sql ? (
@@ -209,6 +235,8 @@ export function ResultsView({ result, embedded = false, fetchMode, serverPageSiz
           globalFilter={globalFilter}
           setGlobalFilter={setGlobalFilter}
           scrollStateRef={tableScrollRef}
+          layoutKey={layoutKey}
+          exportRef={exportRef}
         />
       ) : (
         <div className="results-body-only results-chart-host">

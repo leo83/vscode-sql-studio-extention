@@ -73,6 +73,13 @@ export function getServerPageSize(): number {
     .get<number>("serverPageSize", 500);
 }
 
+export function getRememberedTableLayoutLimit(): number {
+  const value = vscode.workspace
+    .getConfiguration("sqlStudio")
+    .get<number>("rememberedTableLayouts", 30);
+  return Number.isFinite(value) && value > 0 ? Math.floor(value) : 0;
+}
+
 export interface StatementRange {
   start: number;
   end: number;

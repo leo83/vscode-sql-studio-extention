@@ -2,10 +2,12 @@ import * as vscode from "vscode";
 import * as path from "path";
 import { buildAccentColorStyleElement } from "../accentColors";
 import { PythonClient } from "../pythonClient";
+import { TableLayout, TableLayoutStore } from "../tableLayoutStore";
 import { lastExportableStatement, QueryExecutePayload } from "../types";
 
 export class ResultsPanel implements vscode.WebviewViewProvider {
   private view: vscode.WebviewView | undefined;
+  private readonly layoutStore: TableLayoutStore;
   private lastResult: QueryExecutePayload | undefined;
   private pendingTitle: string | undefined;
   private fetchPageCallback:
@@ -21,7 +23,9 @@ export class ResultsPanel implements vscode.WebviewViewProvider {
   constructor(
     private readonly context: vscode.ExtensionContext,
     private readonly python: PythonClient
-  ) {}
+  ) {
+    this.layoutStore = new TableLayoutStore(context);
+  }
 
   resolveWebviewView(
     webviewView: vscode.WebviewView,
@@ -39,7 +43,11 @@ export class ResultsPanel implements vscode.WebviewViewProvider {
     webviewView.webview.onDidReceiveMessage(async (msg) => {
       if (msg.type === "exportCsv" || msg.type === "exportXlsx") {
         try {
-          await this.handleExport(msg.type === "exportCsv" ? "csv" : "xlsx");
+          await this.handleExport(
+            msg.type === "exportCsv" ? "csv" : "xlsx",
+            Array.isArray(msg.columns) ? (msg.columns as string[]) : undefined,
+            Array.isArray(msg.rows) ? (msg.rows as unknown[][]) : undefined
+          );
         } catch (err) {
           const message = err instanceof Error ? err.message : String(err);
           vscode.window.showErrorMessage(`Export failed: ${message}`);
@@ -59,6 +67,14 @@ export class ResultsPanel implements vscode.WebviewViewProvider {
           }
         } catch {
           // ignore malformed URLs
+        }
+      } else if (msg.type === "saveTableLayout") {
+        if (typeof msg.hash === "string" && msg.layout) {
+          await this.layoutStore.save(msg.hash, msg.layout as TableLayout);
+        }
+      } else if (msg.type === "resetTableLayout") {
+        if (typeof msg.hash === "string") {
+          await this.layoutStore.reset(msg.hash);
         }
       } else if (msg.type === "fetchPage") {
         const offset = msg.offset as number;
@@ -215,8 +231,33 @@ export class ResultsPanel implements vscode.WebviewViewProvider {
     }
   }
 
-  private async handleExport(kind: "csv" | "xlsx"): Promise<void> {
+  private async handleExport(
+    kind: "csv" | "xlsx",
+    columnsOverride?: string[],
+    rowsOverride?: unknown[][]
+  ): Promise<void> {
     if (!this.lastResult) {
+      return;
+    }
+    // The webview supplies the columns/rows as currently displayed — filtered,
+    // sorted, with hidden columns dropped and reordered columns applied. When that
+    // payload is absent (e.g. an older webview), fall back to the raw last result.
+    let columns: string[];
+    let rows: unknown[][];
+    if (columnsOverride && rowsOverride) {
+      columns = columnsOverride;
+      rows = rowsOverride;
+    } else {
+      const exportable = lastExportableStatement(this.lastResult);
+      if (!exportable) {
+        vscode.window.showWarningMessage("No tabular results to export.");
+        return;
+      }
+      columns = exportable.columns.map((c) => c.name);
+      rows = exportable.rows;
+    }
+    if (columns.length === 0) {
+      vscode.window.showWarningMessage("No visible columns to export.");
       return;
     }
     const ext = kind === "csv" ? "csv" : "xlsx";
@@ -226,17 +267,11 @@ export class ResultsPanel implements vscode.WebviewViewProvider {
     if (!uri) {
       return;
     }
-    const exportable = lastExportableStatement(this.lastResult);
-    if (!exportable) {
-      vscode.window.showWarningMessage("No tabular results to export.");
-      return;
-    }
-    const columns = exportable.columns.map((c) => c.name);
     const method = kind === "csv" ? "export/csv" : "export/xlsx";
     const params: Record<string, unknown> = {
       path: uri.fsPath,
       columns,
-      rows: exportable.rows,
+      rows,
     };
     if (kind === "csv") {
       params.bom = true;
@@ -258,6 +293,7 @@ export class ResultsPanel implements vscode.WebviewViewProvider {
     );
     const nonce = String(Date.now());
     const payload = JSON.stringify(result).replace(/</g, "\\u003c");
+    const layouts = JSON.stringify(this.layoutStore.getAll()).replace(/</g, "\\u003c");
     return `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -272,6 +308,7 @@ export class ResultsPanel implements vscode.WebviewViewProvider {
   <div id="root"></div>
   <script nonce="${nonce}">
     window.__SQL_STUDIO_RESULT__ = ${payload};
+    window.__SQL_STUDIO_TABLE_LAYOUTS__ = ${layouts};
   </script>
   <script nonce="${nonce}" type="module" src="${scriptUri}"></script>
 </body>

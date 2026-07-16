@@ -12,7 +12,7 @@ import {
   type VisibilityState,
 } from "@tanstack/react-table";
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type Dispatch, type MutableRefObject, type SetStateAction } from "react";
-import { IconChevronLeft, IconChevronRight, IconChevronsLeft, IconChevronsRight, IconDownload, IconExpandAll, IconEye } from "./Icons";
+import { IconChevronLeft, IconChevronRight, IconChevronsLeft, IconChevronsRight, IconDownload, IconExpandAll, IconEye, IconReset } from "./Icons";
 import {
   appendEqualsClause,
   distinctValuesForColumn,
@@ -20,6 +20,7 @@ import {
   rowMatchesFilter,
 } from "./columnFilter";
 import { analyzeColumns, computeColumnSizes, ROW_NUM_COLUMN_WIDTH } from "./resultData";
+import { getStoredLayout, persistLayout } from "./tableLayout";
 import type { QueryResult } from "./types";
 import { getVsCodeApi } from "./vscodeApi";
 
@@ -50,11 +51,25 @@ interface Props {
   // scroll position is persisted here so it survives this component unmounting
   // (e.g. switching to the chart view) and is restored on remount.
   scrollStateRef?: MutableRefObject<TableScrollState>;
+  // Optional cache key (hash of the query text). When set, the column order,
+  // hidden columns, column widths, and sorting are seeded from and persisted to
+  // the per-query layout store, and a "Reset layout" control is offered.
+  layoutKey?: string;
+  // Optional hook the parent can read to export exactly what the table shows —
+  // filtered, sorted, hidden columns dropped, reordered columns applied. Populated
+  // while mounted and cleared on unmount (so the chart view falls back to its own
+  // data). Falls back to internal export buttons when not provided.
+  exportRef?: MutableRefObject<(() => ExportSnapshot) | null>;
 }
 
 export interface TableScrollState {
   top: number;
   left: number;
+}
+
+export interface ExportSnapshot {
+  columns: string[];
+  rows: unknown[][];
 }
 
 function rowToJson(row: Record<string, unknown>): string {
@@ -92,14 +107,17 @@ interface ContextMenuState {
   columnId: string | null;
 }
 
-export function ResultsTable({ result, embedded = false, showToolbar = true, fetchMode, serverPageSize, isBusy = false, elapsedSeconds = 0, onBusyStart, onFetchPage, onPageSizeChange, onLoadAll, globalFilter: controlledFilter, setGlobalFilter: controlledSetFilter, scrollStateRef }: Props) {
+export function ResultsTable({ result, embedded = false, showToolbar = true, fetchMode, serverPageSize, isBusy = false, elapsedSeconds = 0, onBusyStart, onFetchPage, onPageSizeChange, onLoadAll, globalFilter: controlledFilter, setGlobalFilter: controlledSetFilter, scrollStateRef, layoutKey, exportRef }: Props) {
   const [internalFilter, setInternalFilter] = useState("");
   const globalFilter = controlledFilter !== undefined ? controlledFilter : internalFilter;
   const setGlobalFilter = controlledSetFilter ?? setInternalFilter;
-  const [sorting, setSorting] = useState<SortingState>([]);
-  const [columnSizing, setColumnSizing] = useState<ColumnSizingState>({});
-  const [columnOrder, setColumnOrder] = useState<string[]>([]);
-  const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({});
+  // Seed the layout states from the per-query store. layoutKey is invariant for a
+  // mount's whole life (a new query fully reloads the webview), so reading it once
+  // in the initializers is enough — no reseed effect is needed.
+  const [sorting, setSorting] = useState<SortingState>(() => getStoredLayout(layoutKey)?.sorting ?? []);
+  const [columnSizing, setColumnSizing] = useState<ColumnSizingState>(() => getStoredLayout(layoutKey)?.columnSizing ?? {});
+  const [columnOrder, setColumnOrder] = useState<string[]>(() => getStoredLayout(layoutKey)?.columnOrder ?? []);
+  const [columnVisibility, setColumnVisibility] = useState<VisibilityState>(() => getStoredLayout(layoutKey)?.columnVisibility ?? {});
   const [pagination, setPagination] = useState({ pageIndex: 0, pageSize: 100 });
   const [draggingColId, setDraggingColId] = useState<string | null>(null);
   const [dragOverColId, setDragOverColId] = useState<string | null>(null);
@@ -194,8 +212,6 @@ export function ResultsTable({ result, embedded = false, showToolbar = true, fet
     [columnNames, defaultColumnSizing]
   );
 
-  const columnNamesKey = useMemo(() => columnNames.join(","), [columnNames]);
-
   const table = useReactTable({
     data: displayData,
     columns,
@@ -241,17 +257,96 @@ export function ResultsTable({ result, embedded = false, showToolbar = true, fet
   const rows = table.getRowModel().rows;
   const rowNumOffset = fetchMode === "server" ? (result.page_offset ?? 0) : 0;
 
+  // Snapshot of the currently-displayed data for export: visible columns in their
+  // effective order (getVisibleLeafColumns applies columnOrder and drops hidden
+  // columns), and all filtered+sorted rows across client-side pages
+  // (getSortedRowModel sits before pagination in the TanStack pipeline).
+  const getExportSnapshot = useCallback((): ExportSnapshot => {
+    const visibleCols = table.getVisibleLeafColumns().map((col) => col.id);
+    return {
+      columns: visibleCols,
+      rows: table
+        .getSortedRowModel()
+        .rows.map((row) => visibleCols.map((id) => row.original[id])),
+    };
+  }, [table]);
+
+  const exportSnapshot = useCallback(
+    (kind: "exportCsv" | "exportXlsx") => {
+      const snapshot = getExportSnapshot();
+      getVsCodeApi()?.postMessage({ type: kind, columns: snapshot.columns, rows: snapshot.rows });
+    },
+    [getExportSnapshot]
+  );
+
+  useEffect(() => {
+    if (!exportRef) {
+      return;
+    }
+    exportRef.current = getExportSnapshot;
+    return () => {
+      exportRef.current = null;
+    };
+  }, [exportRef, getExportSnapshot]);
+
   useEffect(() => {
     setSelectedRowId(null);
     setSelectedColumnId(null);
     setPagination((prev) => ({ ...prev, pageIndex: 0 }));
   }, [result]);
 
+  // Persist the layout for this query (debounced) whenever the user changes it.
+  // The debounce is load-bearing: columnResizeMode "onChange" fires a columnSizing
+  // update on every mouse-move during a resize drag, so an un-debounced save would
+  // flood postMessage/globalState. Skip the first run (the seed) so mounting never
+  // rewrites an existing stored layout.
+  const didSeedLayoutRef = useRef(false);
+  // Latest layout, kept in a ref so the unmount flush below sees the final value
+  // even if it changed inside the debounce window.
+  const latestLayoutRef = useRef({ sorting, columnSizing, columnOrder, columnVisibility });
+  latestLayoutRef.current = { sorting, columnSizing, columnOrder, columnVisibility };
   useEffect(() => {
+    if (!layoutKey) {
+      return;
+    }
+    if (!didSeedLayoutRef.current) {
+      didSeedLayoutRef.current = true;
+      return;
+    }
+    const handle = setTimeout(() => {
+      persistLayout(layoutKey, { sorting, columnSizing, columnOrder, columnVisibility });
+    }, 400);
+    return () => clearTimeout(handle);
+  }, [layoutKey, sorting, columnSizing, columnOrder, columnVisibility]);
+
+  // Flush the current layout synchronously on unmount. Switching to the Chart view
+  // (and back) unmounts this component, and its column state lives only here — so a
+  // change made within the debounce window would otherwise be dropped before it
+  // reached the store. persistLayout also updates the in-page layout map, so an
+  // immediate remount seeds from the just-flushed value.
+  useEffect(() => {
+    if (!layoutKey) {
+      return;
+    }
+    return () => {
+      persistLayout(layoutKey, latestLayoutRef.current);
+    };
+  }, [layoutKey]);
+
+  const hasCustomLayout =
+    sorting.length > 0 ||
+    columnOrder.length > 0 ||
+    Object.keys(columnSizing).length > 0 ||
+    Object.keys(columnVisibility).length > 0;
+
+  const resetLayout = useCallback(() => {
+    setSorting([]);
     setColumnSizing({});
     setColumnOrder([]);
     setColumnVisibility({});
-  }, [columnNamesKey]);
+    // The debounced save effect above observes the cleared state and forwards a
+    // delete to the store (an all-empty layout is forgotten, not persisted).
+  }, []);
 
   useEffect(() => {
     if (selectedRowId && !rows.some((row) => row.id === selectedRowId)) {
@@ -523,10 +618,10 @@ export function ResultsTable({ result, embedded = false, showToolbar = true, fet
               <IconEye />Show all columns
             </button>
           ) : null}
-          <button type="button" onClick={() => getVsCodeApi()?.postMessage({ type: "exportCsv" })}>
+          <button type="button" onClick={() => exportSnapshot("exportCsv")}>
             <IconDownload />Export CSV
           </button>
-          <button type="button" onClick={() => getVsCodeApi()?.postMessage({ type: "exportXlsx" })}>
+          <button type="button" onClick={() => exportSnapshot("exportXlsx")}>
             <IconDownload />Export Excel
           </button>
         </div>
@@ -551,6 +646,16 @@ export function ResultsTable({ result, embedded = false, showToolbar = true, fet
               </button>
             ) : null}
           </div>
+          {layoutKey && hasCustomLayout ? (
+            <button
+              type="button"
+              className="table-toolbar-reset"
+              title="Reset columns to their original order, width, visibility, and sorting"
+              onClick={resetLayout}
+            >
+              <IconReset />Reset layout
+            </button>
+          ) : null}
         </div>
       )}
       <div

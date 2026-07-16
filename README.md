@@ -167,6 +167,7 @@ T-SQL files use extension `.tsql` and language **SQL (Microsoft SQL Server)**. T
 | `sqlStudio.promptForConnectionOnRun` | `false` | Ask for connection before each run |
 | `sqlStudio.promptForConnectionOnOpen` | `true` | Ask for connection when opening `.sql` without a per-file binding |
 | `sqlStudio.explainAnalyze` | `false` | PostgreSQL only: use `EXPLAIN ANALYZE` (executes the query). Other dialects use structured EXPLAIN output (JSON/XML/query plan) rendered as an interactive tree when supported. |
+| `sqlStudio.rememberedTableLayouts` | `30` | How many recent queries keep their results-table layout (column order, hidden columns, widths, sorting). `0` disables it. |
 
 ## Privacy and security
 

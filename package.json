@@ -2,7 +2,7 @@
   "name": "cursor-sql-studio",
   "displayName": "SQL Studio",
   "description": "Write SQL, explore databases, and view query results with agent integration",
-  "version": "0.1.17",
+  "version": "0.2.0",
   "publisher": "LevRagulin",
   "license": "Beerware-1.0",
   "author": "Lev Ragulin <leo@levragulin.ru>",
@@ -645,6 +645,12 @@
           "default": 500,
           "minimum": 50,
           "description": "Rows per page when sqlStudio.fetchMode is 'server'."
+        },
+        "sqlStudio.rememberedTableLayouts": {
+          "type": "number",
+          "default": 30,
+          "minimum": 0,
+          "description": "How many recent queries keep their results-table layout (column order, hidden columns, column widths, sorting), keyed by query text via an LRU cache. Set to 0 to disable remembering."
         }
       }
     }

@@ -269,6 +269,7 @@ npx vsce package --no-dependencies --no-rewrite-relative-links
 | `sqlStudio.promptForConnectionOnRun` | `false` | Спрашивать connection перед run |
 | `sqlStudio.promptForConnectionOnOpen` | `true` | Спрашивать при открытии `.sql` |
 | `sqlStudio.explainAnalyze` | `false` | PostgreSQL: `EXPLAIN ANALYZE` (выполняет запрос). Для остальных диалектов используется structured EXPLAIN (JSON/XML/query plan) с интерактивным деревом, когда поддерживается |
+| `sqlStudio.rememberedTableLayouts` | `30` | Сколько последних запросов сохраняют раскладку таблицы результатов (порядок колонок, скрытые колонки, ширины, сортировку). `0` — отключить |
 
 ---
 

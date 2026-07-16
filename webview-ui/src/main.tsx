@@ -9,6 +9,7 @@ declare global {
     __SQL_STUDIO_RESULT__?: import("./types").QueryExecuteResult;
     __SQL_STUDIO_CONNECTION__?: import("./types").ConnectionDialogInit;
     __SQL_STUDIO_DIAGRAM__?: import("./types").SchemaDiagramInit;
+    __SQL_STUDIO_TABLE_LAYOUTS__?: Record<string, import("./tableLayout").TableLayout>;
     acquireVsCodeApi?: () => { postMessage: (msg: unknown) => void };
   }
 }

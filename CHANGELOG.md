@@ -4,6 +4,16 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.2.0] — 2026-07-16
+
+### Added
+
+- **Remembered table layout** — the results table now remembers each query's column order (drag-reordered columns), hidden columns, column widths, and sorting, and restores them the next time you run the same query. Layouts are kept per query in an LRU cache of the 30 most recent queries; change the count with the `sqlStudio.rememberedTableLayouts` setting (0 disables it). A **Reset layout** button in the results toolbar restores the current query's columns to their original state.
+
+### Changed
+
+- **CSV / Excel export now matches the grid** — exports honor the active row filter, the current sort order, hidden columns, and reordered columns, instead of dumping the raw result. Export covers all loaded rows (use **Load all rows** first to export beyond the current page).
+
 ## [0.1.17] — 2026-07-13
 
 ### Fixed

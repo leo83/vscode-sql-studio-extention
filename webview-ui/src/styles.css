@@ -57,17 +57,27 @@ body {
 }
 
 .table-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
   padding: 8px;
   border-bottom: 1px solid var(--vscode-panel-border, #444);
 }
 
 .table-toolbar .filter-wrap {
-  width: 100%;
+  flex: 1;
 }
 
 .table-toolbar .filter {
   width: 100%;
   box-sizing: border-box;
+}
+
+.table-toolbar-reset {
+  flex: 0 0 auto;
+  white-space: nowrap;
+  background: var(--vscode-button-secondaryBackground, #3a3d41);
+  color: var(--vscode-button-secondaryForeground, #ccc);
 }
 
 .chart-panel {

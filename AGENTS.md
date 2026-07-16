@@ -47,6 +47,7 @@ grammars/             TextMate grammars (SQL подсветка)
 | `src/commands/createSqlQuery.ts` | Команда Create SQL Query (новый untitled-редактор) |
 | `src/webview/connectionDialog.ts` | Webview-диалог создания/редактирования connection |
 | `src/queryRunner.ts` | Выполнение SQL и preview таблиц; ошибки → Results panel; cancel query |
+| `src/tableLayoutStore.ts` | LRU в globalState: раскладка таблицы результатов (order/width/visibility/sort) по hash запроса |
 | `src/schemaExplorer/treeProvider.ts` | Database Explorer TreeView (корень **Connections**) |
 | `src/schemaExplorer/objectNameFilter.ts` | Фильтр имён объектов schema/database |
 | `src/commands/schemaCommands.ts` | ER diagram + DBML из контекстного меню schema/database |
@@ -65,7 +66,8 @@ grammars/             TextMate grammars (SQL подсветка)
 | `webview-ui/src/PlanTreeView.tsx` | Collapsible plan tree с badges и метриками |
 | `webview-ui/src/PlanTableView.tsx` | Flattened plan table |
 | `webview-ui/src/planTreeUtils.ts` | flatten/search/count для plan tree |
-| `webview-ui/src/ResultsTable.tsx` | TanStack Table: sort, filter, resize columns, copy |
+| `webview-ui/src/ResultsTable.tsx` | TanStack Table: sort, filter, resize columns, copy; remembered layout + Reset layout |
+| `webview-ui/src/tableLayout.ts` | Hash запроса + чтение/запись раскладки таблицы (order/width/visibility/sort) |
 | `webview-ui/src/ResultsChart.tsx` | ECharts: конфигурация и рендер графиков |
 | `webview-ui/src/chartConfig.ts` | Типы графиков, агрегация, horizontal scroll bar, ECharts option builder |
 | `webview-ui/src/pieChartGestures.ts` | Pinch-zoom и scroll легенды для pie chart |
@@ -230,6 +232,7 @@ cd python && uv sync --all-groups && uv run pytest
 - Structured execution plan (`query/explain`): Postgres `FORMAT JSON`, ClickHouse `json=1`, MySQL `FORMAT=JSON`, SQLite `EXPLAIN QUERY PLAN`, MSSQL `SHOWPLAN_XML`; fallback — text tree по отступам.
 - `StatementResult`: `plan_tree`, `plan_text`, `plan_format` (`tree` | `table` | `text`).
 - Акценты webview: `sqlStudio.accentColor`, `sqlStudio.chartAccentColors`.
+- Раскладка таблицы результатов: `sqlStudio.rememberedTableLayouts` (default 30, 0 — выключить).
 
 ### Connections
 
@@ -258,6 +261,8 @@ cd python && uv sync --all-groups && uv run pytest
 - Сообщения extension ↔ webview: `postMessage` (`save`, `cancel`, `test`, `testResult`, `exportCsv`, `exportXlsx`, `notify`).
 - Ошибки `query/execute`: `QueryResult.error` → компонент `QueryError` (summary + collapsible stack trace), не plain text.
 - Results table: resizable columns (`columnSizing`), content-based defaults via `computeColumnSizes`.
+- Export CSV/XLSX: webview шлёт `columns` + `rows` в сообщении `exportCsv`/`exportXlsx` (снимок отображаемого: фильтр, сортировка, порядок и видимость колонок; `getVisibleLeafColumns()` + `getSortedRowModel()`). `ResultsView` держит `exportRef`, который заполняет смонтированный `ResultsTable`; в chart-режиме fallback — `filteredRecords` со всеми колонками. Extension (`handleExport`) при наличии payload использует его, иначе — raw `lastExportableStatement`. Экспортируются загруженные строки (для полного набора — сперва Load all rows).
+- Remembered table layout: column order, hidden columns, widths и sorting сохраняются per-query. Ключ — `hashSql(result.sql)` (`tableLayout.ts`); extension инжектит `window.__SQL_STUDIO_TABLE_LAYOUTS__` в `getHtml` и хранит LRU в globalState (`TableLayoutStore`, лимит `sqlStudio.rememberedTableLayouts`, default 30). `layoutKey` инвариантен на всё время монтирования (новый запрос = перезагрузка webview), поэтому seed через lazy `useState`, без reset-эффекта; save дебаунсится (~400 мс, важно из-за `columnResizeMode: "onChange"`); пустая раскладка удаляется. Кнопка **Reset layout** в `table-toolbar` очищает состояние.
 - Chart view: `ResultsChart` + `chartConfig` (ECharts). Bar layout `horizontal-scroll` для многих категорий. Pie с >12 категорий — scroll legend; pinch-zoom — `pieChartGestures.ts`.
 - ER diagram: scroll/drag pan, Ctrl+scroll or pinch zoom, autofit on open — `erDiagramGestures.ts` + `ErDiagramView.tsx`; column-level edge handles (`columnHandleTop`), click edge → red marching-ants animation (child FK → parent PK), draggable midpoint reroute (`ColumnEdge`, `routeCenterX/Y`).
 - Execution plan: `ExplainPlanView` при `plan_tree` или `plan_text`; режимы Tree / Table / Raw; поиск, expand/collapse, copy raw/JSON; badges по типу узла и теги `full_scan` / `expensive`.
