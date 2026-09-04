@@ -29,6 +29,7 @@ import {
   findSqlStudioEditorReady,
   isSqlFileDocument,
 } from "./sqlDocument";
+import { ReviewPrompt } from "./reviewPrompt";
 import { languageForDialect } from "./types";
 
 let pythonClient: PythonClient;
@@ -98,6 +99,11 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     })
   );
   queryRunner = new QueryRunner(pythonClient, connectionManager, resultsPanel);
+  const reviewPrompt = new ReviewPrompt(context);
+  void reviewPrompt.initialize();
+  queryRunner.setOnQuerySucceeded(() => {
+    void reviewPrompt.recordSuccessfulQuery();
+  });
   connectionStatusBar = new ConnectionStatusBar(connectionManager);
 
   const onSqlEditorActive = async (document: vscode.TextDocument): Promise<void> => {

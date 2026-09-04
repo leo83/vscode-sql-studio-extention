@@ -651,6 +651,11 @@
           "default": 30,
           "minimum": 0,
           "description": "How many recent queries keep their results-table layout (column order, hidden columns, column widths, sorting), keyed by query text via an LRU cache. Set to 0 to disable remembering."
+        },
+        "sqlStudio.showRatingPrompt": {
+          "type": "boolean",
+          "default": true,
+          "description": "Occasionally ask for a Marketplace rating after a successful query. The counters behind it are stored locally and never sent anywhere."
         }
       }
     }

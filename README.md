@@ -9,36 +9,80 @@ Write SQL, explore database schemas, run queries, and browse results in **VS Cod
 
 ## Features
 
+**Editor**
+
 - SQL syntax highlighting for PostgreSQL, ClickHouse, T-SQL, MySQL, SQLite, and generic `.sql`
-- **Database Explorer** — lazy schema tree (schemas/databases → tables, views, functions → columns)
-- **Connection tags** — color-coded labels on connections (edit in the connection dialog or **Manage Tags**); shown in Explorer description and composite icons
-- **Schema object filter** — inline filter on schema/database nodes to search tables, views, and functions by name; **Edit Filter** / **Reset Filter** when active
-- Context menu on schema/database: **View ER Diagram** (DBML, column-level relationships, draggable routing, click-to-highlight with red animated flow child→parent, pan/zoom/autofit) and **Get DBML** (copy to clipboard)
-- Context menu on schema objects: Object Description, Sample Data, Export Data, Create SQL Query, Generate SELECT
-- Click a table or view to preview data in the same results UI as query output
 - **Create SQL Query** — new editor from Command Palette or connection context menu
 - Run queries: **Cmd+Enter** / **Ctrl+Enter** (works when focus is outside the editor if one SQL file is open)
-- **Run All in File**: **Cmd+Shift+Enter** / **Ctrl+Shift+Enter**; **Cancel Query** from editor toolbar while a query runs
+- **Run Selection** and **Run All in File** (**Cmd+Shift+Enter** / **Ctrl+Shift+Enter**); **Cancel Query** from the editor toolbar while a query runs
 - **Show Execution Plan**: **Shift+Cmd+E** / **Shift+Ctrl+E** (`EXPLAIN` per dialect; PostgreSQL optional `sqlStudio.explainAnalyze`); Results panel shows **Tree**, **Table**, and **Raw** views with search, metrics, and copy actions
-- Warns when no connection is selected or the chosen connection is not active before running SQL
-- Results panel: resizable columns (content-based default widths), sort, filter, pagination, copy row/value
-- Charts: line, bar (columns or horizontal scroll for many categories), scatter, area, pie, heatmap; type picker icons; CSV/Excel export
+- **Format SQL** and statement splitting via `sqlglot`, per dialect
+- Warns when no connection is selected or the chosen connection is not active; warns before an unbounded `SELECT` on a large table, with **Run, don't warn again** to turn the check off
+- Cursor Agent actions: **Ask Agent to Explain Query**, **Ask Agent to Fix/Optimize Query**
+
+**Database Explorer**
+
+- Lazy schema tree (schemas/databases → tables, views, functions → columns)
+- **Connection tags** — color-coded labels on connections (edit in the connection dialog or **Manage Tags**); shown in Explorer description and composite icons
+- **Schema object filter** — inline filter on schema/database nodes to search tables, views, and functions by name; **Edit Filter** / **Reset Filter** when active
+- Context menu on schema/database: **View ER Diagram** (DBML-derived layout, column-level relationships, draggable routing, click-to-highlight with red animated flow child→parent, pan/zoom/autofit, **Fit to view**, **Copy DBML**, **Open in dbdiagram.io**) and **Get DBML** (copy to clipboard)
+- Context menu on schema objects: Object Description, Sample Data, Export Data…, Copy Name, Create SQL Query, Generate SELECT
+- Click a table or view to preview data in the same results UI as query output — with paging and **Load all rows**, like a regular query
+
+**Results**
+
+- Resizable columns with content-based default widths, drag to reorder, hide a column, sort
+- **Remembered layout** — column order, hidden columns, widths, and sorting are restored per query (LRU over the most recent queries, `sqlStudio.rememberedTableLayouts`); **Reset layout** returns the current query's columns to their original state
+- Row filter over the loaded rows: `=`, `!=`, `~` / `!~` (contains), `in (…)` / `not in (…)`, `>`, `>=`, `<`, `<=`, `is null` / `is not null`, `is empty` / `is not empty`, combined with `AND` / `OR`; one-click clear; the counter reads `<matched> of <total> rows`
+- Right-click a column → **Filter values** lists the distinct values of low-cardinality columns; picking one appends `column=value`
+- Pagination with a page-size selector and **Load all rows**; server or client fetch mode (`sqlStudio.fetchMode`, `sqlStudio.serverPageSize`)
+- **Refresh** re-runs the same SQL without leaving the panel, preserving the filter, the current view, sorting, and column order
+- The toolbar shows the query that produced the results, expandable in a scrollable hover popover
+- Copy row (**Cmd+Alt+C**), copy value (**Cmd+C**), copy column name
+- CSV / Excel export that matches the grid — honors the active filter, sort order, hidden columns, and reordered columns
 - Formatted query errors (summary, database error code, collapsible stack trace)
-- Connection passwords stored encrypted via VS Code **SecretStorage** (OS keychain)
-- Connection dialog (webview) with dialect-specific fields and optional tags
+
+**Charts**
+
+- line, bar (columns or horizontal scroll for many categories), scatter, area, pie, heatmap; type picker icons
+- X/Y column pickers, optional series, aggregation, and **Value labels** (Off / Value / Percent) drawn on bars, lines, and pie slices
+- Pie charts open with smart defaults; many categories get a scrollable legend; pinch or Ctrl/Cmd + scroll to zoom
+- The row filter is shared with the table view, and switching Table ↔ Chart preserves the table's scroll position
+
+**Connections**
+
+- Connection dialog (webview) with dialect-specific fields, optional tags, and **Test connection**
+- Passwords stored encrypted via VS Code **SecretStorage** (OS keychain)
 - ClickHouse **Native (TCP, 9000)** and **HTTP (8123)** drivers
 - Microsoft SQL Server via **ODBC** (pyodbc)
+- Accent colors follow the editor theme, overridable with `sqlStudio.accentColor` / `sqlStudio.chartAccentColors`
 - Cursor Agent integration (rules template, MCP stub)
 
 ## Screenshots
 
-**Query results (table)** — sort, filter, pagination, export:
+**Query results (table)** — Database Explorer, SQL editor and the SQL Results panel with sorting, an expression filter, pagination (`Rows 1–10`, page size, `Load all rows`), `Refresh` and CSV/Excel export:
 
-![Query results table](docs/images/results-table.png)
+![Query results table](https://raw.githubusercontent.com/leo83/vscode-sql-studio-extention/main/docs/images/results-table.png)
 
-**Query results (chart)** — pie, bar, scatter, heatmap from result columns. Pie charts with many categories use a scrollable legend; pinch-to-zoom (trackpad pinch or Ctrl/Cmd + scroll) on the chart area and trackpad scroll on the legend:
+**Results filter** — expression syntax over the loaded rows (`col=value`, `col in (a,b)`, `col is null/empty`, `AND` / `OR`); the toolbar reports how many of them match:
 
-![Query results chart](docs/images/results-chart.png)
+![Results filter](https://raw.githubusercontent.com/leo83/vscode-sql-studio-extention/main/docs/images/results-filter.png)
+
+**Grid context menu** — copy a row, a value or a column name, hide a column, or pick values for a column filter from the loaded rows:
+
+![Grid context menu](https://raw.githubusercontent.com/leo83/vscode-sql-studio-extention/main/docs/images/results-context-menu.png)
+
+**Query results (chart)** — line, bar, scatter, area, pie and heatmap over result columns, with X/Y column pickers, optional series, aggregation and value labels. Pie charts with many categories use a scrollable legend; pinch-to-zoom (trackpad pinch or Ctrl/Cmd + scroll) works on the chart area and trackpad scroll on the legend:
+
+![Query results line chart](https://raw.githubusercontent.com/leo83/vscode-sql-studio-extention/main/docs/images/results-chart-line.png)
+
+Pie charts group by a label column and label slices with values or percentages:
+
+![Query results pie chart](https://raw.githubusercontent.com/leo83/vscode-sql-studio-extention/main/docs/images/results-chart.png)
+
+**ER diagram** — right-click a schema or database → **View ER Diagram**: DBML-derived layout with column-level relationships, pan and zoom, draggable tables, click-to-highlight, **Fit to view**, **Copy DBML** and **Open in dbdiagram.io**:
+
+![ER diagram](https://raw.githubusercontent.com/leo83/vscode-sql-studio-extention/main/docs/images/er-diagram.png)
 
 ## Supported databases
 
@@ -144,12 +188,13 @@ T-SQL files use extension `.tsql` and language **SQL (Microsoft SQL Server)**. T
 | Object metadata | Right-click → **Object Description** |
 | Export table | Right-click → **Export Data…** |
 | New SQL from object | Right-click → **Create SQL Query** or **Generate SELECT** |
+| Copy object name | Right-click → **Copy Name** |
 | Filter objects by name | Filter icon on schema/database node; **Edit Filter** / **Reset Filter** when active |
 | Connection tags | Right-click connection → **Manage Tags**, or edit in the connection dialog |
-| ER diagram | Right-click schema/database → **View ER Diagram** (pan, zoom, drag tables, click a relationship to highlight with red marching-ants animation child→parent, drag midpoint to reroute, **Fit to view**, **Copy DBML**) |
+| ER diagram | Right-click schema/database → **View ER Diagram** (pan, zoom, drag tables, click a relationship to highlight with red marching-ants animation child→parent, drag midpoint to reroute, **Fit to view**, **Copy DBML**, **Open in dbdiagram.io**) |
 | Run SQL | Open `.sql`, pick connection in status bar, **Cmd+Enter** / **Ctrl+Enter** |
 | Format SQL | Command Palette → **SQL Studio: Format SQL** |
-| Agent help | **SQL Studio: Ask Agent to Explain Query** |
+| Agent help | **SQL Studio: Ask Agent to Explain Query** / **Ask Agent to Fix/Optimize Query** |
 
 ## Settings
 
@@ -158,6 +203,8 @@ T-SQL files use extension `.tsql` and language **SQL (Microsoft SQL Server)**. T
 | `sqlStudio.uvPath` | `uv` | Path to the `uv` executable |
 | `sqlStudio.previewRowLimit` | `1000` | Rows when previewing a table from Explorer |
 | `sqlStudio.defaultRowLimit` | `10000` | Max rows per SQL query |
+| `sqlStudio.fetchMode` | `server` | How results load: page-by-page from the backend (`server`) or all rows at once (`client`) |
+| `sqlStudio.serverPageSize` | `500` | Rows per page when `sqlStudio.fetchMode` is `server` |
 | `sqlStudio.warnOnLargeUnboundedSelect` | `true` | Warn before unbounded SELECT on large tables |
 | `sqlStudio.largeTableRowThreshold` | `5000` | Estimated row count that triggers the warning |
 | `sqlStudio.accentColor` | _(empty)_ | Primary accent for SQL Studio webviews (hex) |
@@ -168,10 +215,11 @@ T-SQL files use extension `.tsql` and language **SQL (Microsoft SQL Server)**. T
 | `sqlStudio.promptForConnectionOnOpen` | `true` | Ask for connection when opening `.sql` without a per-file binding |
 | `sqlStudio.explainAnalyze` | `false` | PostgreSQL only: use `EXPLAIN ANALYZE` (executes the query). Other dialects use structured EXPLAIN output (JSON/XML/query plan) rendered as an interactive tree when supported. |
 | `sqlStudio.rememberedTableLayouts` | `30` | How many recent queries keep their results-table layout (column order, hidden columns, widths, sorting). `0` disables it. |
+| `sqlStudio.showRatingPrompt` | `true` | Occasionally ask for a Marketplace rating after a successful query |
 
 ## Privacy and security
 
-- **No telemetry** — the extension does not send usage data to the author or third parties.
+- **No telemetry** — the extension does not send usage data to the author or third parties. The rating prompt counts successful queries in local `globalState` only; nothing is reported, and `sqlStudio.showRatingPrompt` turns the prompt off.
 - **Credentials** — passwords are stored only in VS Code **SecretStorage** (encrypted by the OS). They are not written to settings, logs, or MCP responses.
 - **Queries** — SQL runs directly between your machine and the database you configure. The Python backend runs locally via `uv`.
 - Use **read-only** connections when exploring production data.

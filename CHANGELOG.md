@@ -4,6 +4,10 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added
+
+- **Rating prompt** — after 25 successful queries, and no sooner than 7 days after first use, SQL Studio asks once for a Marketplace rating (**Rate SQL Studio** / **Later** / **Don't ask again**). "Later" postpones the ask by 90 days; rating or declining stops it for good. Counters live in `globalState` and are never sent anywhere; `sqlStudio.showRatingPrompt` disables the prompt entirely
+
 ## [0.1.18] — 2026-07-16
 
 ### Added

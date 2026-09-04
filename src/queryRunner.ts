@@ -27,12 +27,18 @@ export class QueryRunner {
   private lastPreviewKey = "";
   private lastPreviewAt = 0;
   private runningConnectionId: string | undefined;
+  private onQuerySucceeded?: () => void;
 
   constructor(
     private readonly python: PythonClient,
     private readonly connections: ConnectionManager,
     private readonly results: ResultsPanel
   ) {}
+
+  /** Called once per successful (non-refresh) run that produced results. */
+  setOnQuerySucceeded(handler: () => void): void {
+    this.onQuerySucceeded = handler;
+  }
 
   async runDocument(editor: vscode.TextEditor): Promise<void> {
     const sql = editor.document.getText();
@@ -576,6 +582,14 @@ export class QueryRunner {
     } finally {
       this.runningConnectionId = undefined;
       await vscode.commands.executeCommand("setContext", "sqlStudio.queryRunning", false);
+    }
+    if (
+      !cancelled &&
+      !isRefresh &&
+      result &&
+      !result.statements.some((statement) => statement.error)
+    ) {
+      this.onQuerySucceeded?.();
     }
     return result;
   }

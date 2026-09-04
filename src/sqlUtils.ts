@@ -55,6 +55,12 @@ export function isLargeUnboundedSelectWarningEnabled(): boolean {
     .get<boolean>("warnOnLargeUnboundedSelect", true);
 }
 
+export function isRatingPromptEnabled(): boolean {
+  return vscode.workspace
+    .getConfiguration("sqlStudio")
+    .get<boolean>("showRatingPrompt", true);
+}
+
 export function getLargeTableRowThreshold(): number {
   return vscode.workspace
     .getConfiguration("sqlStudio")

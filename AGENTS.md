@@ -233,6 +233,7 @@ cd python && uv sync --all-groups && uv run pytest
 - `StatementResult`: `plan_tree`, `plan_text`, `plan_format` (`tree` | `table` | `text`).
 - Акценты webview: `sqlStudio.accentColor`, `sqlStudio.chartAccentColors`.
 - Раскладка таблицы результатов: `sqlStudio.rememberedTableLayouts` (default 30, 0 — выключить).
+- Запрос оценки: `sqlStudio.showRatingPrompt` (default true). `ReviewPrompt` (`src/reviewPrompt.ts`) считает успешные не-refresh запуски через `queryRunner.setOnQuerySucceeded`, состояние — в globalState (`sqlStudio.reviewPrompt`): порог 25 запросов и 7 дней с первого запуска, «Later» откладывает на 90 дней, оценка или «Don't ask again» выключают навсегда. Ничего не отправляется наружу; `shouldPrompt` — чистая функция, чтобы пороги можно было тестировать без vscode-хоста.
 
 ### Connections
 
