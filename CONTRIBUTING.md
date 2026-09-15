@@ -52,7 +52,9 @@ This runs:
 
 - `cd python && uv run pytest`
 - `npm run lint` (TypeScript `tsc --noEmit`)
-- `cd webview-ui && npm run test` (Vitest: chart layout and pie gesture helpers)
+- `cd webview-ui && npm run test` (Vitest: webview helpers — filters, chart and plan layout, gestures)
+
+Note that `src/` (the extension host) has no test runner; `npm run lint` type-checks it, but its behavior is only covered by the manual checklist below.
 
 When changing the Python backend, also verify stdio JSON-RPC:
 
@@ -90,6 +92,7 @@ Update in the same PR when you change:
 | [README.ru.md](README.ru.md) | Same, Russian version |
 | [AGENTS.md](AGENTS.md) | Architecture, JSON-RPC, file map |
 | [CHANGELOG.md](CHANGELOG.md) | Notable changes under `[Unreleased]` |
+| [SECURITY.md](SECURITY.md) | The security model — new credential paths or newly persisted user data |
 
 ### Manual test checklist
 
@@ -100,11 +103,12 @@ Before submitting a PR that touches explorer or query flow:
 3. Schema/database → View ER Diagram → pan/zoom → Copy DBML
 4. Open `.sql` → Cmd/Ctrl+Enter → results panel (table + chart)
 5. Shift+Cmd/Ctrl+E → execution plan
-6. If MSSQL changed: verify ODBC driver is installed
+6. **Query History** view → the run appears; re-running the same query lifts that entry instead of adding a second; clicking a table in the explorer adds no entry; click opens the SQL bound to its connection
+7. If MSSQL changed: verify ODBC driver is installed
 
 ## Pull requests
 
-1. Fork the repository and create a feature branch from `master`
+1. Fork the repository and create a feature branch from `main`
 2. Run `just build && just test`
 3. Open a PR with a clear description of **what** and **why**
 4. Link related issues if applicable

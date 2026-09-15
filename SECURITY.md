@@ -6,7 +6,7 @@
 |---------|-----------|
 | 0.1.x   | Yes       |
 
-Security fixes are applied to the latest release on the `master` branch.
+Security fixes are applied to the latest release on the `main` branch.
 
 ## Reporting a vulnerability
 

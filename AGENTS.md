@@ -160,7 +160,7 @@ cd python && uv sync --all-groups && uv run pytest
    - ...
    ```
 
-3. **Git-тег** (опционально, для релиза в Marketplace):
+3. **Git-тег** — обязателен на каждую версию:
    ```bash
    git tag v0.2.0
    git push origin v0.2.0
@@ -183,7 +183,8 @@ cd python && uv sync --all-groups && uv run pytest
 - [ ] `[Unreleased]` переименован в `[X.Y.Z] — YYYY-MM-DD`
 - [ ] Новый пустой `[Unreleased]` добавлен в топ CHANGELOG
 - [ ] `just build && just test` прошли без ошибок
-- [ ] Коммит содержит только изменения версии (не смешивать с фичами)
+- [ ] Бамп в том же коммите, что и фича; заголовок оканчивается на `; bump to X.Y.Z`
+- [ ] Тег `vX.Y.Z` создан на этом коммите
 
 ## Правила разработки
 
