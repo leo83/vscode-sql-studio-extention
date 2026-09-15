@@ -4,8 +4,11 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.1.19] — 2026-09-15
+
 ### Added
 
+- **Query history** — a **Query History** view in the SQL Studio sidebar lists the queries you ran, most recent first, with the connection, age, row count, and duration; failed runs are kept too, with the database message in the tooltip. Re-running a query that is already in the history moves its entry back to the top and counts the runs, instead of adding a duplicate. Click an entry to reopen the SQL in an editor bound to that connection, or right-click to **Run Query**, **Copy SQL**, or **Remove from History**. **SQL Studio: Search Query History** opens a searchable picker over the same list. The last 200 queries are kept; change the count with `sqlStudio.queryHistoryLimit` (0 disables history). Entries stay in local `globalState` and are never sent anywhere
 - **Rating prompt** — after 25 successful queries, and no sooner than 7 days after first use, SQL Studio asks once for a Marketplace rating (**Rate SQL Studio** / **Later** / **Don't ask again**). "Later" postpones the ask by 90 days; rating or declining stops it for good. Counters live in `globalState` and are never sent anywhere; `sqlStudio.showRatingPrompt` disables the prompt entirely
 
 ## [0.1.18] — 2026-07-16

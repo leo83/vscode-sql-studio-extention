@@ -32,6 +32,15 @@
 - ПКМ на объект схемы: **Object Description**, **Sample Data**, **Export Data…**, **Copy Name**, **Create SQL Query**, **Generate SELECT**
 - Клик по таблице / view → preview данных в том же UI, что и результаты запроса, с пагинацией и **Load all rows**
 
+**История запросов**
+
+- Каждый выполненный запрос попадает во view **Query History** в сайдбаре SQL Studio — новые сверху, с подключением, давностью, числом строк и длительностью
+- Повторный запуск запроса, который уже есть в истории, поднимает его наверх, а не добавляет дубль, и считает число запусков (тот же SQL на другом подключении остаётся отдельной записью)
+- Клик по записи открывает SQL в новом редакторе, привязанном к тому же подключению; ПКМ → **Run Query**, **Copy SQL**, **Remove from History**
+- **SQL Studio: Search Query History** — поиск по той же истории через палитру
+- Упавшие запросы тоже сохраняются: иконка ошибки и сообщение СУБД в tooltip
+- Хранятся последние `sqlStudio.queryHistoryLimit` запросов (по умолчанию 200, `0` — выключить); записи лежат в локальном `globalState` и никуда не отправляются
+
 **Результаты**
 
 - Изменяемая ширина колонок (по содержимому по умолчанию), перетаскивание для смены порядка, скрытие колонки, сортировка
@@ -296,6 +305,7 @@ npx vsce package --no-dependencies --no-rewrite-relative-links
 | Запрос | `.sql` + connection в status bar + **Cmd+Enter** |
 | Формат SQL | **`SQL Studio: Format SQL`** |
 | Агент | **`SQL Studio: Ask Agent to Explain Query`** / **`Ask Agent to Fix/Optimize Query`** |
+| Повторить запрос | View **Query History** → клик открывает SQL в редакторе, ПКМ → **Run Query** |
 
 ### Настройки (Cursor Settings → SQL Studio)
 
@@ -316,6 +326,7 @@ npx vsce package --no-dependencies --no-rewrite-relative-links
 | `sqlStudio.promptForConnectionOnOpen` | `true` | Спрашивать при открытии `.sql` |
 | `sqlStudio.explainAnalyze` | `false` | PostgreSQL: `EXPLAIN ANALYZE` (выполняет запрос). Для остальных диалектов используется structured EXPLAIN (JSON/XML/query plan) с интерактивным деревом, когда поддерживается |
 | `sqlStudio.rememberedTableLayouts` | `30` | Сколько последних запросов сохраняют раскладку таблицы результатов (порядок колонок, скрытые колонки, ширины, сортировку). `0` — отключить |
+| `sqlStudio.queryHistoryLimit` | `200` | Сколько последних выполненных запросов хранит view **Query History**. `0` — отключить историю |
 | `sqlStudio.showRatingPrompt` | `true` | Иногда просить оценку на Marketplace после успешного запроса |
 
 ---
@@ -323,6 +334,7 @@ npx vsce package --no-dependencies --no-rewrite-relative-links
 ## Конфиденциальность
 
 - **Телеметрии нет** — данные использования никуда не отправляются. Запрос оценки считает успешные запросы только в локальном `globalState`; ничего не отправляется, а `sqlStudio.showRatingPrompt` выключает подсказку.
+- **История запросов** — текст выполненных запросов хранится в локальном `globalState`, чтобы их можно было открыть заново, и не покидает машину. `sqlStudio.queryHistoryLimit` = `0` отключает историю, **Clear Query History** очищает её.
 - **Пароли** — только VS Code SecretStorage (шифрование ОС).
 - **Запросы** — напрямую между вашей машиной и вашей БД; backend локальный.
 

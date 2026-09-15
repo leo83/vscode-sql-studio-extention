@@ -48,6 +48,9 @@ grammars/             TextMate grammars (SQL подсветка)
 | `src/webview/connectionDialog.ts` | Webview-диалог создания/редактирования connection |
 | `src/queryRunner.ts` | Выполнение SQL и preview таблиц; ошибки → Results panel; cancel query |
 | `src/tableLayoutStore.ts` | LRU в globalState: раскладка таблицы результатов (order/width/visibility/sort) по hash запроса |
+| `src/queryHistoryStore.ts` | История выполненных запросов в globalState (rolling log, лимит `sqlStudio.queryHistoryLimit`) |
+| `src/queryHistoryView.ts` | TreeDataProvider view **Query History** + форматирование записи |
+| `src/commands/queryHistoryCommands.ts` | Open / Run / Copy / Remove / Clear / Search по истории |
 | `src/schemaExplorer/treeProvider.ts` | Database Explorer TreeView (корень **Connections**) |
 | `src/schemaExplorer/objectNameFilter.ts` | Фильтр имён объектов schema/database |
 | `src/commands/schemaCommands.ts` | ER diagram + DBML из контекстного меню schema/database |
@@ -233,6 +236,7 @@ cd python && uv sync --all-groups && uv run pytest
 - `StatementResult`: `plan_tree`, `plan_text`, `plan_format` (`tree` | `table` | `text`).
 - Акценты webview: `sqlStudio.accentColor`, `sqlStudio.chartAccentColors`.
 - Раскладка таблицы результатов: `sqlStudio.rememberedTableLayouts` (default 30, 0 — выключить).
+- История запросов: `sqlStudio.queryHistoryLimit` (default 200, 0 — выключить).
 - Запрос оценки: `sqlStudio.showRatingPrompt` (default true). `ReviewPrompt` (`src/reviewPrompt.ts`) считает успешные не-refresh запуски через `queryRunner.setOnQuerySucceeded`, состояние — в globalState (`sqlStudio.reviewPrompt`): порог 25 запросов и 7 дней с первого запуска, «Later» откладывает на 90 дней, оценка или «Don't ask again» выключают навсегда. Ничего не отправляется наружу; `shouldPrompt` — чистая функция, чтобы пороги можно было тестировать без vscode-хоста.
 
 ### Connections
@@ -253,6 +257,16 @@ cd python && uv sync --all-groups && uv run pytest
 - Клик по table/view → `queryRunner.previewTable()` → тот же ResultsPanel, что для SQL.
 - PostgreSQL / MSSQL / MySQL: path `schemas/{schema}/{table}`; ClickHouse: `databases/{db}/{table}`; SQLite: file as database.
 - ER diagram: `showSchemaDiagram` → `ErDiagramPanel` → webview mode `erDiagram`.
+
+### Query history
+
+- Хранилище — `QueryHistoryStore` (globalState, ключ `sqlStudio.queryHistory`), новые записи в начале списка, обрезка до `getQueryHistoryLimit()` (`sqlStudio.queryHistoryLimit`, default 200, 0 — выключено).
+- Записываются **только запросы, написанные пользователем**: путь `QueryRunner.runSql` → `executeWithConnection(..., historySql)`. Не пишутся `previewTable` (explorer шлёт запрос на каждый клик и каждое движение стрелками по дереву — история утонет в `SELECT * FROM …`), refresh, `fetchPage` / `loadAll` / `rerunWithLimit` и `query/explain`.
+- Session-context: `runSqlWithSessionContext` склеивает `SET …;\nSELECT …` в `batchSql`, поэтому в историю через `options.historySql` уходит `trimmed` — то, что реально написал пользователь.
+- Ошибки сохраняются наравне с успехами (`error` в записи). Запись в стор обёрнута в try/catch — история не должна ронять выполнение запроса (тот же контракт, что у `ReviewPrompt`).
+- Дедуп по `(sql, connectionId)` **по всему списку**: повторный запуск запроса, который уже есть в истории, не пишется заново — существующая запись поднимается наверх, берёт время/длительность/строки/ошибку нового запуска и инкрементит `runCount`. `id` записи сохраняется, чтобы открытое дерево продолжало отслеживать ту же строку. Connection входит в ключ намеренно: один и тот же SELECT на prod и на dev — две записи.
+- В записи только `connectionId` + `connectionName` + `dialect`, никаких credentials (пароли — строго SecretStorage). SQL обрезается до 20 000 символов, чтобы сгенерированный многомегабайтный statement не раздул globalState.
+- Клик по записи открывает SQL в untitled-редакторе с привязкой connection; **выполнение — только явным Run** из контекстного меню с confirm (в истории бывают DDL/DML).
 
 ### Webview
 
@@ -300,6 +314,7 @@ cd python && uv sync --all-groups && uv run pytest
 - `sqlStudio.showExecutionPlan` — structured EXPLAIN для запроса под курсором (Shift+Cmd+E); Results panel: Tree / Table / Raw
 - `sqlStudio.filterSchemaObjects` / `editSchemaObjectFilter` / `clearSchemaObjectFilter` — фильтр объектов в Explorer
 - `sqlStudio.manageConnectionTags` — управление тегами connection
+- `sqlStudio.searchQueryHistory` — поиск по истории запросов (quick pick); view `sqlStudio.history` + `openQueryFromHistory` / `runQueryFromHistory` / `copyQueryFromHistory` / `deleteQueryFromHistory` / `clearQueryHistory`
 - `sqlStudio.askAgentExplain` — prompt в clipboard для Chat
 - `sqlStudio.askAgentFix` — prompt для fix/optimize
 
@@ -325,6 +340,7 @@ echo '{"jsonrpc":"2.0","id":1,"method":"health","params":{}}' | uv run sql-studi
 2. Expand schema → filter objects → click table → preview 1000 rows
 3. Schema/database → View ER Diagram → pan/zoom
 4. `.sql` file → Cmd+Enter → results panel; Shift+Cmd+E → execution plan
+5. Query History → запись появилась → клик открывает SQL с тем же connection; ПКМ → Run / Copy / Remove; клик по таблице в explorer **не** добавляет запись
 
 ## Частые ошибки
 

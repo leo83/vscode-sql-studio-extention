@@ -86,6 +86,13 @@ export function getRememberedTableLayoutLimit(): number {
   return Number.isFinite(value) && value > 0 ? Math.floor(value) : 0;
 }
 
+export function getQueryHistoryLimit(): number {
+  const value = vscode.workspace
+    .getConfiguration("sqlStudio")
+    .get<number>("queryHistoryLimit", 200);
+  return Number.isFinite(value) && value > 0 ? Math.floor(value) : 0;
+}
+
 export interface StatementRange {
   start: number;
   end: number;

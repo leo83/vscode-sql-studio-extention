@@ -29,6 +29,15 @@ Write SQL, explore database schemas, run queries, and browse results in **VS Cod
 - Context menu on schema objects: Object Description, Sample Data, Export Data…, Copy Name, Create SQL Query, Generate SELECT
 - Click a table or view to preview data in the same results UI as query output — with paging and **Load all rows**, like a regular query
 
+**Query history**
+
+- Every query you run is recorded in a **Query History** view in the SQL Studio sidebar, most recent first, with its connection, age, row count, and duration
+- Re-running a query that is already in the history moves it back to the top instead of adding a duplicate, and counts how many times you have run it (the same SQL on a different connection stays a separate entry)
+- Click an entry to reopen the SQL in a new editor bound to the connection it ran on; right-click to **Run Query**, **Copy SQL**, or **Remove from History**
+- **SQL Studio: Search Query History** opens a searchable picker over the same list
+- Failed queries are kept too, marked with an error icon and the database message in the tooltip
+- The last `sqlStudio.queryHistoryLimit` queries are kept (default 200, `0` disables history); entries live in local `globalState` and are never sent anywhere
+
 **Results**
 
 - Resizable columns with content-based default widths, drag to reorder, hide a column, sort
@@ -195,6 +204,7 @@ T-SQL files use extension `.tsql` and language **SQL (Microsoft SQL Server)**. T
 | Run SQL | Open `.sql`, pick connection in status bar, **Cmd+Enter** / **Ctrl+Enter** |
 | Format SQL | Command Palette → **SQL Studio: Format SQL** |
 | Agent help | **SQL Studio: Ask Agent to Explain Query** / **Ask Agent to Fix/Optimize Query** |
+| Reuse a past query | **Query History** view → click to open in an editor, or right-click → **Run Query** |
 
 ## Settings
 
@@ -215,6 +225,7 @@ T-SQL files use extension `.tsql` and language **SQL (Microsoft SQL Server)**. T
 | `sqlStudio.promptForConnectionOnOpen` | `true` | Ask for connection when opening `.sql` without a per-file binding |
 | `sqlStudio.explainAnalyze` | `false` | PostgreSQL only: use `EXPLAIN ANALYZE` (executes the query). Other dialects use structured EXPLAIN output (JSON/XML/query plan) rendered as an interactive tree when supported. |
 | `sqlStudio.rememberedTableLayouts` | `30` | How many recent queries keep their results-table layout (column order, hidden columns, widths, sorting). `0` disables it. |
+| `sqlStudio.queryHistoryLimit` | `200` | How many recently executed queries the **Query History** view keeps. `0` disables history. |
 | `sqlStudio.showRatingPrompt` | `true` | Occasionally ask for a Marketplace rating after a successful query |
 
 ## Privacy and security
@@ -222,6 +233,7 @@ T-SQL files use extension `.tsql` and language **SQL (Microsoft SQL Server)**. T
 - **No telemetry** — the extension does not send usage data to the author or third parties. The rating prompt counts successful queries in local `globalState` only; nothing is reported, and `sqlStudio.showRatingPrompt` turns the prompt off.
 - **Credentials** — passwords are stored only in VS Code **SecretStorage** (encrypted by the OS). They are not written to settings, logs, or MCP responses.
 - **Queries** — SQL runs directly between your machine and the database you configure. The Python backend runs locally via `uv`.
+- **Query history** — the text of executed queries is stored in local `globalState` so you can reopen them; it never leaves your machine. Set `sqlStudio.queryHistoryLimit` to `0` to disable it, or use **Clear Query History** to wipe it.
 - Use **read-only** connections when exploring production data.
 
 ## Cursor Agent

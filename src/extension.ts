@@ -3,6 +3,8 @@ import { accentColorsAffectConfiguration } from "./accentColors";
 import { ConnectionManager } from "./connectionManager";
 import { PythonClient } from "./pythonClient";
 import { QueryRunner } from "./queryRunner";
+import { QueryHistoryStore } from "./queryHistoryStore";
+import { QueryHistoryProvider } from "./queryHistoryView";
 import {
   ExplorerTreeItem,
   SchemaExplorerProvider,
@@ -14,6 +16,15 @@ import {
   formatActiveDocument,
 } from "./commands/agentCommands";
 import { createSqlQuery } from "./commands/createSqlQuery";
+import {
+  clearQueryHistory,
+  copyQueryFromHistory,
+  deleteQueryFromHistory,
+  HistoryTarget,
+  openQueryFromHistory,
+  runQueryFromHistory,
+  searchQueryHistory,
+} from "./commands/queryHistoryCommands";
 import {
   createSqlQueryForObject,
   exportObjectData,
@@ -38,6 +49,8 @@ let queryRunner: QueryRunner;
 let resultsPanel: ResultsPanel;
 let explorerProvider: SchemaExplorerProvider;
 let connectionStatusBar: ConnectionStatusBar;
+let queryHistoryStore: QueryHistoryStore;
+let queryHistoryProvider: QueryHistoryProvider;
 
 export async function activate(context: vscode.ExtensionContext): Promise<void> {
   const log = vscode.window.createOutputChannel("SQL Studio");
@@ -98,7 +111,22 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       webviewOptions: { retainContextWhenHidden: true },
     })
   );
-  queryRunner = new QueryRunner(pythonClient, connectionManager, resultsPanel);
+  queryHistoryStore = new QueryHistoryStore(context);
+  queryHistoryProvider = new QueryHistoryProvider(queryHistoryStore);
+  context.subscriptions.push(
+    queryHistoryStore,
+    queryHistoryProvider,
+    queryHistoryStore.onDidChange(() => queryHistoryProvider.refresh()),
+    vscode.window.createTreeView("sqlStudio.history", {
+      treeDataProvider: queryHistoryProvider,
+    })
+  );
+  queryRunner = new QueryRunner(
+    pythonClient,
+    connectionManager,
+    resultsPanel,
+    queryHistoryStore
+  );
   const reviewPrompt = new ReviewPrompt(context);
   void reviewPrompt.initialize();
   queryRunner.setOnQuerySucceeded(() => {
@@ -136,6 +164,9 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       if (accentColorsAffectConfiguration(event)) {
         resultsPanel.refreshAccentStyles();
         connectionManager.refreshAccentStyles();
+      }
+      if (event.affectsConfiguration("sqlStudio.queryHistoryLimit")) {
+        queryHistoryProvider.refresh();
       }
     }),
     vscode.workspace.onDidOpenTextDocument((doc) => {
@@ -457,6 +488,40 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       askAgentExplain(connectionManager, pythonClient)
     ),
     vscode.commands.registerCommand("sqlStudio.askAgentFix", askAgentFix),
+    vscode.commands.registerCommand(
+      "sqlStudio.openQueryFromHistory",
+      (target?: HistoryTarget) =>
+        openQueryFromHistory(connectionManager, queryHistoryStore, target)
+    ),
+    vscode.commands.registerCommand(
+      "sqlStudio.runQueryFromHistory",
+      (target?: HistoryTarget) =>
+        runQueryFromHistory(
+          connectionManager,
+          queryHistoryStore,
+          queryRunner,
+          target
+        )
+    ),
+    vscode.commands.registerCommand(
+      "sqlStudio.copyQueryFromHistory",
+      (target?: HistoryTarget) =>
+        copyQueryFromHistory(queryHistoryStore, target)
+    ),
+    vscode.commands.registerCommand(
+      "sqlStudio.deleteQueryFromHistory",
+      (target?: HistoryTarget) =>
+        deleteQueryFromHistory(queryHistoryStore, target)
+    ),
+    vscode.commands.registerCommand("sqlStudio.clearQueryHistory", () =>
+      clearQueryHistory(queryHistoryStore)
+    ),
+    vscode.commands.registerCommand("sqlStudio.searchQueryHistory", () =>
+      searchQueryHistory(connectionManager, queryHistoryStore)
+    ),
+    vscode.commands.registerCommand("sqlStudio.refreshQueryHistory", () =>
+      queryHistoryProvider.refresh()
+    ),
     vscode.commands.registerCommand(
       "sqlStudio.showSchemaDiagram",
       (item: ExplorerTreeItem) =>

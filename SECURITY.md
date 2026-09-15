@@ -28,7 +28,7 @@ SQL Studio is designed with these properties:
 ### Credentials
 
 - Database passwords are stored **only** in VS Code **SecretStorage** (encrypted by the operating system).
-- Passwords are **not** stored in workspace settings, `globalState`, logs, or MCP tool responses.
+- Passwords are **not** stored in workspace settings, `globalState`, logs, or MCP tool responses (see *Locally stored query text* for what `globalState` does hold).
 - Connection profiles in settings contain host, port, username, and database name — **never** the password.
 
 ### Network and data flow
@@ -36,6 +36,12 @@ SQL Studio is designed with these properties:
 - SQL queries run **directly** from your machine to databases you configure.
 - The Python backend runs **locally** via `uv`; it is not a hosted service operated by the author.
 - The extension does **not** include telemetry or analytics that send usage data to third parties.
+
+### Locally stored query text
+
+- **Query history** keeps the text of the queries you run in the extension's local `globalState` (plaintext, unencrypted at rest beyond your OS disk encryption), so you can reopen them from the **Query History** view.
+- It never leaves your machine — nothing is uploaded, and the extension has no telemetry.
+- Query text can contain literals you may not want persisted (e.g. `CREATE USER … PASSWORD '…'`, tokens in a `WHERE` clause). Set `sqlStudio.queryHistoryLimit` to `0` to disable history, or run **SQL Studio: Clear Query History** to erase it.
 
 ### Read-only mode
 

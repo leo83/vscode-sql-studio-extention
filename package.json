@@ -2,7 +2,7 @@
   "name": "cursor-sql-studio",
   "displayName": "SQL Studio",
   "description": "Write SQL, explore databases, and view query results with agent integration",
-  "version": "0.1.18",
+  "version": "0.1.19",
   "publisher": "LevRagulin",
   "license": "Beerware-1.0",
   "author": "Lev Ragulin <leo@levragulin.ru>",
@@ -47,6 +47,7 @@
     "onLanguage:sql-studio-sqlite",
     "workspaceContains:**/*.sql",
     "onView:sqlStudio.explorer",
+    "onView:sqlStudio.history",
     "onView:sqlStudio.results",
     "onCommand:sqlStudio.addConnection"
   ],
@@ -307,6 +308,45 @@
         "category": "SQL Studio"
       },
       {
+        "command": "sqlStudio.searchQueryHistory",
+        "title": "Search Query History",
+        "category": "SQL Studio",
+        "icon": "$(search)"
+      },
+      {
+        "command": "sqlStudio.openQueryFromHistory",
+        "title": "Open in Editor",
+        "category": "SQL Studio"
+      },
+      {
+        "command": "sqlStudio.runQueryFromHistory",
+        "title": "Run Query",
+        "category": "SQL Studio",
+        "icon": "$(play)"
+      },
+      {
+        "command": "sqlStudio.copyQueryFromHistory",
+        "title": "Copy SQL",
+        "category": "SQL Studio"
+      },
+      {
+        "command": "sqlStudio.deleteQueryFromHistory",
+        "title": "Remove from History",
+        "category": "SQL Studio"
+      },
+      {
+        "command": "sqlStudio.clearQueryHistory",
+        "title": "Clear Query History",
+        "category": "SQL Studio",
+        "icon": "$(clear-all)"
+      },
+      {
+        "command": "sqlStudio.refreshQueryHistory",
+        "title": "Refresh Query History",
+        "category": "SQL Studio",
+        "icon": "$(refresh)"
+      },
+      {
         "command": "sqlStudio.filterSchemaObjects",
         "title": "Filter Objects",
         "category": "SQL Studio",
@@ -336,9 +376,54 @@
           "command": "sqlStudio.refreshExplorer",
           "when": "view == sqlStudio.explorer",
           "group": "navigation@2"
+        },
+        {
+          "command": "sqlStudio.searchQueryHistory",
+          "when": "view == sqlStudio.history",
+          "group": "navigation@1"
+        },
+        {
+          "command": "sqlStudio.refreshQueryHistory",
+          "when": "view == sqlStudio.history",
+          "group": "navigation@2"
+        },
+        {
+          "command": "sqlStudio.clearQueryHistory",
+          "when": "view == sqlStudio.history",
+          "group": "navigation@3"
         }
       ],
       "view/item/context": [
+        {
+          "command": "sqlStudio.runQueryFromHistory",
+          "when": "view == sqlStudio.history && viewItem == historyEntry",
+          "group": "inline@0"
+        },
+        {
+          "command": "sqlStudio.openQueryFromHistory",
+          "when": "view == sqlStudio.history && viewItem == historyEntry",
+          "group": "1_history@0"
+        },
+        {
+          "command": "sqlStudio.runQueryFromHistory",
+          "when": "view == sqlStudio.history && viewItem == historyEntry",
+          "group": "1_history@1"
+        },
+        {
+          "command": "sqlStudio.copyQueryFromHistory",
+          "when": "view == sqlStudio.history && viewItem == historyEntry",
+          "group": "1_history@2"
+        },
+        {
+          "command": "sqlStudio.deleteQueryFromHistory",
+          "when": "view == sqlStudio.history && viewItem == historyEntry",
+          "group": "2_history@0"
+        },
+        {
+          "command": "sqlStudio.clearQueryHistory",
+          "when": "view == sqlStudio.history && viewItem == historyEntry",
+          "group": "2_history@1"
+        },
         {
           "command": "sqlStudio.filterSchemaObjects",
           "when": "view == sqlStudio.explorer && viewItem =~ /^(schema|database)$/",
@@ -530,6 +615,10 @@
       {
         "view": "sqlStudio.explorer",
         "contents": "No database connections yet.\n[Add Connection](command:sqlStudio.addConnection)\n\nConfigure `sqlStudio.uvPath` if the Python backend fails to start."
+      },
+      {
+        "view": "sqlStudio.history",
+        "contents": "No queries yet. Queries you run are listed here, most recent first.\n\nHow many are kept is controlled by `sqlStudio.queryHistoryLimit` (0 disables history)."
       }
     ],
     "viewsContainers": {
@@ -553,6 +642,11 @@
         {
           "id": "sqlStudio.explorer",
           "name": "Database Explorer"
+        },
+        {
+          "id": "sqlStudio.history",
+          "name": "Query History",
+          "visibility": "collapsed"
         }
       ],
       "sql-studio-results": [
@@ -651,6 +745,12 @@
           "default": 30,
           "minimum": 0,
           "description": "How many recent queries keep their results-table layout (column order, hidden columns, column widths, sorting), keyed by query text via an LRU cache. Set to 0 to disable remembering."
+        },
+        "sqlStudio.queryHistoryLimit": {
+          "type": "number",
+          "default": 200,
+          "minimum": 0,
+          "description": "How many recently executed queries the Query History view keeps, most recent first. Older entries are dropped. Set to 0 to disable query history."
         },
         "sqlStudio.showRatingPrompt": {
           "type": "boolean",

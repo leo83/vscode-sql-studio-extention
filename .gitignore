@@ -3,6 +3,8 @@ dist/
 out/
 *.vsix
 .DS_Store
+*.swp
+*.swo
 .env
 python/.venv/
 python/**/__pycache__/

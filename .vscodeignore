@@ -16,6 +16,8 @@ webview-ui/vite.config.ts
 webview-ui/index.html
 **/*.map
 **/.DS_Store
+**/*.swp
+**/*.swo
 **/__pycache__/**
 **/*.pyc
 **/.pytest_cache/**

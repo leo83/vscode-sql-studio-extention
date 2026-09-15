@@ -1,6 +1,7 @@
 import * as vscode from "vscode";
 import { ConnectionManager } from "./connectionManager";
 import { PythonClient } from "./pythonClient";
+import { QueryHistoryStore } from "./queryHistoryStore";
 import { ResultsPanel } from "./webview/resultsPanel";
 import {
   buildPreviewSql,
@@ -32,7 +33,8 @@ export class QueryRunner {
   constructor(
     private readonly python: PythonClient,
     private readonly connections: ConnectionManager,
-    private readonly results: ResultsPanel
+    private readonly results: ResultsPanel,
+    private readonly history: QueryHistoryStore
   ) {}
 
   /** Called once per successful (non-refresh) run that produced results. */
@@ -112,6 +114,7 @@ export class QueryRunner {
       await this.runSql(batchSql, editor.document.fileName, {
         document: editor.document,
         leadingSessionCount: context.length,
+        historySql: trimmed,
       });
       return;
     }
@@ -129,6 +132,8 @@ export class QueryRunner {
       document?: vscode.TextDocument;
       connectionId?: string;
       leadingSessionCount?: number;
+      /** SQL to store in query history; defaults to `sql`. */
+      historySql?: string;
     }
   ): Promise<QueryExecutePayload | undefined> {
     let conn: ConnectionWithSecret | undefined;
@@ -174,7 +179,9 @@ export class QueryRunner {
       limit,
       options?.showResults !== false,
       options?.leadingSessionCount,
-      fetchMode === "server" ? limit : undefined
+      fetchMode === "server" ? limit : undefined,
+      false,
+      options?.historySql ?? sql
     );
   }
 
@@ -438,7 +445,9 @@ export class QueryRunner {
     showResults = true,
     leadingSessionCount = 0,
     serverPageSize?: number,
-    isRefresh = false
+    isRefresh = false,
+    /** When set, record this SQL in query history once the run settles. */
+    historySql?: string
   ): Promise<QueryExecutePayload | undefined> {
     const shouldRun = await this.confirmUnboundedLargeTableScan(conn, sql);
     if (!shouldRun) {
@@ -473,6 +482,8 @@ export class QueryRunner {
 
     let result: QueryExecutePayload | undefined;
     let cancelled = false;
+    let failure: string | undefined;
+    const runStartedAt = Date.now();
     this.runningConnectionId = conn.id;
     await vscode.commands.executeCommand("setContext", "sqlStudio.queryRunning", true);
     try {
@@ -570,6 +581,7 @@ export class QueryRunner {
               ],
               total_duration_ms: 0,
             };
+            failure = message;
             if (showResults) {
               await this.results.show(errorResult, `${title} (error)`, undefined, undefined, refreshCallback);
             }
@@ -583,6 +595,9 @@ export class QueryRunner {
       this.runningConnectionId = undefined;
       await vscode.commands.executeCommand("setContext", "sqlStudio.queryRunning", false);
     }
+    if (!cancelled && !isRefresh && historySql) {
+      await this.recordHistory(conn, historySql, runStartedAt, result, failure);
+    }
     if (
       !cancelled &&
       !isRefresh &&
@@ -592,6 +607,36 @@ export class QueryRunner {
       this.onQuerySucceeded?.();
     }
     return result;
+  }
+
+  /**
+   * Append one run to the query history. Never throws: a history write must not
+   * surface as a query failure (same contract as ReviewPrompt's counters).
+   */
+  private async recordHistory(
+    conn: ConnectionWithSecret,
+    sql: string,
+    startedAt: number,
+    result: QueryExecutePayload | undefined,
+    failure: string | undefined
+  ): Promise<void> {
+    try {
+      const last = result?.statements[result.statements.length - 1];
+      const error =
+        failure ?? (last?.error ? last.error : undefined) ?? undefined;
+      await this.history.record({
+        sql,
+        connectionId: conn.id,
+        connectionName: conn.name,
+        dialect: conn.dialect,
+        executedAt: startedAt,
+        durationMs: result?.total_duration_ms ?? Date.now() - startedAt,
+        rowCount: error ? undefined : last?.row_count,
+        ...(error ? { error } : {}),
+      });
+    } catch {
+      // Recording history is never worth interrupting a query for.
+    }
   }
 
   private async notifyNoConnectionSelected(): Promise<void> {
