@@ -6,6 +6,7 @@ import time
 from typing import Any
 
 from clickhouse_driver import Client as NativeClient
+from clickhouse_driver import errors as native_errors
 
 from sql_studio.dialect import sqlglot_service
 from sql_studio.drivers.clickhouse_query import build_query_result
@@ -73,6 +74,20 @@ class ClickHouseNativeDriver:
         self._client.execute("SELECT 1")
 
     def execute(self, sql: str, limit: int | None = 10_000) -> QueryResult:
+        try:
+            return self._execute(sql, limit)
+        except native_errors.ServerException:
+            # The server answered — the query was bad, the connection is fine.
+            raise
+        except Exception:
+            # Anything else means the connection itself is suspect, and a
+            # clickhouse-driver client that failed mid-query keeps refusing every
+            # later one ("Simultaneous queries on single connection"). Drop it so
+            # the pool hands out a fresh connection next time.
+            self._drop_client()
+            raise
+
+    def _execute(self, sql: str, limit: int | None) -> QueryResult:
         if self._client is None:
             raise RuntimeError("Not connected")
         started = time.perf_counter()
@@ -88,9 +103,19 @@ class ClickHouseNativeDriver:
                 status_message=clickhouse_status(sql, None),
             )
         effective_limit = limit if limit is not None else 10_000
-        result = self._client.execute(sql, with_column_types=True)
+        # Bound the scan server-side and stream the rest: the native client otherwise
+        # materialises the whole result set before the first row reaches the grid,
+        # which turns a preview of a large table into a hang.
+        col_types, rows_raw, exhausted = self._fetch_rows(
+            sqlglot_service.append_row_limit(sql, "clickhouse", effective_limit + 1),
+            effective_limit,
+        )
         duration_ms = (time.perf_counter() - started) * 1000
-        if not isinstance(result, tuple) or len(result) != 2:
+        if not exhausted:
+            # The stream was abandoned mid-result; the socket still holds unread
+            # packets, so drop it. clickhouse-driver reconnects on the next query.
+            self._reset_connection()
+        if col_types is None:
             return QueryResult(
                 columns=[],
                 rows=[],
@@ -98,7 +123,6 @@ class ClickHouseNativeDriver:
                 duration_ms=duration_ms,
                 status_message=clickhouse_status(sql, None),
             )
-        rows_raw, col_types = result
         column_names = [str(col[0]) for col in col_types] if col_types else None
         column_types = [col[1] for col in col_types] if col_types else None
         return build_query_result(
@@ -110,6 +134,47 @@ class ClickHouseNativeDriver:
             limit=effective_limit,
             status_for_empty=lambda query: clickhouse_status(query, None),
         )
+
+    def _fetch_rows(
+        self, sql: str, limit: int
+    ) -> tuple[list[Any] | None, list[Any], bool]:
+        """Stream at most ``limit + 1`` rows.
+
+        Returns the column/type pairs (``None`` when the query returned no result
+        set), the rows read, and whether the stream ran to completion.
+        """
+        client = self._client
+        if client is None:
+            raise RuntimeError("Not connected")
+        col_types: list[Any] | None = None
+        rows: list[Any] = []
+        exhausted = False
+        stream = client.execute_iter(sql, with_column_types=True)
+        try:
+            for item in stream:
+                if col_types is None:
+                    col_types = list(item)
+                    continue
+                rows.append(item)
+                if len(rows) > limit:
+                    break
+            else:
+                exhausted = True
+        finally:
+            stream.close()
+        return col_types, rows, exhausted
+
+    def _reset_connection(self) -> None:
+        if self._client is None:
+            return
+        try:
+            self._client.disconnect()
+        except Exception:
+            pass
+
+    def _drop_client(self) -> None:
+        self._reset_connection()
+        self._client = None
 
     def estimate_table_row_count(self, schema: str, table: str) -> int | None:
         if self._client is None:

@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
-from typing import Union
+import threading
+from contextlib import contextmanager
+from typing import Iterator, Union
 
 from sql_studio.drivers.clickhouse import ClickHouseDriver
 from sql_studio.drivers.mssql import MssqlDriver
@@ -21,6 +23,41 @@ Driver = Union[
 
 _DRIVERS: dict[str, Driver] = {}
 _SESSION_DATABASES: dict[str, str] = {}
+# One driver holds one database connection, and none of the client libraries we
+# wrap is thread-safe. Every request that touches a driver takes this lock, so a
+# schema lookup can never interleave with a running query on the same connection
+# and corrupt its protocol stream.
+_CONNECTION_LOCKS: dict[str, threading.RLock] = {}
+_LOCKS_GUARD = threading.Lock()
+_CANCELLED: set[str] = set()
+
+
+def connection_lock(connection_id: str) -> threading.RLock:
+    with _LOCKS_GUARD:
+        lock = _CONNECTION_LOCKS.get(connection_id)
+        if lock is None:
+            lock = threading.RLock()
+            _CONNECTION_LOCKS[connection_id] = lock
+        return lock
+
+
+@contextmanager
+def use_connection(connection_id: str) -> Iterator[None]:
+    """Serialize driver access for one connection."""
+    with connection_lock(connection_id):
+        yield
+
+
+def mark_cancelled(connection_id: str) -> None:
+    _CANCELLED.add(connection_id)
+
+
+def clear_cancelled(connection_id: str) -> None:
+    _CANCELLED.discard(connection_id)
+
+
+def was_cancelled(connection_id: str) -> bool:
+    return connection_id in _CANCELLED
 
 
 def get_session_database(connection_id: str) -> str | None:
@@ -82,12 +119,19 @@ def disconnect(connection_id: str) -> None:
 
 
 def cancel_query(connection_id: str) -> bool:
+    """Tear down the connection a query is running on.
+
+    Deliberately lock-free: the lock is held by the query being cancelled, and a
+    cancel that waits for it would never arrive. The running thread sees the
+    connection drop as an error, which `was_cancelled` then reports as a cancel.
+    """
     driver = _DRIVERS.get(connection_id)
     if driver is None:
         return False
     cancel = getattr(driver, "cancel_query", None)
     if not callable(cancel):
         return False
+    mark_cancelled(connection_id)
     cancel()
     return True
 

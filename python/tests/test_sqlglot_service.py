@@ -1,6 +1,11 @@
 """Tests for sqlglot dialect service."""
 
-from sql_studio.dialect.sqlglot_service import format_sql, is_session_statement, split_statements
+from sql_studio.dialect.sqlglot_service import (
+    append_row_limit,
+    format_sql,
+    is_session_statement,
+    split_statements,
+)
 
 
 def test_split_postgres_statements() -> None:
@@ -90,3 +95,29 @@ def test_split_mysql_statements() -> None:
 def test_format_sqlite() -> None:
     formatted = format_sql("select 1", "sqlite")
     assert "SELECT" in formatted.upper()
+
+
+def test_append_row_limit_bounds_bare_select() -> None:
+    assert append_row_limit("SELECT * FROM db.t", "clickhouse", 501) == (
+        "SELECT * FROM db.t LIMIT 501"
+    )
+
+
+def test_append_row_limit_keeps_existing_limit() -> None:
+    sql = "SELECT * FROM db.t LIMIT 10"
+    assert append_row_limit(sql, "clickhouse", 501) == sql
+
+
+def test_append_row_limit_keeps_format_clause() -> None:
+    sql = "SELECT * FROM db.t FORMAT JSON"
+    assert append_row_limit(sql, "clickhouse", 501) == sql
+
+
+def test_append_row_limit_skips_union() -> None:
+    sql = "SELECT 1 UNION ALL SELECT 2"
+    assert append_row_limit(sql, "clickhouse", 501) == sql
+
+
+def test_append_row_limit_keeps_unparsable_sql() -> None:
+    sql = "SELECT * FROM db.t INTO OUTFILE 'dump.tsv'"
+    assert append_row_limit(sql, "clickhouse", 501) == sql

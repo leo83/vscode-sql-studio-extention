@@ -23,6 +23,24 @@ from sql_studio.models import (
 from sql_studio.schema_dbml import get_schema_dbml_for_path
 
 
+def _drop_response(result: Any) -> None:
+    """Hang up on a response we have stopped reading.
+
+    clickhouse-connect closes a stream by first reading whatever is left on the
+    wire (``drain_conn``) so the connection can go back to the pool — which is the
+    very download stopping early was meant to avoid. Closing the response first
+    makes that drain a no-op; the pool just opens a new connection next time.
+    """
+    response = getattr(getattr(result, "source", None), "response", None)
+    close = getattr(response, "close", None)
+    if not callable(close):
+        return
+    try:
+        close()
+    except Exception:
+        pass
+
+
 class ClickHouseHttpDriver:
     def __init__(self) -> None:
         self._client: Client | None = None
@@ -94,7 +112,20 @@ class ClickHouseHttpDriver:
                 status_message=clickhouse_status(sql, summary),
             )
         effective_limit = limit if limit is not None else 10_000
-        result = self._client.query(sql)
+        # Bound the scan server-side, then stop reading as soon as one row past the
+        # limit has arrived: the grid never needs more, and a bare SELECT * over a
+        # large table would otherwise be pulled in full before anything is shown.
+        stream = self._client.query_row_block_stream(
+            sqlglot_service.append_row_limit(sql, "clickhouse", effective_limit + 1)
+        )
+        result = stream.source
+        rows: list[Any] = []
+        with stream as blocks:
+            for block in blocks:
+                rows.extend(block)
+                if len(rows) > effective_limit:
+                    _drop_response(result)
+                    break
         duration_ms = (time.perf_counter() - started) * 1000
         summary = getattr(result, "summary", None)
 
@@ -105,7 +136,7 @@ class ClickHouseHttpDriver:
             sql=sql,
             column_names=list(result.column_names or []),
             column_types=list(result.column_types or []) if result.column_types else None,
-            rows=list(result.result_rows or []),
+            rows=rows,
             duration_ms=duration_ms,
             limit=effective_limit,
             status_for_empty=status_for_empty,

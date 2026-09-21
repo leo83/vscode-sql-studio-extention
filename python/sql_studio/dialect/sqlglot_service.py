@@ -5,7 +5,7 @@ from __future__ import annotations
 import re
 
 import sqlglot
-from sqlglot import parse_one
+from sqlglot import exp, parse_one
 
 
 def dialect_read(dialect: str) -> str:
@@ -175,3 +175,31 @@ def validate_sql(sql: str, dialect: str) -> str | None:
         return None
     except sqlglot.errors.ParseError as exc:
         return str(exc)
+
+
+def append_row_limit(sql: str, dialect: str, limit: int) -> str:
+    """Add a server-side LIMIT to a bare SELECT that has none.
+
+    ClickHouse has no server cursor: whatever the query produces is streamed to the
+    client in full, so ``SELECT * FROM big_table`` is fetched entirely before a single
+    row can be shown. Bounding the statement itself keeps a table preview cheap.
+
+    The statement is returned unchanged when the limit cannot be added safely — a
+    query that already limits its rows, a FORMAT clause, a UNION, or SQL sqlglot
+    cannot parse.
+    """
+    if limit <= 0:
+        return sql
+    read = dialect_read(dialect)
+    try:
+        parsed = parse_one(sql, read=read)
+    except sqlglot.errors.ParseError:
+        return sql
+    if not isinstance(parsed, exp.Select):
+        return sql
+    if parsed.args.get("limit") is not None or parsed.args.get("format") is not None:
+        return sql
+    try:
+        return parsed.limit(limit).sql(dialect=read)
+    except Exception:
+        return sql

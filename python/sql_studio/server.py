@@ -6,7 +6,8 @@ import json
 import sys
 import threading
 import traceback
-from typing import Any, Callable
+from contextlib import contextmanager
+from typing import Any, Callable, Iterator
 
 from pydantic import ValidationError
 
@@ -21,13 +22,17 @@ from sql_studio.dialect.query_analysis import (
     get_unbounded_select_tables,
 )
 from sql_studio.drivers.registry import (
+    Driver,
     cancel_query,
+    clear_cancelled,
     disconnect,
     get_driver,
     get_session_database,
     is_connection_active,
     set_session_database,
     test_connection,
+    use_connection,
+    was_cancelled,
 )
 from sql_studio.drivers.clickhouse_session import parse_use_database
 from sql_studio.drivers.table_stats import (
@@ -89,15 +94,14 @@ class JsonRpcServer:
                 self._write(self._error(None, -32700, f"Parse error: {exc}"))
                 continue
 
-            if request.get("method") in ("query/execute", "query/explain"):
-                threading.Thread(
-                    target=self._respond,
-                    args=(request,),
-                    daemon=True,
-                ).start()
-                continue
-
-            self._respond(request)
+            # Every request gets a thread. Handlers serialize per connection
+            # themselves (see `use_connection`), and the reader must stay free so a
+            # cancel can still be delivered while a query is running.
+            threading.Thread(
+                target=self._respond,
+                args=(request,),
+                daemon=True,
+            ).start()
 
     def _respond(self, request: dict[str, Any]) -> None:
         try:
@@ -131,6 +135,34 @@ class JsonRpcServer:
             return self._error(req_id, -32000, str(exc))
 
     @staticmethod
+    @contextmanager
+    def _connection(config: ConnectionConfig) -> Iterator[Driver]:
+        """Exclusive access to one connection's driver."""
+        with use_connection(config.id):
+            yield get_driver(config)
+
+    @staticmethod
+    @contextmanager
+    def _query_connection(config: ConnectionConfig) -> Iterator[Driver]:
+        """Exclusive driver access for a cancellable query.
+
+        A cancel drops the connection under the running query, which surfaces as
+        whatever error the client library raises on a dead socket. Trusting the
+        cancel flag instead of the error text keeps those from being reported as
+        query failures.
+        """
+        with use_connection(config.id):
+            clear_cancelled(config.id)
+            try:
+                yield get_driver(config)
+            except Exception as exc:
+                if was_cancelled(config.id):
+                    raise QueryCancelledError("Query cancelled") from exc
+                raise
+            finally:
+                clear_cancelled(config.id)
+
+    @staticmethod
     def _error(req_id: Any, code: int, message: str) -> dict[str, Any]:
         return {
             "jsonrpc": "2.0",
@@ -149,14 +181,16 @@ class JsonRpcServer:
 
     def _connection_connect(self, params: dict[str, Any]) -> dict[str, bool]:
         config = ConnectionConfig.model_validate(params["connection"])
-        get_driver(config)
-        return {"ok": True}
+        with self._connection(config):
+            return {"ok": True}
 
     def _connection_is_connected(self, params: dict[str, Any]) -> dict[str, bool]:
         return {"connected": is_connection_active(params["connectionId"])}
 
     def _connection_disconnect(self, params: dict[str, Any]) -> dict[str, bool]:
-        disconnect(params["connectionId"])
+        connection_id = params["connectionId"]
+        with use_connection(connection_id):
+            disconnect(connection_id)
         return {"ok": True}
 
     def _query_cancel(self, params: dict[str, Any]) -> dict[str, bool]:
@@ -175,49 +209,49 @@ class JsonRpcServer:
             raise ValueError(
                 "No executable SQL found. Add a statement (e.g. SELECT) or select SQL text to run."
             )
-        driver = get_driver(config)
-        batch: list[StatementResult] = []
-        total_duration_ms = 0.0
-        for index, statement in enumerate(statements, start=1):
-            active_database = get_session_database(config.id)
-            if active_database:
-                setter = getattr(driver, "set_active_database", None)
-                if callable(setter):
-                    setter(active_database)
-            if is_paged:
-                fetch_limit = offset + limit
-                result = driver.execute(statement, limit=fetch_limit + 1)
-                if result.columns and result.error is None:
-                    has_more = len(result.rows) > offset + limit
-                    page_rows = result.rows[offset : offset + limit]
-                    result = result.model_copy(
-                        update={
-                            "rows": page_rows,
-                            "row_count": len(page_rows),
-                            "truncated": False,
-                            "has_more": has_more,
-                            "page_offset": offset,
-                        }
+        with self._query_connection(config) as driver:
+            batch: list[StatementResult] = []
+            total_duration_ms = 0.0
+            for index, statement in enumerate(statements, start=1):
+                active_database = get_session_database(config.id)
+                if active_database:
+                    setter = getattr(driver, "set_active_database", None)
+                    if callable(setter):
+                        setter(active_database)
+                if is_paged:
+                    fetch_limit = offset + limit
+                    result = driver.execute(statement, limit=fetch_limit + 1)
+                    if result.columns and result.error is None:
+                        has_more = len(result.rows) > offset + limit
+                        page_rows = result.rows[offset : offset + limit]
+                        result = result.model_copy(
+                            update={
+                                "rows": page_rows,
+                                "row_count": len(page_rows),
+                                "truncated": False,
+                                "has_more": has_more,
+                                "page_offset": offset,
+                            }
+                        )
+                else:
+                    result = driver.execute(statement, limit=limit)
+                total_duration_ms += result.duration_ms
+                database = parse_use_database(statement)
+                if database and not result.error:
+                    set_session_database(config.id, database)
+                batch.append(
+                    StatementResult(
+                        index=index,
+                        sql=statement,
+                        **result.model_dump(),
                     )
-            else:
-                result = driver.execute(statement, limit=limit)
-            total_duration_ms += result.duration_ms
-            database = parse_use_database(statement)
-            if database and not result.error:
-                set_session_database(config.id, database)
-            batch.append(
-                StatementResult(
-                    index=index,
-                    sql=statement,
-                    **result.model_dump(),
                 )
-            )
-            if result.error:
-                break
-        return QueryExecuteResult(
-            statements=batch,
-            total_duration_ms=total_duration_ms,
-        ).model_dump()
+                if result.error:
+                    break
+            return QueryExecuteResult(
+                statements=batch,
+                total_duration_ms=total_duration_ms,
+            ).model_dump()
 
     def _query_explain(self, params: dict[str, Any]) -> dict[str, Any]:
         config = ConnectionConfig.model_validate(params["connection"])
@@ -244,82 +278,82 @@ class JsonRpcServer:
                 "Execution plan is only available for SELECT, WITH, or EXPLAIN queries."
             )
 
-        driver = get_driver(config)
-        total_duration_ms = 0.0
-        target_sql = statements[target_index]
+        with self._query_connection(config) as driver:
+            total_duration_ms = 0.0
+            target_sql = statements[target_index]
 
-        for index, statement in enumerate(statements):
-            if index >= target_index:
-                break
+            for index, statement in enumerate(statements):
+                if index >= target_index:
+                    break
+                active_database = get_session_database(config.id)
+                if active_database:
+                    setter = getattr(driver, "set_active_database", None)
+                    if callable(setter):
+                        setter(active_database)
+                result = driver.execute(statement, limit=limit)
+                total_duration_ms += result.duration_ms
+                database = parse_use_database(statement)
+                if database and not result.error:
+                    set_session_database(config.id, database)
+                if result.error:
+                    return QueryExecuteResult(
+                        statements=[
+                            StatementResult(
+                                index=1,
+                                sql=target_sql,
+                                **result.model_dump(),
+                            )
+                        ],
+                        total_duration_ms=total_duration_ms,
+                    ).model_dump()
+
             active_database = get_session_database(config.id)
             if active_database:
                 setter = getattr(driver, "set_active_database", None)
                 if callable(setter):
                     setter(active_database)
-            result = driver.execute(statement, limit=limit)
+
+            explain_sql = build_explain_sql(target_sql, dialect, analyze=analyze)
+            result = driver.execute(explain_sql, limit=limit)
             total_duration_ms += result.duration_ms
-            database = parse_use_database(statement)
-            if database and not result.error:
-                set_session_database(config.id, database)
-            if result.error:
-                return QueryExecuteResult(
-                    statements=[
-                        StatementResult(
-                            index=1,
-                            sql=target_sql,
-                            **result.model_dump(),
-                        )
-                    ],
-                    total_duration_ms=total_duration_ms,
-                ).model_dump()
-
-        active_database = get_session_database(config.id)
-        if active_database:
-            setter = getattr(driver, "set_active_database", None)
-            if callable(setter):
-                setter(active_database)
-
-        explain_sql = build_explain_sql(target_sql, dialect, analyze=analyze)
-        result = driver.execute(explain_sql, limit=limit)
-        total_duration_ms += result.duration_ms
-        stmt = attach_plan(
-            StatementResult(
-                index=1,
-                sql=target_sql,
-                **result.model_dump(),
-            ),
-            dialect,
-        )
-        return QueryExecuteResult(
-            statements=[stmt],
-            total_duration_ms=total_duration_ms,
-        ).model_dump()
+            stmt = attach_plan(
+                StatementResult(
+                    index=1,
+                    sql=target_sql,
+                    **result.model_dump(),
+                ),
+                dialect,
+            )
+            return QueryExecuteResult(
+                statements=[stmt],
+                total_duration_ms=total_duration_ms,
+            ).model_dump()
 
     def _schema_list_children(self, params: dict[str, Any]) -> list[dict[str, Any]]:
         config = ConnectionConfig.model_validate(params["connection"])
         path = params.get("path") or []
-        driver = get_driver(config)
-        nodes: list[SchemaNode] = driver.list_schema_children(path)
+        with self._connection(config) as driver:
+            nodes: list[SchemaNode] = driver.list_schema_children(path)
         return [n.model_dump() for n in nodes]
 
     def _schema_get_table_ddl(self, params: dict[str, Any]) -> dict[str, str]:
         config = ConnectionConfig.model_validate(params["connection"])
         path = params.get("path") or []
-        driver = get_driver(config)
-        return {"ddl": driver.get_table_ddl(path)}
+        with self._connection(config) as driver:
+            return {"ddl": driver.get_table_ddl(path)}
 
     def _schema_get_object_description(self, params: dict[str, Any]) -> dict[str, Any]:
         config = ConnectionConfig.model_validate(params["connection"])
         path = params.get("path") or []
-        driver = get_driver(config)
-        description: ObjectDescription = driver.get_object_description(path)
+        with self._connection(config) as driver:
+            description: ObjectDescription = driver.get_object_description(path)
         return description.model_dump()
 
     def _schema_get_dbml(self, params: dict[str, Any]) -> dict[str, Any]:
         config = ConnectionConfig.model_validate(params["connection"])
         path = params.get("path") or []
-        driver = get_driver(config)
-        result: SchemaDbmlResult = driver.get_schema_dbml(path)
+        with self._connection(config) as driver:
+            result: SchemaDbmlResult = driver.get_schema_dbml(path)
         return result.model_dump()
 
     def _sql_format(self, params: dict[str, Any]) -> dict[str, str]:
@@ -338,54 +372,54 @@ class JsonRpcServer:
         threshold = int(params.get("threshold", LARGE_TABLE_ROW_THRESHOLD))
         dialect = config.dialect
         statements = sqlglot_service.split_statements(sql, dialect)
-        driver = get_driver(config)
-        active_database = get_session_database(config.id)
-        if active_database:
-            setter = getattr(driver, "set_active_database", None)
-            if callable(setter):
-                setter(active_database)
+        with self._connection(config) as driver:
+            active_database = get_session_database(config.id)
+            if active_database:
+                setter = getattr(driver, "set_active_database", None)
+                if callable(setter):
+                    setter(active_database)
 
-        warnings: list[LargeTableWarning] = []
-        seen_tables: set[str] = set()
-        for statement in statements:
-            if sqlglot_service.is_session_statement(statement):
-                database = parse_use_database(statement)
-                if database:
-                    active_database = database
-                    setter = getattr(driver, "set_active_database", None)
-                    if callable(setter):
-                        setter(database)
-                continue
-
-            tables = get_unbounded_select_tables(statement, dialect)
-            for table_ref in tables:
-                schema = resolve_table_schema(
-                    dialect,
-                    table_ref.schema,
-                    config=config,
-                    active_database=active_database,
-                )
-                qualified = format_qualified_table(dialect, schema, table_ref.name)
-                if qualified in seen_tables:
-                    continue
-                seen_tables.add(qualified)
-
-                estimate = estimate_table_row_count(driver, dialect, schema, table_ref.name)
-                if estimate is None or estimate <= threshold:
+            warnings: list[LargeTableWarning] = []
+            seen_tables: set[str] = set()
+            for statement in statements:
+                if sqlglot_service.is_session_statement(statement):
+                    database = parse_use_database(statement)
+                    if database:
+                        active_database = database
+                        setter = getattr(driver, "set_active_database", None)
+                        if callable(setter):
+                            setter(database)
                     continue
 
-                warnings.append(
-                    LargeTableWarning(
-                        table=qualified,
-                        row_estimate=estimate,
-                        message=(
-                            f"{qualified} (~{estimate:,} rows) may scan a large table. "
-                            "Consider adding LIMIT."
-                        ),
+                tables = get_unbounded_select_tables(statement, dialect)
+                for table_ref in tables:
+                    schema = resolve_table_schema(
+                        dialect,
+                        table_ref.schema,
+                        config=config,
+                        active_database=active_database,
                     )
-                )
+                    qualified = format_qualified_table(dialect, schema, table_ref.name)
+                    if qualified in seen_tables:
+                        continue
+                    seen_tables.add(qualified)
 
-        return CheckUnboundedSelectResult(warnings=warnings).model_dump()
+                    estimate = estimate_table_row_count(driver, dialect, schema, table_ref.name)
+                    if estimate is None or estimate <= threshold:
+                        continue
+
+                    warnings.append(
+                        LargeTableWarning(
+                            table=qualified,
+                            row_estimate=estimate,
+                            message=(
+                                f"{qualified} (~{estimate:,} rows) may scan a large table. "
+                                "Consider adding LIMIT."
+                            ),
+                        )
+                    )
+
+            return CheckUnboundedSelectResult(warnings=warnings).model_dump()
 
     def _export_csv(self, params: dict[str, Any]) -> dict[str, Any]:
         path = params["path"]

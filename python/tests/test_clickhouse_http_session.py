@@ -8,6 +8,26 @@ from sql_studio.drivers.registry import _DRIVERS, _SESSION_DATABASES
 from sql_studio.server import JsonRpcServer
 
 
+class _FakeStream:
+    """Stand-in for clickhouse-connect's StreamContext of row blocks."""
+
+    def __init__(self, column_names: list[str], blocks: list[list[list[object]]]):
+        self.source = MagicMock()
+        self.source.column_names = column_names
+        self.source.column_types = []
+        self.source.summary = None
+        self._blocks = blocks
+
+    def __enter__(self) -> "_FakeStream":
+        return self
+
+    def __exit__(self, *_exc: object) -> None:
+        return None
+
+    def __iter__(self):
+        return iter(self._blocks)
+
+
 def _clickhouse_connection() -> dict:
     return {
         "id": "ch-http",
@@ -36,19 +56,14 @@ def test_use_then_select_reuses_session_database() -> None:
         client.database = kwargs.get("database", "default")
         client.close = MagicMock()
 
-        def query(sql: str) -> MagicMock:
+        def query_row_block_stream(sql: str) -> _FakeStream:
             query_databases.append(client.database)
             if client.database != "app_db":
                 raise RuntimeError(
                     "Unknown table expression identifier 'messages' in scope "
                     + sql
                 )
-            result = MagicMock()
-            result.column_names = ["id"]
-            result.column_types = []
-            result.result_rows = [[1]]
-            result.summary = None
-            return result
+            return _FakeStream(column_names=["id"], blocks=[[[1]]])
 
         def command(cmd: str, use_database: bool = True, **_kw: object) -> MagicMock:
             if cmd.strip().upper().startswith("USE"):
@@ -56,7 +71,7 @@ def test_use_then_select_reuses_session_database() -> None:
                 client.database = database
             return MagicMock(summary="ok")
 
-        client.query = query
+        client.query_row_block_stream = query_row_block_stream
         client.command = command
         return client
 

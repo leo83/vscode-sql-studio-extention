@@ -4,6 +4,11 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Fixed
+
+- **Previewing a large ClickHouse table no longer hangs** — clicking a table in the explorer, or running an unbounded `SELECT`, used to pull the whole table across the wire before the first row could be shown, because the row limit was applied only after the full result had been read. ClickHouse queries are now bounded on the server and the result is streamed, so a preview stops as soon as the grid is full.
+- **Query failed: 'NoneType' object has no attribute 'close'** — two requests on the same connection (an explorer click and a query run, for example) shared one database client, which ClickHouse's native driver rejects as "Simultaneous queries on single connection" and which left the connection torn down mid-read. Requests on a connection now run one at a time, a ClickHouse connection that failed mid-query is replaced instead of reused for every later query, and a cancelled query is reported as cancelled instead of as a driver error.
+
 ## [0.1.19] — 2026-09-15
 
 ### Added
