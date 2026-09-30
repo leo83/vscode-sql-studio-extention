@@ -4,6 +4,10 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added
+
+- **Skip certificate verification for ClickHouse** — a new **Skip certificate verification** checkbox in the ClickHouse connection dialog accepts any TLS certificate, so servers with a self-signed certificate or an unknown CA no longer fail with `CERTIFICATE_VERIFY_FAILED`. It applies to both the Native (9440) and HTTP (8443) drivers and only when TLS is enabled; traffic stays encrypted, but the server identity is not checked
+
 ### Fixed
 
 - **Previewing a large ClickHouse table no longer hangs** — clicking a table in the explorer, or running an unbounded `SELECT`, used to pull the whole table across the wire before the first row could be shown, because the row limit was applied only after the full result had been read. ClickHouse queries are now bounded on the server and the result is streamed, so a preview stops as soon as the grid is full.

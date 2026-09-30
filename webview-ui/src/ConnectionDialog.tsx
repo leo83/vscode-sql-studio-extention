@@ -55,6 +55,7 @@ function buildInitialValues(init: ConnectionDialogInit): FormValues {
     username: profile?.username ?? defaultUsername(dialect),
     password: "",
     ssl: profile?.ssl ?? false,
+    sslSkipVerify: profile?.sslSkipVerify ?? false,
     readOnly: profile?.readOnly ?? false,
   };
 }
@@ -188,6 +189,7 @@ export function ConnectionDialog({ init }: { init: ConnectionDialogInit }) {
       username: d === "sqlite" ? "" : String(values.username).trim(),
       password: d === "sqlite" ? "" : String(values.password ?? ""),
       ssl: Boolean(values.ssl),
+      sslSkipVerify: d === "clickhouse" && Boolean(values.sslSkipVerify),
       readOnly: Boolean(values.readOnly),
       clickhouseInterface:
         d === "clickhouse"

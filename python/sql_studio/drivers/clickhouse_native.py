@@ -40,6 +40,7 @@ class ClickHouseNativeDriver:
             password=config.password,
             database=config.database,
             secure=config.ssl,
+            verify=not config.ssl_skip_verify,
             connect_timeout=10,
             send_receive_timeout=15,
             settings=settings,

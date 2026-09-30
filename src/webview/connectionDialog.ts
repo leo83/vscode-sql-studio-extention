@@ -24,6 +24,7 @@ export interface ConnectionFormPayload {
   username: string;
   password: string;
   ssl: boolean;
+  sslSkipVerify?: boolean;
   readOnly: boolean;
   clickhouseInterface?: ClickHouseInterface;
   tags?: ConnectionTag[];
@@ -133,6 +134,10 @@ export class ConnectionDialog {
       database: payload.database.trim() || "default",
       username: payload.username.trim(),
       ssl: payload.ssl,
+      sslSkipVerify:
+        payload.dialect === "clickhouse" && payload.ssl
+          ? Boolean(payload.sslSkipVerify)
+          : undefined,
       readOnly: payload.readOnly,
       clickhouseInterface:
         payload.dialect === "clickhouse"

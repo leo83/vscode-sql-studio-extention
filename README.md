@@ -164,7 +164,7 @@ See [README.ru.md](README.ru.md) for detailed Cursor-specific install notes (dra
 | Username / Password | yes | yes | yes | yes | optional |
 | Database | required | optional | required | required | file path |
 | Default port | 5432 | 9000 / 8123 | 1433 | 3306 | — |
-| Extra | SSL, read-only | Native vs HTTP driver | TLS, read-only | SSL, read-only | read-only flag |
+| Extra | SSL, read-only | Native vs HTTP driver, TLS (+ skip cert verification), read-only | TLS, read-only | SSL, read-only | read-only flag |
 
 ### ClickHouse: Native vs HTTP
 
@@ -174,6 +174,8 @@ See [README.ru.md](README.ru.md) for detailed Cursor-specific install notes (dra
 | **HTTP** | 8123 (8443 + TLS) | ClickHouse Cloud, HTTP-only access |
 
 > Port **9000** does not work with the HTTP driver — select **Native** in the Driver field.
+
+> `CERTIFICATE_VERIFY_FAILED` (self-signed certificate or unknown CA): tick **Skip certificate verification**. Traffic stays encrypted, but the server identity is not checked.
 
 ### Microsoft SQL Server
 

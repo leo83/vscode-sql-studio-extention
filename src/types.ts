@@ -12,6 +12,8 @@ export interface ConnectionProfile {
   database: string;
   username: string;
   ssl?: boolean;
+  /** ClickHouse only: accept any TLS certificate (self-signed, unknown CA). */
+  sslSkipVerify?: boolean;
   readOnly?: boolean;
   /** ClickHouse only: native TCP (9000) or HTTP (8123). */
   clickhouseInterface?: ClickHouseInterface;
@@ -186,6 +188,7 @@ export function toRpcConnection(profile: ConnectionWithSecret): Record<string, u
     username: profile.username,
     password: profile.password,
     ssl: profile.ssl ?? false,
+    ssl_skip_verify: profile.sslSkipVerify ?? false,
     read_only: profile.readOnly ?? false,
     clickhouse_interface:
       profile.dialect === "clickhouse"

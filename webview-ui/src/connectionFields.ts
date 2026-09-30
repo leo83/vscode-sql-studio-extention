@@ -112,6 +112,12 @@ const clickhouseExtras: ConnectionFieldDef[] = [
     type: "checkbox",
   },
   {
+    key: "sslSkipVerify",
+    label: "Skip certificate verification",
+    type: "checkbox",
+    hint: "Accept any TLS certificate (self-signed / unknown CA). Only with TLS enabled",
+  },
+  {
     key: "readOnly",
     label: "Read-only connection",
     type: "checkbox",

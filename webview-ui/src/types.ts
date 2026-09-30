@@ -72,6 +72,7 @@ export interface ConnectionProfilePayload {
   database: string;
   username: string;
   ssl?: boolean;
+  sslSkipVerify?: boolean;
   readOnly?: boolean;
   clickhouseInterface?: ClickHouseInterface;
   tags?: ConnectionTagPayload[];
@@ -96,6 +97,7 @@ export interface ConnectionFormPayload {
   username: string;
   password: string;
   ssl: boolean;
+  sslSkipVerify?: boolean;
   readOnly: boolean;
   clickhouseInterface?: ClickHouseInterface;
   tags?: ConnectionTagPayload[];

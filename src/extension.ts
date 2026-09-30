@@ -331,6 +331,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
                 username: conn.username,
                 password: conn.password,
                 ssl: conn.ssl ?? false,
+                ssl_skip_verify: conn.sslSkipVerify ?? false,
                 read_only: conn.readOnly ?? false,
                 clickhouse_interface:
                   conn.dialect === "clickhouse"

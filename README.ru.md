@@ -266,6 +266,8 @@ npx vsce package --no-dependencies --no-rewrite-relative-links
 
 > Порт **9000** с драйвером HTTP не работает.
 
+> `CERTIFICATE_VERIFY_FAILED` (самоподписанный сертификат или неизвестный CA): включите **Skip certificate verification**. Трафик остаётся зашифрованным, но подлинность сервера не проверяется.
+
 #### Microsoft SQL Server
 
 Подключение через **pyodbc** и **системный ODBC-драйвер**.

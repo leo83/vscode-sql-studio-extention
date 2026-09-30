@@ -20,6 +20,7 @@ class ConnectionConfig(BaseModel):
     username: str
     password: str = ""
     ssl: bool = False
+    ssl_skip_verify: bool = False
     read_only: bool = False
     clickhouse_interface: ClickHouseInterface | None = None
 
